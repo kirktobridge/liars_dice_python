@@ -6,7 +6,7 @@ import random
 import Constants
 import colorama
 from colorama import Fore, Back, Style
-from scipy import binom
+from scipy.stats import binom
 
 class Player:
 
@@ -58,7 +58,7 @@ class Player:
             new_bid = [bid_count,bid_face]   
         return new_bid
 
-    def take_turn(self, prev_event, tot_other_dice):
+    def take_turn(self, prev_events, tot_other_dice):
         # TODO form and react to impressions of other players (trust score, expected bids, expected count of ones based on bids)
         # for each turn record
 
@@ -72,6 +72,7 @@ class Player:
         #  
         # (1) Read Previous Player's Action: from stack (prev_events) given by LiarsDiceGame
         #
+        prev_event = prev_events.peek()
         prev_action = prev_event[1] # pulls value of new_action from previous turn
         #
         # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
@@ -80,8 +81,6 @@ class Player:
         # using a scipy function to calculate the binomial cumulative probability.
         #
         self.rolls_mode = mode(self.dice) # what is our most common roll?
-        
-        # 
         if prev_action == Constants.ACTIONS[2]: # If previous player bid
             model = binom(n=tot_other_dice, p=2/6) # set up binomial model
             # ns and 1s count as ns

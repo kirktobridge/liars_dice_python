@@ -46,10 +46,9 @@ class LiarsDiceGame:
         print(Fore.CYAN + '<i> Dice Rolled')
         for p in range(0,self.num_players):
             print(f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
-
-            # player takes turn, output (bid, if any) and action are recorded
             prev_event = self.round_events.peek()
-            cur_event = self.players[p].take_turn(prev_event, self.count_dice())
+            # player takes turn, output (bid, if any) and action are recorded
+            cur_event = self.players[p].take_turn(self.round_events, self.count_dice())
             # bid stored in cur_event[0]
             # action stored in cur_event[1]
             # dice rolls stored in cur_event[2]
