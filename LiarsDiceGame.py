@@ -60,15 +60,17 @@ class LiarsDiceGame:
             prev_event = self.round_events[0]
             # player takes turn, output (bid, if any) and action are recorded
             try:
+                # Provide player list of round's events so far, and the number
+                # of other dice remaining
                 cur_event = self.players[p].take_turn(
-                    self.round_events, self.count_dice())
+                    self.round_events, self.count_dice()-self.players[p].num_dice)
                 # bid stored in cur_event[0]
                 # action stored in cur_event[1]
-                # TODO: why am I storing dice rolls again?
+                cur_event.extend(self.players[p].name)
+                # player name stored in cur_event[2]
+
             except Exception as e:
                 print(e)
-            # player name stored in cur_event[2]
-            cur_event.extend(self.players[p].name)
 
             # TODO process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:

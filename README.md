@@ -9,4 +9,4 @@ Maintains personal inventory of dice, makes play decisions (bid, challenge, call
 Maintains players, runs rounds by signaling Players to roll dice and triggering their decision-making.
 
 # Main Class
-Initializes a LiarsDiceGame object, collects setup inputs (number of players, name) and sets up game for 1 human player.
+Initializes a LiarsDiceGame object, collects setup inputs (number of players, name) and sets up game for 1 human player. 

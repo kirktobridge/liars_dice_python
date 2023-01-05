@@ -1,7 +1,7 @@
 # class for Player object
 # move to Constants file
 from statistics import mode
-from collections import deque, Counter
+from collections import deque
 import time
 import random
 import Constants
@@ -92,13 +92,13 @@ class Player:
         prev_event = prev_events[0]
         # pulls value of new_action from previous turn
         prev_action = prev_event[1]
-        #
+        #tot_other_dice = tot_num_dice-self.num_dice
         # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
         #
-        self.rolls_mode = Counter(mode(self.dice))  # what is our most common roll?
+        self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
         # If previous player bid
         if prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
@@ -146,7 +146,7 @@ class Player:
         else:
             pass  # TODO
             raise Exception(
-                Back.RED + f'Exception Raised. Previous Action: {prev_action}')
+                Back.RED + f'Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
         #
         # (4) Execute Decision
         #
