@@ -20,6 +20,10 @@ class LiarsDiceGame:
         self.prev_action = ''
         self.game_status = True
         self.round_rolls = []
+        # TODO
+        # you can't bid the same face and count in a round
+        # usually (or always?) safest: bid without raising. is raising always more risky? perhaps
+        # then maybe don't raise unless you there are no face-count combinations left to play at the current count
         self.game_log = []
         self.tot_num_dice = 0
     
@@ -59,6 +63,7 @@ class LiarsDiceGame:
                 for p in self.players:
                     die_freq = Counter(p.dice)
                     print(f'Player {p.name}: ')
+                    # TODO print player dice freq counts
 
             # TODO process spot-on action
 
