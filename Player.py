@@ -37,14 +37,13 @@ class Player:
             self.dice[d] = random.randint(1,6)
            
 
-    def bid(self, raise_bid=False, prev_bids=None): # will return an array containing: number of dice, denomination
+    def bid(self, bid, raise_bid_amt=0): # will return an array containing: number of dice, denomination
 
         if self.spot == 'CPU':
-            if raise_bid == True: # copies previous bid, raises count by 1
-                prev_bid = prev_bids[len(prev_bids)-1]
-                prev_bid_count = prev_bid[0]
-                prev_bid_face = prev_bid[1]
-                new_bid = [prev_bid_count + 1, prev_bid_face]
+            if raise_bid_amt != 0:
+                bid_count = bid[0]
+                bid_face = bid[1]
+                new_bid = [bid_count + raise_bid_amt, bid_face]
             else:
                 cnt_bid_safe = self.rolls_mode + self.wild_count
                 # best bid is a function of how large count of mode is plus count of ones
@@ -84,30 +83,45 @@ class Player:
         if prev_action == Constants.ACTIONS[2]: # If previous player bid
             model = binom(n=tot_other_dice, p=2/6) # set up binomial model
             # ns and 1s count as ns
-            prev_bid_cnt = prev_action[0][0]
-            needed_cnt = prev_bid_cnt - self.dice.count(prev_bid_cnt) - self.count_ones()
+            prev_bid = prev_action[0]
+            prev_bid_cnt = prev_bid[0]
+            prev_bid_face = prev_bid[1]
+            face_self_match = self.dice.count(prev_bid_face) - self.count_ones()
+            needed_cnt = prev_bid_cnt - face_self_match
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
-            if needed_cnt <= 0:
-                # negative number means we already have this bid
+            if needed_cnt == 0:
+                
                 cumulative_probability = 1
                 # TODO evaluate spot on conditions?
+            elif needed_cnt < 0:
+                # negative number means we can safely raise this bid
+
+                self.bid(prev_bid, raise_bid_amt=1)
+                # TODO raise bid to needed_cnt*(-1) + prev_bid_cnt
             else:
                 cumulative_probability = 1 - model.cdf(needed_cnt-1) # p(x >= y) = 1 - p(x =< y-1)
-                spot_on_probability = model.pmf(prev_bid_cnt)
+                spot_on_probability = model.pmf(needed_cnt)
                 # TODO compare these probabilities and decide if we should 'spot on'
                 # TODO compare these probabilities to probability of each possible raised bid
                 # may need to pass all previous events instead of just the one previous event...
                 # TODO what do we do when nothing we want to say or can say is likely?
             
-            # TODO calculate probability of bid
+            # TODO choose option that is most likely to succeed
 
             # TODO: bid new face, raise bid, challenge, or spot on
             new_action = None # TODO
 
         elif prev_action == None:
             pass # TODO what behavior should we instigate if we are the first player?
-        # we have to bid, can't challenge or spot on
+            # we have to bid, can't challenge or spot on
+        else:
+            pass # TODO
+            raise Exception(Back.RED + f'Exception Raised. Previous Action: {prev_action}')
+        #
+        # (3) Execute Decision
+        #
+
         output = None # TODO
         return [output, new_action, self.dice] # TODO bid or challenge previous bid
         

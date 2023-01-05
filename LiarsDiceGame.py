@@ -48,10 +48,13 @@ class LiarsDiceGame:
             print(f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
             prev_event = self.round_events.peek()
             # player takes turn, output (bid, if any) and action are recorded
-            cur_event = self.players[p].take_turn(self.round_events, self.count_dice())
-            # bid stored in cur_event[0]
-            # action stored in cur_event[1]
-            # dice rolls stored in cur_event[2]
+            try:
+                cur_event = self.players[p].take_turn(self.round_events, self.count_dice())
+                # bid stored in cur_event[0]
+                # action stored in cur_event[1]
+                # dice rolls stored in cur_event[2]
+            except Exception as e:
+                print(e)
             cur_event.extend(self.players[p].name) # player name stored in cur_event[3]
             self.round_rolls.extend(cur_event[2]) # record round rolls for spot-ons and challenges
 
