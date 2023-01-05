@@ -23,12 +23,15 @@ def main():
         try:
             if isinstance(num_players, int) == True and num_players < 2:
                 raise Exception(Fore.RED + Style.DIM + "<!> Sorry, you must play against at least one opponent.")
+            elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
+                raise Exception(Fore.RED + Style.DIM + f"<!> Sorry, to limit computational workload, you are limited to {Constants.MAX_PLAYERS} players.")
+        
         except Exception as e:
             print(e)    
             time.sleep(Constants.PAUSE)
-        else:
-            print(Fore.CYAN + f'<i> {num_players} players selected. Initalizing...')
-            break
+    
+        print(Fore.CYAN + f'<i> {num_players} players selected. Initalizing...')
+        break
 
     game = LiarsDiceGame(num_players)
     game.add_player(Player(input(Fore.BLUE + "<?> What is your name? "), spot='HUMAN'))
