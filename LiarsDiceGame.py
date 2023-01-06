@@ -42,6 +42,7 @@ class LiarsDiceGame:
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
         time.sleep(Constants.PAUSE)
         self.log_event(f'<!> Round {self.round_num} Begin')
+        self.round_num += 1
         self.log_event('Dice Roll')
         print(Fore.CYAN + '<!> Rolling Dice...')
         time.sleep(Constants.PAUSE)
@@ -59,6 +60,7 @@ class LiarsDiceGame:
                 self.round_events.append([[0, 0], 'RND1', [], 'SYS'])
             prev_event = self.round_events[0]
             # player takes turn, output (bid, if any) and action are recorded
+            cur_event = [None, None, None]
             try:
                 # Provide player list of round's events so far, and the number
                 # of other dice remaining
