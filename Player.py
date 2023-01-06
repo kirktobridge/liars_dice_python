@@ -92,7 +92,7 @@ class Player:
         prev_event = prev_events[0]
         # pulls value of new_action from previous turn
         prev_action = prev_event[1]
-        #tot_other_dice = tot_num_dice-self.num_dice
+        # tot_other_dice = tot_num_dice-self.num_dice
         # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
@@ -118,6 +118,14 @@ class Player:
                 # TODO evaluate spot on conditions?
             elif needed_cnt < 0:
                 # negative number means we can safely raise this bid
+                # current philosophy for raising is that we don't want to
+                # raise the inherent bid risk for all players (and thus ourselves)
+                # more than is necessary,
+                # so we only raise by one. However, this behavior could be changed
+                # to raise by the maximum safest amount, or the maximum safest amount
+                # plus a few risked dice. This risk addition could be a personality
+                # attribute of the Player object, perhaps something to randomize (or
+                # create a distribution of across the playerset for a game)
                 spot_on_probability = 0
                 output = self.bid(prev_bid, raise_bid_amt=1)
                 new_action = Constants.ACTION[2]
