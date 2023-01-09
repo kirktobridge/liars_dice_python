@@ -21,7 +21,7 @@ class Player:
             print(Fore.BLUE + f'<i> Player {self.name} has been created.')
         self.num_dice = num_dice
         self.eliminated = eliminated
-        self.dice = [0, 0, 0, 0, 0]
+        self.dice = [-1, -1, -1, -1, -1]
         self.rolls_mode = 0
         self.wild_count = 0
         self.mode_count = 0
@@ -30,7 +30,7 @@ class Player:
         self.bid = []
 
     def lose_die(self):
-        self.dice[self.num_dice-1] = 0
+        self.dice[self.num_dice-1] = -1
         self.num_dice -= 1
 
     def add_die(self):

@@ -59,6 +59,12 @@ class LiarsDiceGame:
             if p == 0:
                 self.round_events.append([[0, 0], 'RND1', [], 'SYS'])
             prev_event = self.round_events[0]
+            prev_action = prev_event[1]
+            prev_player_nm = prev_event[2]
+            if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
+                prev_bid = prev_action[0]
+                prev_bid_cnt = prev_bid[0]
+                prev_bid_face = prev_bid[1]
             # player takes turn, output (bid, if any) and action are recorded
             cur_event = [None, None, None]
             try:
@@ -77,12 +83,9 @@ class LiarsDiceGame:
             # TODO process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:
                 print(
-                    Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_event[0][1]} {prev_event[0][1]}s made by Player {prev_event[2]}!')
-                print(Fore.CYAN + '<!> Lifting cups: \n')
-                for p in self.players:
-                    die_freq = Counter(p.dice)
-                    print(f'Player {p.name}: ')
-                    # TODO print player dice freq counts
+                    Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
+
+                round_rolls_freq = self.report_rolls()
 
             # TODO process spot-on action
 
@@ -91,11 +94,14 @@ class LiarsDiceGame:
             if self.players[p].num_dice == 0:
                 print(
                     f'<X> Player {self.players[p].name} has been eliminated from the game!')
+                try:
+                    self.players.pop(p)
+                except Exception as e:
+                    print(e)
                 self.num_players -= 1
                 self.count_dice()
                 print(
                     f'<X> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
-                self.players.pop(p)
 
         self.log_event(self.round_events)
         self.round_events = []
@@ -103,3 +109,21 @@ class LiarsDiceGame:
 
     def log_event(self, event):
         self.game_log.append(event)
+
+    def report_rolls(self):
+        print(Fore.CYAN + '<!> Lifting cups:\n')
+        for p in self.players:
+            die_freq = Counter(p.dice)
+            output = Fore.CYAN + f'{p.name}\'s rolls: '
+            roll_freq = Counter(self.round_rolls)
+            for d in roll_freq:
+                output += f'{roll_freq[d]} {d}\'s'
+                if d == p.num_dice-1:
+                    output += "."
+                elif d == p.num_dice-2:
+                    output += ", and "
+                else:
+                    output += ", "
+            print(output)
+            # TODO return player dice freq counts
+            return roll_freq

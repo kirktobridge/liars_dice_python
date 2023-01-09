@@ -44,6 +44,8 @@ def main():
     for p in range(1, num_players):
         game.add_player(Player(f'P{p+1}'))
 
+    game.report_rolls()
+
     run_game = True
 
     while run_game:
