@@ -98,6 +98,7 @@ class Player:
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
         #
+        new_action = Constants.ACTIONS[5]
         self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
         # If previous player bid
@@ -154,7 +155,7 @@ class Player:
         else:
             pass  # TODO
             raise Exception(
-                Back.RED + f'Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
+                Back.RED + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
         #
         # (4) Execute Decision
         #

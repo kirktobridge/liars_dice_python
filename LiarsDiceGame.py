@@ -36,10 +36,9 @@ class LiarsDiceGame:
     def print_error(func_name):
         print(Fore.MAGENTA + Style.DIM +
               f'Exception caught in {func_name}!')
-        exc_type, exc_obj, exc_tb = sys.exc_info()
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
         print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
-              [1]), fname, exc_tb.tb_lineno)
+              [1]), fname, sys.exc_info()[2].tb_lineno)
 
     def add_player(self, p):
         try:
@@ -66,7 +65,7 @@ class LiarsDiceGame:
             self.round_events.append([[0, 0], 'RND1', [], 'SYS'])
         time.sleep(Constants.PAUSE)
         self.log_event(f'<!> Round {self.round_num} Begin')
-        self.round_num += 1
+
         self.log_event('Dice Roll')
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
@@ -81,13 +80,16 @@ class LiarsDiceGame:
                 f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
             time.sleep(Constants.PAUSE)
             try:
-                prev_event = self.round_events[0]
-                prev_action = prev_event[1]
-                prev_player_nm = prev_event[2]
-                if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
-                    prev_bid = prev_action[0]
-                    prev_bid_cnt = prev_bid[0]
-                    prev_bid_face = prev_bid[1]
+                if len(self.round_events) == 0:
+                    prev_event = None
+                else:
+                    prev_event = self.round_events[0]
+                    prev_action = prev_event[1]
+                    prev_player_nm = prev_event[2]
+                    if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
+                        prev_bid = prev_action[0]
+                        prev_bid_cnt = prev_bid[0]
+                        prev_bid_face = prev_bid[1]
             except Exception as e:
                 LiarsDiceGame.print_error(
                     'process_round: prev_event assignment')
@@ -100,10 +102,14 @@ class LiarsDiceGame:
                     self.round_events, self.count_dice()-self.players[p].num_dice)
                 # bid stored in cur_event[0]
                 # action stored in cur_event[1]
-                cur_event.extend(self.players[p].name)
+                if cur_event[1] == Constants.ACTIONS[5]:
+                    raise Exception("Blank new_action")
+                
                 # player name stored in cur_event[2]
 
             except Exception as e:
+                cur_event[0] = 'EXCEPTION'
+                cur_event.extend(self.players[p].name)
                 LiarsDiceGame.print_error('process_round: take_turn call')
 
             # TODO process challenge action
@@ -133,10 +139,12 @@ class LiarsDiceGame:
                 else:
                     print(
                         f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
-
-        self.log_event(self.round_events)
-        self.round_events = []
-        if self.round_num == self.max_rounds:
+        log_stop = len(self.round_events)
+        for event in range(0, log_stop):
+            self.log_event(self.round_events.popleft())
+        self.round_events.clear()
+        self.round_num += 1
+        if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
         return self.game_status
@@ -149,23 +157,22 @@ class LiarsDiceGame:
 
     def report_rolls(self):
         print(Fore.CYAN + '<i> Lifting cups:\n')
-        print(self.players)
         try:
             roll_freq = Counter(self.round_rolls)
             for p in self.players:
                 die_freq = Counter(p.dice)
-                output = Fore.CYAN + f'{p.name}\'s rolls: '
+                output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
                 player_roll_freq = Counter(p.dice)
                 for d in player_roll_freq:
-                    output += f'{roll_freq[d]} {d}\'s'
-                    if d == p.num_dice-1:
-                        output += "."
-                    elif d == p.num_dice-2:
-                        output += ", and "
-                    else:
-                        output += ", "
+                    output += f'{player_roll_freq[d]} {d}\'s'
+                    # TODO: fix punctuation behavior
+                    # if d == p.num_dice-1:
+                    #     output += "."
+                    # elif d == p.num_dice-2:
+                    #     output += ", and "
+                    # else:
+                    #     output += ", "
                 print(output)
-                # TODO return player dice freq counts
             return roll_freq
         except Exception as e:
             LiarsDiceGame.print_error('report_rolls')

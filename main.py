@@ -49,7 +49,6 @@ def main():
     run_game = True
 
     while run_game:
-        print(Fore.WHITE + f'<!> Round {game.round_num} begin!')
         run_game = game.process_round()
 
     print(Fore.MAGENTA + '----- GAME LOG -----')
