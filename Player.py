@@ -13,6 +13,7 @@ from scipy.stats import binom
 class Player:
 
     def __init__(self, name, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
+        '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
         if spot == 'CPU':
             print(Fore.CYAN + Style.DIM +
@@ -30,18 +31,25 @@ class Player:
         self.bid = []
 
     def lose_die(self):
+        '''Removes virtual die from the Player object, and updates Player's dice 
+        count variable.'''
         self.dice[self.num_dice-1] = -1
         self.num_dice -= 1
 
     def add_die(self):
+        '''Adds virtual die to Player's dice inventory.'''
         self.num_dice += 1
 
     def roll(self):
+        '''Generates random values for the Player's held dice between 1 and 6, 
+        simulating rolls of a six-sided dice.'''
         for d in range(0, self.num_dice):
             self.dice[d] = random.randint(1, 6)
 
     @staticmethod
     def grade(p):
+        '''Provides a classification for a probability by comparing a percentage to a 
+        predetermined set of thresholds found in the Constants file.'''
         grade = 'VERY LOW'
         for k, v in sorted(Constants.PROB_THRESHOLDS.items(), key=lambda x: x[1]):
             if p < v:
@@ -52,8 +60,13 @@ class Player:
         # ie each Player will have slightly different risk tolerance levels
         return grade
 
-    def bid(self, bid, raise_bid_amt=0):  # will return an array containing: number of dice, denomination
-
+    def bid(self, bid=[], raise_bid_amt=0):
+        '''Takes two optional parameters: the bid, a size 2 array containing the count 
+        of dice (size of bid) and the numeric value of the face being bid on; 
+        the second parameter raise_bid indicates if the bid should be raised, 
+        and if so, by what amount. These parameters are required for CPU players,
+        but not needed for human players, as humans will enter their own bids using this
+        function. Returns a bid array [count, denomination]'''
         if self.spot == 'CPU':
             if raise_bid_amt != 0:
                 bid_count = bid[0]
@@ -61,10 +74,10 @@ class Player:
                 new_bid = [bid_count + raise_bid_amt, bid_face]
             else:
                 cnt_bid_safe = self.rolls_mode + self.wild_count
-                # best bid is a function of how large count of mode is plus count of ones
-                # TODO but the bid's count must be higher than the previous,
-                # OR the bidded face value must be not previously used in the round
-                # TODO how to determine additional guessed count?
+                '''best bid is a function of how large count of mode is plus count of ones
+                TODO but the bid's count must be higher than the previous,
+                OR the bidded face value must be not previously used in the round
+                TODO how to determine additional guessed count?'''
                 new_bid = [cnt_bid_safe + self.addl_guessed_cnt,
                            self.rolls_mode]  # ex. two 1's, two 3's: bid 4 3's
         elif self.spot == 'HUMAN':  # TODO Human-controlled behavior
@@ -150,7 +163,8 @@ class Player:
                 output = None
 
         elif prev_action == None:
-            pass  # TODO what behavior should we instigate if we are the first player?
+            output = None
+            # TODO what behavior should we instigate if we are the first player?
             # we have to bid, can't challenge or spot on
         else:
             pass  # TODO
@@ -159,7 +173,6 @@ class Player:
         #
         # (4) Execute Decision
         #
-
         output = None  # TODO
         # TODO bid or challenge previous bid
         return [output, new_action, self.dice]

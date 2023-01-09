@@ -1,3 +1,5 @@
+import colorama
+from colorama import Fore, Back, Style
 MAX_NUM_DICE = 5
 MAX_PLAYERS = 3
 MAX_ROUNDS = 2
@@ -9,9 +11,23 @@ PROB_THRESHOLDS = {
     'VERY HIGH': 0.95,
     'CERTAIN': 1.0
 }
+
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PAUSE = 0.5
-PlayerNames = []
+PLAYER_NAMES = ['Jack Sparrow', 'Hector Barbossa', 'Joshamee Gibbs',
+                'Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Davy Jones', 'Blackbeard', 'Calypso']
+GAME_RULES = [Fore.BLUE + Style.BRIGHT + 'HERE BE THE RULES:\n']
+TITLE_CARD = [
+    " _       _________ _______  _______  _  _______    ______  _________ _______  _______ ",
+    "( \      \__   __/(  ___  )(  ____ )( )(  ____ \  (  __  \ \__   __/(  ____ \(  ____ \\",
+    "| (         ) (   | (   ) || (    )||/ | (    \/  | (  \  )   ) (   | (    \/| (    \/",
+    "| |         | |   | (___) || (____)|   | (_____   | |   ) |   | |   | |      | (__    ",
+    "| |         | |   |  ___  ||     __)   (_____  )  | |   | |   | |   | |      |  __)   ",
+    "| |         | |   | (   ) || (\ (            ) |  | |   ) |   | |   | |      | (      ",
+    "| (____/\___) (___| )   ( || ) \ \__   /\____) |  | (__/  )___) (___| (____/\| (____/\\",
+    "(_______/\_______/|/     \||/   \__/   \_______)  (______/ \_______/(_______/(_______/"]
+
+
 DEBUG = True
 
 

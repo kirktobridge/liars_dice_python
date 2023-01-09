@@ -34,8 +34,9 @@ class LiarsDiceGame:
 
     @staticmethod
     def print_error(func_name):
-        print(Fore.MAGENTA + Style.DIM +
-              f'Exception caught in {func_name}!')
+        log_string = (Fore.MAGENTA + Style.DIM +
+                      f'Exception caught in {func_name}!')
+        print(log_string)
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
         print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
               [1]), fname, sys.exc_info()[2].tb_lineno)
@@ -69,8 +70,8 @@ class LiarsDiceGame:
         self.log_event('Dice Roll')
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
-        for p in self.players:
-            p.roll()
+        for p0 in self.players:
+            p0.roll()
             # record round rolls for spot-ons and challenges
             self.round_rolls.extend(p.dice)
 
@@ -104,12 +105,12 @@ class LiarsDiceGame:
                 # action stored in cur_event[1]
                 if cur_event[1] == Constants.ACTIONS[5]:
                     raise Exception("Blank new_action")
-                
+
                 # player name stored in cur_event[2]
 
             except Exception as e:
                 cur_event[0] = 'EXCEPTION'
-                cur_event.extend(self.players[p].name)
+                cur_event.extend([self.players[p].name])
                 LiarsDiceGame.print_error('process_round: take_turn call')
 
             # TODO process challenge action
@@ -140,9 +141,13 @@ class LiarsDiceGame:
                     print(
                         f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
         log_stop = len(self.round_events)
-        for event in range(0, log_stop):
-            self.log_event(self.round_events.popleft())
-        self.round_events.clear()
+        try:
+            for event in range(0, log_stop):
+                self.log_event(self.round_events.popleft())
+            if len(self.round_events) > 0:
+                raise Exception("event log failure")
+        except:
+            LiarsDiceGame.print_error('process_round')
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
