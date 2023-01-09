@@ -4,20 +4,28 @@ import colorama
 from colorama import Fore, Back, Style
 import time
 import Constants
+import random
 
 # Liar's Dice
 
 
 def main():
     colorama.init(autoreset=True)
-    print(Fore.GREEN + Style.BRIGHT + "[LIAR'S DICE]")
-
+    for line in Constants.TITLE_CARD:
+        print(Fore.GREEN + Style.BRIGHT + line)
+    print(Fore.CYAN + Style.BRIGHT +
+          '<i> Arrrrrgh, matey! Let\'s play some Liar\'s Dice!')
+    rules = input(Fore.BLUE + Style.NORMAL +
+                  '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ')
+    if rules == True:
+        for
     while True:
         try:
             num_players = int(
-                input(Fore.BLUE + "<?> Please indicate the total number of players: "))
+                input(Fore.BLUE + "<?> How many scallywags would ye like t' play with?: "))
         except:
-            print(Fore.RED + Style.DIM + "<!> Sorry, you must enter an integer.")
+            print(Fore.RED + Style.DIM +
+                  "<!> That won't do matey, ye've got to provide a number.")
             time.sleep(Constants.PAUSE)
             continue
 
@@ -41,8 +49,15 @@ def main():
     game = LiarsDiceGame(num_players)
     game.add_player(
         Player(input(Fore.BLUE + "<?> What is your name? "), spot='CPU'))
+    rand_int = -1
+    rand_ints_used = [-1]
     for p in range(1, num_players):
-        game.add_player(Player(f'P{p+1}'))
+
+        while rand_ints_used.count(rand_int) > 0:
+            rand_int = random.randint(
+                0, len(Constants.PLAYER_NAMES)-1)
+        rand_ints_used.append(rand_int)
+        game.add_player(Player(Constants.PLAYER_NAMES[rand_int]))
 
     game.report_rolls()
 
