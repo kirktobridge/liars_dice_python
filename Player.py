@@ -15,7 +15,7 @@ class Player:
     def __init__(self, name, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
         self.name = name
         if spot == 'CPU':
-            print(Fore.GREEN + Style.DIM +
+            print(Fore.CYAN + Style.DIM +
                   f'<i> Player {self.name} has been created.')
         elif spot == 'HUMAN':
             print(Fore.BLUE + f'<i> Player {self.name} has been created.')

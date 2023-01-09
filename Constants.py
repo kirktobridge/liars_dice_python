@@ -1,5 +1,6 @@
 MAX_NUM_DICE = 5
 MAX_PLAYERS = 3
+MAX_ROUNDS = 3
 ACTIONS = ['ELIM', 'BID', 'RAISE', 'CHLG', 'SPOT']
 PROB_THRESHOLDS = {
     'LOW': 0.25,
@@ -8,8 +9,10 @@ PROB_THRESHOLDS = {
     'VERY HIGH': 0.95,
     'CERTAIN': 1.0
 }
+SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PAUSE = 0.5
 PlayerNames = []
+DEBUG = True
 
 
 # but must limit bid's count to max number of dice available
