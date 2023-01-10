@@ -112,6 +112,7 @@ class LiarsDiceGame:
                 cur_event[0] = 'EXCEPTION'
                 cur_event[2] = self.players[p].name
                 round_events.append(cur_event)
+                self.log_events(round_events)
                 self.print_error('process_round: take_turn call')
 
             # process challenge action
@@ -186,20 +187,23 @@ class LiarsDiceGame:
                     f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
         # Log all events for the round
-        try:
-            log_stop = len(round_events)
-            if len(round_events) > 0:
-                raise Exception("event log failure")
-            for event in range(0, log_stop):
-                self.log_event(round_events.popleft())
-            round_events.clear()
-        except:
-            self.print_error('process_round')
+        self.log_events(round_events)
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
         return self.game_status
+
+    def log_events(self, events):
+        try:
+            log_stop = len(events)
+            if len(events) < 1:
+                raise Exception(
+                    f'event log failure: no events for round {self.round_num}')
+            for event in range(0, log_stop):
+                self.log_event(events.popleft())
+        except:
+            self.print_error('log_events')
 
     def log_event(self, event):
         try:
