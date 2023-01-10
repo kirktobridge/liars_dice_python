@@ -47,7 +47,7 @@ GAME_RULES = [Fore.YELLOW +
               '           <*> If the previous bid is not exactly correct, your call fails:', Fore.RED +
               '               YOU LOSE A DIE', Fore.WHITE +
               '           <*> e.g. If the previous bid was for \'THREE SIXES,\', and there are actually', Fore.WHITE +
-              '               FOUR SIXES or TWO SIXES, your \'SPOT ON\' call will fail.', Fore.WHITE +
+              '               FOUR SIXES or TWO SIXES, your \'SPOT ON\' call will fail.', Fore.GREEN +
               '           AFTER THE CALL IS RESOLVED, A NEW ROUND BEGINS- ALL PLAYERS RE-ROLL.', Fore.MAGENTA +
               '\n<i> Aces Wild: A roll of ONE is considered a wild card. E.g., a roll of TWO SIXES and TWO ONES', Fore.MAGENTA +
               '    can be used as a roll of FOUR SIXES.']

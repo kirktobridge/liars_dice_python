@@ -6,10 +6,11 @@ import time
 import Constants
 import random
 
-# Liar's Dice
-
 
 def main():
+    '''Handles user inputs to set up a LiarsDiceGame object. 
+    Provides the rules of the game if reqeuested.
+    Triggers game start and prints game log upon completion.'''
     colorama.init(autoreset=True)
     for line0 in Constants.TITLE_CARD:
         print(Fore.GREEN + Style.BRIGHT + line0)
@@ -34,7 +35,7 @@ def main():
                 print(Fore.BLUE + Style.NORMAL +
                       '<i> Alright then, matey, let\'s get to it.')
             else:
-                raise Exception(Fore.RED + Style.DIM + "<?> What did ye say?")
+                raise Exception(Fore.RED + Style.DIM + '<?> What did ye say?')
 
         except Exception as e:
             print(e)
@@ -45,57 +46,44 @@ def main():
     while True:  # number of players typerror loop
         try:
             num_players = int(
-                input(Fore.BLUE + "<?> How many scallywags would ye like t' play with?: "))
+                input(Fore.BLUE + '<?> How many scallywags would ye like t\' play with?: '))
             if isinstance(num_players, int) == True:
-               if num_players == 1:
+                if num_players == 1:
                     input_fails += 1
                     raise AttributeError(
-                        Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
+                        Fore.RED + Style.DIM + '<!> Are ye\' daft? This isn\'t a game fer one.\n<!> How can ye bet against yerself?')
+                elif num_players == 0:
+                    input_fails += 1
+                    raise AttributeError(
+                        Fore.RED + Style.DIM + '<!> Matey... yer\' not makin\' any sense.')
                 elif num_players < 0:
-                    input_fails += 1
                     raise AttributeError(
-                        Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
+                        Fore.RED + Style.DIM + '<!> Did yer mother drop ye\' on yer\' head as a child?')
                 elif num_players > Constants.MAX_PLAYERS:
                     input_fails += 1
                     raise AttributeError(
-                        Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
+                        Fore.RED + Style.DIM + f'<!> I decline to acquiesce to yer request. (Means \'no\'.)\n<i> T\' limit th\' computational workload, yer\'limited to takin\' yer\' chances against a total o\' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th\' code.')
 
         except ValueError as e:
             input_fails += 1
             print(Fore.RED + Style.DIM +
-                  "<!> That won't do matey, ye've got to provide a number.")
+                  '<!> That won\'t do matey, ye\'ve got to provide a number.')
             if input_fails > 2:
+                time.sleep(Constants.PAUSE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      "<i> 'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!")
+                      '<i> \'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!')
+                # TODO randomize insults
             time.sleep(Constants.PAUSE)
             continue
         except AttributeError as e:
             print(e)
             if input_fails > 2:
+                time.sleep(Constants.PAUSE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      "<i> The problem is not the problem. The problem is your attitude about the problem.")
+                      '<i> The problem is not the problem. The problem is your attitude about the problem.')
+                # TODO randomize insults
             time.sleep(Constants.PAUSE)
             continue
-        break
-    while True:  # num players restrictions loop
-        try:
-            if isinstance(num_players, int) == True and num_players < 2:
-                input_fails += 1
-                raise Exception(
-                    Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
-            elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
-                input_fails += 1
-                raise Exception(
-                    Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
-
-        except Exception as e:
-            print(e)
-            if input_fails > 2:
-                print(Fore.YELLOW + Style.NORMAL +
-                      "<\"> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
-            time.sleep(Constants.PAUSE)
-            continue
-
         print(Fore.CYAN +
               f'<i> {num_players} players selected. Initalizing...')
         break
@@ -106,7 +94,7 @@ def main():
     else:
         spot = 'HUMAN'
     game.add_player(
-        Player(input(Fore.BLUE + "<?> What be yer name, matey? "), spot=spot))
+        Player(input(Fore.BLUE + '<?> What be yer name, matey? '), spot=spot))
     rand_int = -1
     rand_ints_used = [-1]
     for p in range(1, num_players):
