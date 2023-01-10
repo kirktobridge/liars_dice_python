@@ -15,6 +15,8 @@ def main():
         print(Fore.GREEN + Style.BRIGHT + line0)
     print(Fore.CYAN + Style.BRIGHT +
           '<i> Arrrrrgh, matey! Let\'s play some Liar\'s Dice!')
+    print(Fore.CYAN + Style.BRIGHT +
+          '<i> Tis good ye\'re here. Ye\'ll scare away the rats, ye slack-jawed, plagued cuttlefish!')
 
     input_fails = 0
     while True:  # rules question loop
@@ -44,16 +46,19 @@ def main():
         try:
             num_players = int(
                 input(Fore.BLUE + "<?> How many scallywags would ye like t' play with?: "))
-
-            if isinstance(num_players, int) == True and num_players < 2:
-                input_fails += 1
-                raise AttributeError(
-                    Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
-
-            elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
-                input_fails += 1
-                raise AttributeError(
-                    Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
+            if isinstance(num_players, int) == True
+                if num_players == 1:
+                    input_fails += 1
+                    raise AttributeError(
+                        Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
+                elif num_players < 0:
+                    input_fails += 1
+                    raise AttributeError(
+                        Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
+                elif num_players > Constants.MAX_PLAYERS:
+                    input_fails += 1
+                    raise AttributeError(
+                        Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
 
         except ValueError as e:
             input_fails += 1
@@ -61,14 +66,14 @@ def main():
                   "<!> That won't do matey, ye've got to provide a number.")
             if input_fails > 2:
                 print(Fore.YELLOW + Style.NORMAL +
-                      "<i> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
+                      "<i> 'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!")
             time.sleep(Constants.PAUSE)
             continue
         except AttributeError as e:
             print(e)
             if input_fails > 2:
                 print(Fore.YELLOW + Style.NORMAL +
-                      "<i> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
+                      "<i> The problem is not the problem. The problem is your attitude about the problem.")
             time.sleep(Constants.PAUSE)
             continue
         break
@@ -119,6 +124,8 @@ def main():
     while run_game:
         run_game = game.process_round()
 
+    print(Fore.BLUE + Style.BRIGHT +
+          '<!> Thanks for playing! Now gimme all yer\' coins or ye\'ll be swimmin with the fishes!')
     print(Fore.MAGENTA + '----- GAME LOG -----')
     for entry in game.game_log:
         print(entry)

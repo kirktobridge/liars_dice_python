@@ -32,11 +32,11 @@ class LiarsDiceGame:
         self.game_log = []
         self.tot_num_dice = 0
 
-    @staticmethod
-    def print_error(func_name):
+    def print_error(self, func_name):
         log_string = (Fore.MAGENTA + Style.DIM +
                       f'Exception caught in {func_name}!')
         print(log_string)
+        self.log_event(log_string)
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
         print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
               [1]), fname, sys.exc_info()[2].tb_lineno)
@@ -46,9 +46,9 @@ class LiarsDiceGame:
             self.players.append(p)
             if Constants.DEBUG == True:
                 print(Fore.MAGENTA + Style.DIM +
-                      f'Player {p.name} appended to game player list.')
+                      f'<i> Player {p.name} appended to game player list.')
         except Exception as e:
-            LiarsDiceGame.print_error('add_player')
+            self.print_error('add_player')
 
     def count_dice(self):
         try:
@@ -57,7 +57,7 @@ class LiarsDiceGame:
                 self.tot_num_dice += p.num_dice
             return self.tot_num_dice
         except Exception as e:
-            LiarsDiceGame.print_error('count_dice')
+            self.print_error('count_dice')
             return -1
 
     def process_round(self):
@@ -91,7 +91,7 @@ class LiarsDiceGame:
                         prev_bid_cnt = prev_bid[0]
                         prev_bid_face = prev_bid[1]
             except Exception as e:
-                LiarsDiceGame.print_error(
+                self.print_error(
                     'process_round: prev_event assignment')
             # player takes turn, output (bid, if any) and action are recorded
             cur_event = [None, None, None]
@@ -110,7 +110,7 @@ class LiarsDiceGame:
             except Exception as e:
                 cur_event[0] = 'EXCEPTION'
                 cur_event.extend([self.players[p].name])
-                LiarsDiceGame.print_error('process_round: take_turn call')
+                self.print_error('process_round: take_turn call')
 
             # TODO process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:
@@ -146,7 +146,7 @@ class LiarsDiceGame:
             if len(self.round_events) > 0:
                 raise Exception("event log failure")
         except:
-            LiarsDiceGame.print_error('process_round')
+            self.print_error('process_round')
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
@@ -157,7 +157,7 @@ class LiarsDiceGame:
         try:
             self.game_log.append(event)
         except Exception as e:
-            LiarsDiceGame.print_error('log_event')
+            self.print_error('log_event')
 
     def report_rolls(self):
         print(Fore.CYAN + '<i> Lifting cups:\n')
@@ -179,5 +179,5 @@ class LiarsDiceGame:
                 print(output)
             return roll_freq
         except Exception as e:
-            LiarsDiceGame.print_error('report_rolls')
+            self.print_error('report_rolls')
             return None

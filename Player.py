@@ -15,11 +15,12 @@ class Player:
     def __init__(self, name, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
-        if spot == 'CPU':
-            print(Fore.CYAN + Style.DIM +
-                  f'<i> Player {self.name} has been created.')
-        elif spot == 'HUMAN':
-            print(Fore.BLUE + f'<i> Player {self.name} has been created.')
+        if Constants.debug == True:
+            if spot == 'CPU':
+                print(Fore.CYAN + Style.DIM +
+                      f'<i> Player {self.name} has been created.')
+            elif spot == 'HUMAN':
+                print(Fore.BLUE + f'<i> Player {self.name} has been created.')
         self.num_dice = num_dice
         self.eliminated = eliminated
         self.dice = [-1, -1, -1, -1, -1]
