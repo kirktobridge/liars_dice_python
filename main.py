@@ -22,8 +22,12 @@ def main():
             rules = input(Fore.BLUE + Style.NORMAL +
                           '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ').upper()
             if rules == 'N' or rules == 'NO':
+                print(Back.WHITE + Fore.WHITE +
+                      '___________________________________________________________________________________________')
                 for line1 in Constants.GAME_RULES:
-                    print(Fore.BLUE + Style.NORMAL + line1)
+                    print(line1)
+                print(Back.WHITE + Fore.WHITE +
+                      '___________________________________________________________________________________________')
             elif rules == 'Y' or rules == 'YES':
                 print(Fore.BLUE + Style.NORMAL +
                       '<i> Alright then, matey, let\'s get to it.')
@@ -43,17 +47,28 @@ def main():
 
             if isinstance(num_players, int) == True and num_players < 2:
                 input_fails += 1
-                raise Exception(
+                raise AttributeError(
                     Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
 
             elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
                 input_fails += 1
-                raise Exception(
+                raise AttributeError(
                     Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
 
-        except TypeError as e:
+        except ValueError as e:
+            input_fails += 1
             print(Fore.RED + Style.DIM +
                   "<!> That won't do matey, ye've got to provide a number.")
+            if input_fails > 2:
+                print(Fore.YELLOW + Style.NORMAL +
+                      "<i> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
+            time.sleep(Constants.PAUSE)
+            continue
+        except AttributeError as e:
+            print(e)
+            if input_fails > 2:
+                print(Fore.YELLOW + Style.NORMAL +
+                      "<i> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
             time.sleep(Constants.PAUSE)
             continue
         break
