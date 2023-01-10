@@ -21,7 +21,6 @@ class LiarsDiceGame:
         self.max_rounds = max_rounds
         self.round_num = 1
         self.players = []
-        self.round_events = deque()
         self.prev_action = ''
         self.game_status = True
         self.round_rolls = []
@@ -62,8 +61,8 @@ class LiarsDiceGame:
 
     def process_round(self):
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
-        if self.round_num == 1:
-            self.round_events.append([[0, 0], 'RND1', [], 'SYS'])
+        round_events = deque()
+        round_events.append([[0, 0], f'RND{self.round_num}', [], 'SYS'])
         time.sleep(Constants.PAUSE)
         self.log_event(f'<!> Round {self.round_num} Begin')
         self.log_event('Dice Roll')
@@ -80,10 +79,10 @@ class LiarsDiceGame:
                 f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
             time.sleep(Constants.PAUSE)
             try:
-                if len(self.round_events) == 0:
+                if len(round_events) == 1:
                     prev_event = None
                 else:
-                    prev_event = self.round_events[0]
+                    prev_event = round_events[0]
                     prev_action = prev_event[1]
                     prev_player_nm = prev_event[2]
                     if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
@@ -99,7 +98,8 @@ class LiarsDiceGame:
                 # Provide player list of round's events so far, and the number
                 # of other dice remaining
                 cur_event = self.players[p].take_turn(
-                    self.round_events, self.count_dice()-self.players[p].num_dice)
+                    round_events, self.count_dice()-self.players[p].num_dice)
+                round_events.append(cur_event)
                 # bid stored in cur_event[0]
                 # action stored in cur_event[1]
                 if cur_event[1] == Constants.ACTIONS[5]:
@@ -109,23 +109,47 @@ class LiarsDiceGame:
 
             except Exception as e:
                 cur_event[0] = 'EXCEPTION'
-                cur_event.extend([self.players[p].name])
+                cur_event[2] = self.players[p].name
+                round_events.append(cur_event)
                 self.print_error('process_round: take_turn call')
 
-            # TODO process challenge action
+            # process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:
                 print(
                     Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
 
-                round_rolls_freq = self.report_rolls()
+                self.log_event(inner_event)
+                self.report_rolls()
+                # challenge success
+                if self.round_rolls.count(prev_bid_face) < prev_bid_cnt:
+                    print(Fore.WHITE)
+                    inner_event = [True, Constants.ACTIONS[3],
+                                   self.players[p].name]
+                    round_events.append(inner_event)
+                    self.players[p-1].lose_die()
+                # challenge failure
+                elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
+                    inner_event = [False, Constants.ACTIONS[3],
+                                   self.players[p].name]
+                    round_events.append(inner_event)
+                    self.players[p].lose_die()
 
             # TODO process spot-on action
-
-            self.round_events.append(cur_event)
-
-            if self.players[p].num_dice == 0:
+            if cur_event[1] == Constants.ACTIONS[4]:
                 print(
-                    f'<X> Player {self.players[p].name} has been eliminated from the game!')
+                    Fore.WHITE +
+                    f'<!> Player {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
+                )
+
+            # elimination checks
+            if self.players[p].num_dice == 0:
+                if self.players[p].spot == 'HUMAN':
+                    print(Fore.BLUE + Style.BRIGHT +
+                          f'<X> {self.players[p].name}, you have been eliminated from the game!')
+                    self.game_status = False  # game over, human eliminated
+                else:
+                    print(
+                        f'<X> {self.players[p].name}, has been eliminated from the game!')
                 try:
                     self.players.pop(p)
                 except Exception as e:
@@ -139,12 +163,15 @@ class LiarsDiceGame:
                 else:
                     print(
                         f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
-        log_stop = len(self.round_events)
+
+        # Log all events for the round
         try:
-            for event in range(0, log_stop):
-                self.log_event(self.round_events.popleft())
-            if len(self.round_events) > 0:
+            log_stop = len(round_events)
+            if len(round_events) > 0:
                 raise Exception("event log failure")
+            for event in range(0, log_stop):
+                self.log_event(round_events.popleft())
+            round_events.clear()
         except:
             self.print_error('process_round')
         self.round_num += 1
@@ -156,13 +183,15 @@ class LiarsDiceGame:
     def log_event(self, event):
         try:
             self.game_log.append(event)
+            if Constants.DEBUG == True:
+                print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:
             self.print_error('log_event')
 
     def report_rolls(self):
         print(Fore.CYAN + '<i> Lifting cups:\n')
         try:
-            roll_freq = Counter(self.round_rolls)
+            # TODO roll_freq = Counter(self.round_rolls)
             for p in self.players:
                 die_freq = Counter(p.dice)
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
@@ -177,7 +206,7 @@ class LiarsDiceGame:
                     # else:
                     #     output += ", "
                 print(output)
-            return roll_freq
+            # TODO return roll_freq
         except Exception as e:
             self.print_error('report_rolls')
-            return None
+            # TODO return None

@@ -1,5 +1,5 @@
 import colorama
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 MAX_NUM_DICE = 5
 MAX_PLAYERS = 3
 MAX_ROUNDS = 2
@@ -60,7 +60,7 @@ TITLE_CARD = [
     "| |         | |   | (   ) || (\ (            ) |  | |   ) |   | |   | |      | (      ",
     "| (____/\___) (___| )   ( || ) \ \__   /\____) |  | (__/  )___) (___| (____/\| (____/\\",
     "(_______/\_______/|/     \||/   \__/   \_______)  (______/ \_______/(_______/(_______/",
-    "BY @KIRKTOBRIDGE - GITHUB.COM/KIRKTOBRIDGE"]
+    "singleplayer edition\nBY @KIRKTOBRIDGE - GITHUB.COM/KIRKTOBRIDGE"]
 
 # but must limit bid's count to max number of dice available
 # if (prev_bid_cnt + 1) <= (tot_other_dice + self.num_dice):

@@ -15,7 +15,7 @@ class Player:
     def __init__(self, name, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
-        if Constants.debug == True:
+        if Constants.DEBUG == True:
             if spot == 'CPU':
                 print(Fore.CYAN + Style.DIM +
                       f'<i> Player {self.name} has been created.')
@@ -112,6 +112,8 @@ class Player:
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
         #
+        # TODO how do we know if we are the first player in the round?
+        # check prev_action
         new_action = Constants.ACTIONS[5]
         self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
@@ -176,7 +178,7 @@ class Player:
         #
         output = None  # TODO
         # TODO bid or challenge previous bid
-        return [output, new_action, self.dice]
+        return [output, new_action, self.name]
 
     def challenge(self, p):
         if self.spot == 'CPU':

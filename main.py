@@ -114,6 +114,7 @@ def main():
 
     print(Fore.BLUE + Style.BRIGHT +
           '<!> Thanks for playing! Now gimme all yer\' coins or ye\'ll be swimmin with the fishes!')
+    time.sleep(Constants.PAUSE*5)
     print(Fore.MAGENTA + '----- GAME LOG -----')
     for entry in game.game_log:
         print(entry)
