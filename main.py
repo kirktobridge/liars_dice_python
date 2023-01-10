@@ -46,8 +46,8 @@ def main():
         try:
             num_players = int(
                 input(Fore.BLUE + "<?> How many scallywags would ye like t' play with?: "))
-            if isinstance(num_players, int) == True
-                if num_players == 1:
+            if isinstance(num_players, int) == True:
+               if num_players == 1:
                     input_fails += 1
                     raise AttributeError(
                         Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
