@@ -66,14 +66,13 @@ class LiarsDiceGame:
             self.round_events.append([[0, 0], 'RND1', [], 'SYS'])
         time.sleep(Constants.PAUSE)
         self.log_event(f'<!> Round {self.round_num} Begin')
-
         self.log_event('Dice Roll')
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
         for p0 in self.players:
             p0.roll()
             # record round rolls for spot-ons and challenges
-            self.round_rolls.extend(p.dice)
+            self.round_rolls.extend(p0.dice)
 
         print(Fore.CYAN + '<i> Dice Rolled')
         for p in range(0, self.num_players):

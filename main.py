@@ -11,34 +11,68 @@ import random
 
 def main():
     colorama.init(autoreset=True)
-    for line in Constants.TITLE_CARD:
-        print(Fore.GREEN + Style.BRIGHT + line)
+    for line0 in Constants.TITLE_CARD:
+        print(Fore.GREEN + Style.BRIGHT + line0)
     print(Fore.CYAN + Style.BRIGHT +
           '<i> Arrrrrgh, matey! Let\'s play some Liar\'s Dice!')
-    rules = input(Fore.BLUE + Style.NORMAL +
-                  '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ')
-    if rules == True:
-        for
-    while True:
+
+    input_fails = 0
+    while True:  # rules question loop
+        try:
+            rules = input(Fore.BLUE + Style.NORMAL +
+                          '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ').upper()
+            if rules == 'N' or rules == 'NO':
+                for line1 in Constants.GAME_RULES:
+                    print(Fore.BLUE + Style.NORMAL + line1)
+            elif rules == 'Y' or rules == 'YES':
+                print(Fore.BLUE + Style.NORMAL +
+                      '<i> Alright then, matey, let\'s get to it.')
+            else:
+                raise Exception(Fore.RED + Style.DIM + "<?> What did ye say?")
+
+        except Exception as e:
+            print(e)
+            time.sleep(Constants.PAUSE)
+            continue
+        break
+
+    while True:  # number of players typerror loop
         try:
             num_players = int(
                 input(Fore.BLUE + "<?> How many scallywags would ye like t' play with?: "))
-        except:
+
+            if isinstance(num_players, int) == True and num_players < 2:
+                input_fails += 1
+                raise Exception(
+                    Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
+
+            elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
+                input_fails += 1
+                raise Exception(
+                    Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
+
+        except TypeError as e:
             print(Fore.RED + Style.DIM +
                   "<!> That won't do matey, ye've got to provide a number.")
             time.sleep(Constants.PAUSE)
             continue
-
+        break
+    while True:  # num players restrictions loop
         try:
             if isinstance(num_players, int) == True and num_players < 2:
+                input_fails += 1
                 raise Exception(
-                    Fore.RED + Style.DIM + "<!> Sorry, you must play against at least one opponent.")
+                    Fore.RED + Style.DIM + "<!> Are ye' daft? This isn't a game fer one.\n<!> How can ye bet against yerself?")
             elif isinstance(num_players, int) == True and num_players > Constants.MAX_PLAYERS:
+                input_fails += 1
                 raise Exception(
-                    Fore.RED + Style.DIM + f"<!> Sorry, to limit computational workload, you are limited to {Constants.MAX_PLAYERS} players.")
+                    Fore.RED + Style.DIM + f"<!> I decline to acquiesce to yer request. (Means 'no'.)\n<i> T' limit th' computational workload, yer limited to takin' yer chances against a total o' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th' code.")
 
         except Exception as e:
             print(e)
+            if input_fails > 2:
+                print(Fore.YELLOW + Style.NORMAL +
+                      "<\"> The problem is not the problem. The problem is your attitude about the problem. Do you understand?")
             time.sleep(Constants.PAUSE)
             continue
 
@@ -47,8 +81,12 @@ def main():
         break
 
     game = LiarsDiceGame(num_players)
+    if Constants.DEBUG == True:
+        spot = 'CPU'
+    else:
+        spot = 'HUMAN'
     game.add_player(
-        Player(input(Fore.BLUE + "<?> What is your name? "), spot='CPU'))
+        Player(input(Fore.BLUE + "<?> What be yer name, matey? "), spot=spot))
     rand_int = -1
     rand_ints_used = [-1]
     for p in range(1, num_players):
