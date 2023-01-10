@@ -78,6 +78,7 @@ class LiarsDiceGame:
             print(
                 f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
             time.sleep(Constants.PAUSE)
+            # create references to previous event in the round (previous turn actions)
             try:
                 if len(round_events) == 1:
                     prev_event = None
@@ -93,7 +94,7 @@ class LiarsDiceGame:
                 self.print_error(
                     'process_round: prev_event assignment')
             # player takes turn, output (bid, if any) and action are recorded
-            cur_event = [None, None, None]
+            cur_event = [None] * 3
             try:
                 # Provide player list of round's events so far, and the number
                 # of other dice remaining
@@ -117,8 +118,6 @@ class LiarsDiceGame:
             if cur_event[1] == Constants.ACTIONS[3]:
                 print(
                     Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
-
-                self.log_event(inner_event)
                 self.report_rolls()
                 # challenge success
                 if self.round_rolls.count(prev_bid_face) < prev_bid_cnt:
@@ -127,42 +126,64 @@ class LiarsDiceGame:
                                    self.players[p].name]
                     round_events.append(inner_event)
                     self.players[p-1].lose_die()
+                    break
                 # challenge failure
                 elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
                     inner_event = [False, Constants.ACTIONS[3],
                                    self.players[p].name]
                     round_events.append(inner_event)
                     self.players[p].lose_die()
+                    break
 
             # TODO process spot-on action
             if cur_event[1] == Constants.ACTIONS[4]:
                 print(
                     Fore.WHITE +
-                    f'<!> Player {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
+                    f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
                 )
+                # spot-on success
+                if self.round_rolls.count(prev_bid_face) == prev_bid_cnt:
+                    print(Fore.CYAN +
+                          '<!> SPOT ON! Everyone else loses a die!')
+                    for p1 in self.players:
+                        if p1.name != self.players[p].name:
+                            p1.lose_die()
+                    break
 
-            # elimination checks
-            if self.players[p].num_dice == 0:
+            else:  # spot-on failure
                 if self.players[p].spot == 'HUMAN':
-                    print(Fore.BLUE + Style.BRIGHT +
-                          f'<X> {self.players[p].name}, you have been eliminated from the game!')
-                    self.game_status = False  # game over, human eliminated
-                else:
                     print(
-                        f'<X> {self.players[p].name}, has been eliminated from the game!')
-                try:
-                    self.players.pop(p)
-                except Exception as e:
-                    print(e)
-                self.num_players -= 1
-                self.count_dice()
-                if self._num_players < 2:
-                    print(
-                        f'<!> There is only one player remaining. {self.players[p].name} has won the game!')
-                    self.game_status = False
-                else:
-                    print(
-                        f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
+                        Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
+                    self.players[p].lose_die()
+                    break
+                elif self.players[p].spot == 'CPU':
+                    print(Fore.CYAN)
+                    break
+
+        ''' END OF TURN LOOP '''
+
+        # elimination checks
+        if self.players[p].num_dice == 0:
+            if self.players[p].spot == 'HUMAN':
+                print(Fore.BLUE + Style.BRIGHT +
+                      f'<X> {self.players[p].name}, you have been eliminated from the game!')
+                self.game_status = False  # game over, human eliminated
+            else:
+                print(Fore.WHITE +
+                      f'<X> {self.players[p].name} has been eliminated from the game!')
+            try:
+                self.players.pop(p)
+            except Exception as e:
+                print(e)
+            self.num_players -= 1
+            self.count_dice()
+            if self._num_players < 2:
+                print(
+                    f'<!> There is only one player remaining. {self.players[p].name} has won the game!')
+                self.game_status = False
+            else:
+                print(
+                    f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
         # Log all events for the round
         try:

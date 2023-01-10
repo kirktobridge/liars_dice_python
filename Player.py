@@ -23,7 +23,7 @@ class Player:
                 print(Fore.BLUE + f'<i> Player {self.name} has been created.')
         self.num_dice = num_dice
         self.eliminated = eliminated
-        self.dice = [-1, -1, -1, -1, -1]
+        self.dice = [-1] * self.num_dice
         self.rolls_mode = 0
         self.wild_count = 0
         self.mode_count = 0
@@ -36,6 +36,8 @@ class Player:
         count variable.'''
         self.dice[self.num_dice-1] = -1
         self.num_dice -= 1
+        if Constants.DEBUG == True:
+            print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
 
     def add_die(self):
         '''Adds virtual die to Player's dice inventory.'''
