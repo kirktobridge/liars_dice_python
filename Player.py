@@ -110,19 +110,32 @@ class Player:
         prev_event = prev_events[0]
         # pulls value of new_action from previous turn
         prev_action = prev_event[1]
-        # tot_other_dice = tot_num_dice-self.num_dice
         # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
-        #
-        # TODO how do we know if we are the first player in the round?
-        # check prev_action
+
         new_action = Constants.ACTIONS[5]
         self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
-        # If previous player bid
-        if prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
+        # If we are the first player
+        if prev_action == Constants.ACTIONS[0]:
+            # we have a safe bid (mode)
+            if self.mode_count >= Constants.MINIMUM_BID:
+                output = [Constants.MINIMUM_BID, self.rolls_mode]
+            else:  # we have no mode assuming constant is 2
+                output = [Constants.MINIMUM_BID,
+                          self.dice[random.randint(0, self.num_dice-1)]]
+                output = [-1, -1]  # TODO
+
+            # TODO what behavior should we instigate if we are the first player?
+            # we have to bid, can't challenge or spot on
+            # self.bid()
+
+            new_action = Constants.ACTIONS[1]
+        # If the previous player made a bid
+        elif prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
+            return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event[0]  # pulls previous turn's bid
@@ -134,7 +147,6 @@ class Player:
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
             if needed_cnt == 0:
-
                 cumulative_probability = 1
                 # TODO evaluate spot on conditions?
             elif needed_cnt < 0:
@@ -156,7 +168,8 @@ class Player:
                 cumulative_probability = 1 - model.cdf(needed_cnt-1)
                 spot_on_probability = model.pmf(needed_cnt)
                 # TODO compare these probabilities and decide if we should 'spot on'
-                # TODO compare these probabilities to probability of each possible raised bid
+                # TODO compare these probabilities to probability of each possible raised/face changed bid
+                # TODO get list of previous bids' faces from prev_events array (where action = bid/raise)
                 # may need to pass all previous events instead of just the one previous event...
                 # TODO what do we do when nothing we want to say or can say is likely?
 
@@ -168,15 +181,6 @@ class Player:
             if Player.grade(cumulative_probability) == 'LOW':
                 new_action = Constants.ACTIONS[3]
                 output = [-1, -1]
-
-        elif prev_action == Constants.ACTIONS[0]:
-            output = [-1, -1]
-            # TODO what behavior should we instigate if we are the first player?
-            # we have to bid, can't challenge or spot on
-            # self.bid()
-            new_action = Constants.ACTIONS[1] + \
-                ' TODO START BEHAVIOR NOT IMPLEMENTED '
-            #
         else:
             output = [-1, -1]
             new_action = Constants.ACTIONS[5] + \

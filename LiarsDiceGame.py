@@ -90,7 +90,7 @@ class LiarsDiceGame:
                 else:
                     prev_player_nm = prev_event[2]
                     if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
-                        prev_bid = prev_action[0]
+                        prev_bid = prev_event[0]
                         prev_bid_cnt = prev_bid[0]
                         prev_bid_face = prev_bid[1]
             except Exception as e:
