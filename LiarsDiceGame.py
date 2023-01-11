@@ -30,11 +30,13 @@ class LiarsDiceGame:
         # then maybe don't raise unless you there are no face-count combinations left to play at the current count
         self.game_log = []
         self.tot_num_dice = 0
+        self.event_counter = 0
+        self.round_events = deque()
 
     def print_error(self, func_name, e=None):
-        log_string = (Fore.MAGENTA + Style.DIM +
-                      f'Exception caught in {func_name}!')
-        print(log_string + str(e))
+        log_string = (Fore.MAGENTA +
+                      f'Exception caught in {func_name}! - ') + str(e)
+        print(Style.DIM + log_string)
         self.log_event(log_string)
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
         print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
@@ -61,11 +63,9 @@ class LiarsDiceGame:
 
     def process_round(self):
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
-        round_events = deque()
-        round_events.append(f'Round {self.round_num} Begin')
-        round_events.append([[-1, -1], f'RND{self.round_num}', 'SYS'])
+        self.round_events.clear()
+        self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
         time.sleep(Constants.PAUSE)
-        round_events.append('Dice Roll')
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
         self.round_rolls.clear()
@@ -73,22 +73,20 @@ class LiarsDiceGame:
             p0.roll()
             # record round rolls for spot-ons and challenges
             self.round_rolls.extend(p0.dice)
-
+        self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         print(Fore.CYAN + '<i> Dice Rolled')
         for p in range(0, self.num_players):
             print(
                 f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
             time.sleep(Constants.PAUSE)
             # create references to previous event in the round (previous turn actions)
+            prev_event = self.round_events[0]
+            prev_action = prev_event[1]
             try:
-                if len(round_events) == 3:
-                    if Constants.DEBUG == True:
-                        round_events.append(
-                            [[-1, -1], Constants.ACTIONS[0], 'SYS'])
-                    prev_event = None
+                if prev_action == 'DICE ROLL':
+                    self.log_event(
+                        [[-1, -1], Constants.ACTIONS[0], 'SYS'])
                 else:
-                    prev_event = round_events[0]
-                    prev_action = prev_event[1]
                     prev_player_nm = prev_event[2]
                     if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
                         prev_bid = prev_action[0]
@@ -96,7 +94,7 @@ class LiarsDiceGame:
                         prev_bid_face = prev_bid[1]
             except Exception as e:
                 self.print_error(
-                    'process_round: prev_event assignment')
+                    'process_round: prev_event assignment', e)
                 continue
             # player takes turn, output (bid, if any) and action are recorded
             cur_event = [None] * 3
@@ -104,8 +102,8 @@ class LiarsDiceGame:
                 # Provide player list of round's events so far, and the number
                 # of other dice remaining
                 cur_event = self.players[p].take_turn(
-                    round_events, self.count_dice()-self.players[p].num_dice)
-                round_events.append(cur_event)
+                    self.round_events, self.count_dice()-self.players[p].num_dice)
+                self.log_event(cur_event)
                 # bid stored in cur_event[0]
                 # action stored in cur_event[1]
                 if cur_event[1] == Constants.ACTIONS[5]:
@@ -118,8 +116,8 @@ class LiarsDiceGame:
                 cur_event[0] = [-1, -1]
                 cur_event[1] = 'EXCEPTION'
                 cur_event[2] = self.players[p].name
-                round_events.append(cur_event)
-                self.log_events(round_events)
+                self.log_event(cur_event)
+                self.log_events(self.round_events)
                 continue
 
             # process challenge action
@@ -132,14 +130,14 @@ class LiarsDiceGame:
                     print(Fore.WHITE)
                     inner_event = [True, Constants.ACTIONS[3],
                                    self.players[p].name]
-                    round_events.append(inner_event)
+                    self.log_event(inner_event)
                     self.players[p-1].lose_die()
                     break
                 # challenge failure
                 elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
                     inner_event = [False, Constants.ACTIONS[3],
                                    self.players[p].name]
-                    round_events.append(inner_event)
+                    self.log_event(inner_event)
                     self.players[p].lose_die()
                     break
 
@@ -195,8 +193,8 @@ class LiarsDiceGame:
                 print(
                     f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
-        # Log all events for the round
-        self.log_events(round_events)
+        # Log all events for the round TODO no let's log every time we append to round
+        # self.log_events(self.round_events)
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
@@ -211,12 +209,22 @@ class LiarsDiceGame:
                     f'event log failure: no events for round {self.round_num}')
             for event in range(0, log_stop):
                 self.log_event(events.popleft())
-        except:
-            self.print_error('log_events')
+        except Exception as e:
+            self.print_error('log_events', e)
 
     def log_event(self, event):
+        # NEW NEW TODO
+        self.round_events.append(event)
+        self.event_counter += 1
         try:
-            self.game_log.append(event)
+            if isinstance(event, list):
+                event_w_cnt = []
+                event_w_cnt.extend(event)
+                event_w_cnt.insert(0, "#" + str(self.event_counter))
+                self.game_log.append(event_w_cnt)
+            elif isinstance(event, str):
+                self.game_log.append(
+                    '#' + str(self.event_counter) + ' ' + event)
             # if Constants.DEBUG == True:
             #     print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:

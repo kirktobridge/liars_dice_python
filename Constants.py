@@ -13,7 +13,7 @@ PROB_THRESHOLDS = {
 }
 DEBUG = True
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
-PAUSE = 0.5
+PAUSE = 0.5 if DEBUG == False else 0.1
 PLAYER_NAMES = ['Jack Sparrow', 'Hector Barbossa', 'Joshamee Gibbs',
                 'Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Davy Jones', 'Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +

@@ -89,6 +89,8 @@ class Player:
             bid_face = input(
                 Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: ')
             new_bid = [bid_count, bid_face]
+            # TODO should this bidding behavior be moved into take_turn()?
+            # TODO input will require exception handling
         return new_bid
 
     def take_turn(self, prev_events, tot_other_dice):
@@ -167,14 +169,18 @@ class Player:
                 new_action = Constants.ACTIONS[3]
                 output = None
 
-        elif prev_action == None:
-            output = None
+        elif prev_action == Constants.ACTIONS[0]:
+            output = [-1, -1]
             # TODO what behavior should we instigate if we are the first player?
             # we have to bid, can't challenge or spot on
+            # self.bid()
+            new_action = Constants.ACTIONS[1] + \
+                ' TODO START BEHAVIOR NOT IMPLEMENTED'
+            #
         else:
             pass  # TODO
             raise Exception(
-                Back.RED + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
+                Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
         #
         # (4) Execute Decision
         #
