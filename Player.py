@@ -63,19 +63,46 @@ class Player:
         # ie each Player will have slightly different risk tolerance levels
         return grade
 
-    def bid(self):
+    def bid(self, tot_other_dice):
         '''Allows human user to bid.'''
+        bid_count = None
+        bid_face = None
         if self.spot == 'HUMAN':  # TODO Human-controlled behavior
             while True:
                 try:
-                    bid_count = input(
-                        Fore.BLUE + f'<?> {self.name}, please enter bid size: ')
-                    bid_face = input(
-                        Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: ')
+                    bid_count = int(input(
+                        Fore.BLUE + f'<?> {self.name}, please enter bid size: '))
+                    if bid_count < 0:
+                        raise Exception('<!> Ye\' cannot do that, matey.')
+                    if bid_count > (tot_other_dice + self.num_dice):
+                        raise Exception(
+                            '<!> Are ye\' daft? Yer\' bettin\' more dice than are possible.')
+                    # TODO prevent from betting count higher than possible
+                    break
+
+                except TypeError:
+                    print(Fore.RED + Style.DIM +
+                          '<!> Arrrgh, ye must provide an integer, matey!')
+                    continue
+                except Exception as e:
+                    print(Fore.RED + Style.DIM + e)
+                    continue
+
+            while True:
+                try:
+                    bid_face = int(input(
+                        Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: '))
+                    if bid_face < 1 or bid_face > 6:
+                        raise Exception('<!> Ye\' cannot do that, matey.')
                     new_bid = [bid_count, bid_face]
                     return new_bid
+
+                except TypeError:
+                    print(Fore.RED + Style.DIM +
+                          '<!> Arrrgh, ye must provide an integer, matey!')
+                    continue
                 except Exception as e:
-                    print(e)
+                    print(Fore.RED + Style.DIM + e)
                     continue
         else:
             raise Exception('CPUs should not be using bid() function')
