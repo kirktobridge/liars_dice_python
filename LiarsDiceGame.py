@@ -74,6 +74,7 @@ class LiarsDiceGame:
             # record round rolls for spot-ons and challenges
             self.round_rolls.extend(p0.dice)
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
+        # TODO
         print(Fore.CYAN + '<i> Dice Rolled')
         for p in range(0, self.num_players):
             print(
@@ -214,7 +215,7 @@ class LiarsDiceGame:
 
     def log_event(self, event):
         # NEW NEW TODO
-        self.round_events.append(event)
+        self.round_events.appendleft(event)
         self.event_counter += 1
         try:
             if isinstance(event, list):
