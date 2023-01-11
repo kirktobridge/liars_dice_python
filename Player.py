@@ -63,35 +63,22 @@ class Player:
         # ie each Player will have slightly different risk tolerance levels
         return grade
 
-    def bid(self, bid=[], raise_bid_amt=0):
-        '''Takes two optional parameters: the bid, a size 2 array containing the count 
-        of dice (size of bid) and the numeric value of the face being bid on; 
-        the second parameter raise_bid indicates if the bid should be raised, 
-        and if so, by what amount. These parameters are required for CPU players,
-        but not needed for human players, as humans will enter their own bids using this
-        function. Returns a bid array [count, denomination]'''
-        if self.spot == 'CPU':
-            if raise_bid_amt != 0:
-                bid_count = bid[0]
-                bid_face = bid[1]
-                new_bid = [bid_count + raise_bid_amt, bid_face]
-            else:
-                cnt_bid_safe = self.rolls_mode + self.wild_count
-                '''best bid is a function of how large count of mode is plus count of ones
-                TODO but the bid's count must be higher than the previous,
-                OR the bidded face value must be not previously used in the round
-                TODO how to determine additional guessed count?'''
-                new_bid = [cnt_bid_safe + self.addl_guessed_cnt,
-                           self.rolls_mode]  # ex. two 1's, two 3's: bid 4 3's
-        elif self.spot == 'HUMAN':  # TODO Human-controlled behavior
-            bid_count = input(
-                Fore.BLUE + f'<?> {self.name}, please enter bid size: ')
-            bid_face = input(
-                Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: ')
-            new_bid = [bid_count, bid_face]
-            # TODO should this bidding behavior be moved into take_turn()?
-            # TODO input will require exception handling
-        return new_bid
+    def bid(self):
+        '''Allows human user to bid.'''
+        if self.spot == 'HUMAN':  # TODO Human-controlled behavior
+            while True:
+                try:
+                    bid_count = input(
+                        Fore.BLUE + f'<?> {self.name}, please enter bid size: ')
+                    bid_face = input(
+                        Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: ')
+                    new_bid = [bid_count, bid_face]
+                    return new_bid
+                except Exception as e:
+                    print(e)
+                    continue
+        else:
+            raise Exception('CPUs should not be using bid() function')
 
     def take_turn(self, prev_events, tot_other_dice):
         # TODO form and react to impressions of other players (trust score, expected bids, expected count of ones based on bids)
@@ -126,7 +113,7 @@ class Player:
             else:  # we have no mode assuming constant is 2
                 output = [Constants.MINIMUM_BID,
                           self.dice[random.randint(0, self.num_dice-1)]]
-                output = [-1, -1]  # TODO
+                # TODO
 
             # TODO what behavior should we instigate if we are the first player?
             # we have to bid, can't challenge or spot on
@@ -160,7 +147,7 @@ class Player:
                 # attribute of the Player object, perhaps something to randomize (or
                 # create a distribution of across the playerset for a game)
                 spot_on_probability = 0
-                output = self.bid(prev_bid, raise_bid_amt=1)
+                output = [prev_bid_cnt+1, prev_bid_face]
                 new_action = Constants.ACTION[2]
 
             elif needed_cnt > 0 and face_self_match_cnt > 0:
