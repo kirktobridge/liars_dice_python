@@ -157,17 +157,17 @@ class LiarsDiceGame:
                             p1.lose_die()
                     break
 
-            else:  # spot-on failure
-                if self.players[p].spot == 'HUMAN':
-                    print(
-                        Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
+                else:  # spot-on failure
+                    if self.players[p].spot == 'HUMAN':
+                        print(
+                            Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
 
-                elif self.players[p].spot == 'CPU':
-                    print(Fore.CYAN +
-                          f'{self.players[p].name} lost their spot on call!')
+                    elif self.players[p].spot == 'CPU':
+                        print(Fore.CYAN +
+                              f'{self.players[p].name} lost their spot on call!')
 
-                self.players[p].lose_die()
-                break
+                    self.players[p].lose_die()
+                    break
 
         ''' END OF TURN LOOP '''
 

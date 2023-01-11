@@ -14,8 +14,8 @@ PROB_THRESHOLDS = {
 DEBUG = True
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PAUSE = 0.5 if DEBUG == False else 0.1
-PLAYER_NAMES = ['Jack Sparrow', 'Hector Barbossa', 'Joshamee Gibbs',
-                'Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Davy Jones', 'Blackbeard', 'Calypso']
+PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
+                'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +
               '<i> DO UNDERSTAND, MATEY, THERE BE MANY VARIATIONS O\' THIS GAME. THIS IS MINE.', Fore.BLUE + Style.BRIGHT +
               '<i> HERE BE THE RULES. THEY BE IN THE QUEEN\'S ENGLISH, NOT PIRATE.', Fore.WHITE + Style.NORMAL +

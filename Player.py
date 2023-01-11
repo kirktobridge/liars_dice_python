@@ -167,7 +167,7 @@ class Player:
             # if previous bid unlikely, challenge
             if Player.grade(cumulative_probability) == 'LOW':
                 new_action = Constants.ACTIONS[3]
-                output = None
+                output = [-1, -1]
 
         elif prev_action == Constants.ACTIONS[0]:
             output = [-1, -1]
@@ -175,17 +175,18 @@ class Player:
             # we have to bid, can't challenge or spot on
             # self.bid()
             new_action = Constants.ACTIONS[1] + \
-                ' TODO START BEHAVIOR NOT IMPLEMENTED'
+                ' TODO START BEHAVIOR NOT IMPLEMENTED '
             #
         else:
-            pass  # TODO
-            raise Exception(
-                Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
+            output = [-1, -1]
+            new_action = Constants.ACTIONS[5] + \
+                ' TODO CATCHALL BEHAVIOR NOT IMPLEMENTED'
+            # TODO catch-all behavior
+            # raise Exception(
+            #     Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
         #
         # (4) Execute Decision
         #
-        output = None  # TODO
-        # TODO bid or challenge previous bid
         return [output, new_action, self.name]
 
     def challenge(self, p):
