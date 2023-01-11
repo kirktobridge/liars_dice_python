@@ -32,7 +32,7 @@ class Player:
         self.bid = []
 
     def lose_die(self):
-        '''Removes virtual die from the Player object, and updates Player's dice 
+        '''Removes virtual die from the Player object, and updates Player's dice
         count variable.'''
         self.dice[self.num_dice-1] = -1
         self.num_dice -= 1
@@ -44,14 +44,14 @@ class Player:
         self.num_dice += 1
 
     def roll(self):
-        '''Generates random values for the Player's held dice between 1 and 6, 
+        '''Generates random values for the Player's held dice between 1 and 6,
         simulating rolls of a six-sided dice.'''
         for d in range(0, self.num_dice):
             self.dice[d] = random.randint(1, 6)
 
     @staticmethod
     def grade(p):
-        '''Provides a classification for a probability by comparing a percentage to a 
+        '''Provides a classification for a probability by comparing a percentage to a
         predetermined set of thresholds found in the Constants file.'''
         grade = 'VERY LOW'
         for k, v in sorted(Constants.PROB_THRESHOLDS.items(), key=lambda x: x[1]):
@@ -144,7 +144,7 @@ class Player:
 
         # If the previous player made a bid
         elif prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
-            # return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
+            return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event[0]  # pulls previous turn's bid
@@ -176,8 +176,21 @@ class Player:
                 # p(x >= y) = 1 - p(x =< y-1)
                 cumulative_probability = 1 - model.cdf(needed_cnt-1)
                 spot_on_probability = model.pmf(needed_cnt)
+                all_prev_bids = []
+                # get list of previous bids
+                for event in prev_events:
+                    if isinstance(event, str) == False and \
+                            (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
+                        all_prev_bids.append(event)
+                # get list of possible bids
+                # a bid is allowed if:
+                # - we are raising (and we are not raising past the total number of dice)
+                # OR - we are matching the count AND this face has not been bid with this count yet
+
+                # get all possible alternatives (so all possible bids (raise only by 1 for now))
+                # raising requires knowing which bids have already been made
                 # for all other faces besides the one in the previous bid:
-                # check the probability of
+                # check the probability of th
                 # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
                 # TODO compare these probabilities to probability of each possible raised/face changed bid
                 # may need to pass all previous events instead of just the one previous event...
