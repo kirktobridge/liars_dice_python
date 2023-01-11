@@ -3,7 +3,7 @@ from colorama import Fore, Style
 MAX_NUM_DICE = 5
 MAX_PLAYERS = 3
 MAX_ROUNDS = 2
-ACTIONS = ['ELIM', 'BID', 'RAISE', 'CHLG', 'SPOT', 'BLANK']
+ACTIONS = ['START', 'BID', 'RAISE', 'CHLG', 'SPOT', 'BLANK']
 PROB_THRESHOLDS = {
     'LOW': 0.25,
     'MED': 0.5,

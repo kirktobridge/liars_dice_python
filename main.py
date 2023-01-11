@@ -105,8 +105,6 @@ def main():
         rand_ints_used.append(rand_int)
         game.add_player(Player(Constants.PLAYER_NAMES[rand_int]))
 
-    game.report_rolls()
-
     run_game = True
 
     while run_game:

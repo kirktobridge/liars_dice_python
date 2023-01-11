@@ -31,10 +31,10 @@ class LiarsDiceGame:
         self.game_log = []
         self.tot_num_dice = 0
 
-    def print_error(self, func_name):
+    def print_error(self, func_name, e=None):
         log_string = (Fore.MAGENTA + Style.DIM +
                       f'Exception caught in {func_name}!')
-        print(log_string)
+        print(log_string + str(e))
         self.log_event(log_string)
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
         print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
@@ -62,12 +62,13 @@ class LiarsDiceGame:
     def process_round(self):
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
         round_events = deque()
-        round_events.append([[0, 0], f'RND{self.round_num}', [], 'SYS'])
+        round_events.append(f'Round {self.round_num} Begin')
+        round_events.append([[-1, -1], f'RND{self.round_num}', 'SYS'])
         time.sleep(Constants.PAUSE)
-        self.log_event(f'<!> Round {self.round_num} Begin')
-        self.log_event('Dice Roll')
+        round_events.append('Dice Roll')
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
+        self.round_rolls.clear()
         for p0 in self.players:
             p0.roll()
             # record round rolls for spot-ons and challenges
@@ -80,7 +81,10 @@ class LiarsDiceGame:
             time.sleep(Constants.PAUSE)
             # create references to previous event in the round (previous turn actions)
             try:
-                if len(round_events) == 1:
+                if len(round_events) == 3:
+                    if Constants.DEBUG == True:
+                        round_events.append(
+                            [[-1, -1], Constants.ACTIONS[0], 'SYS'])
                     prev_event = None
                 else:
                     prev_event = round_events[0]
@@ -93,6 +97,7 @@ class LiarsDiceGame:
             except Exception as e:
                 self.print_error(
                     'process_round: prev_event assignment')
+                continue
             # player takes turn, output (bid, if any) and action are recorded
             cur_event = [None] * 3
             try:
@@ -109,11 +114,13 @@ class LiarsDiceGame:
                 # player name stored in cur_event[2]
 
             except Exception as e:
-                cur_event[0] = 'EXCEPTION'
+                self.print_error('process_round: take_turn call', e)
+                cur_event[0] = [-1, -1]
+                cur_event[1] = 'EXCEPTION'
                 cur_event[2] = self.players[p].name
                 round_events.append(cur_event)
                 self.log_events(round_events)
-                self.print_error('process_round: take_turn call')
+                continue
 
             # process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:
@@ -155,11 +162,13 @@ class LiarsDiceGame:
                 if self.players[p].spot == 'HUMAN':
                     print(
                         Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
-                    self.players[p].lose_die()
-                    break
+
                 elif self.players[p].spot == 'CPU':
-                    print(Fore.CYAN)
-                    break
+                    print(Fore.CYAN +
+                          f'{self.players[p].name} lost their spot on call!')
+
+                self.players[p].lose_die()
+                break
 
         ''' END OF TURN LOOP '''
 
@@ -208,8 +217,8 @@ class LiarsDiceGame:
     def log_event(self, event):
         try:
             self.game_log.append(event)
-            if Constants.DEBUG == True:
-                print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
+            # if Constants.DEBUG == True:
+            #     print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:
             self.print_error('log_event')
 
