@@ -62,6 +62,8 @@ class LiarsDiceGame:
             return -1
 
     def process_round(self):
+        # Pre-Round Tasks
+        # Notify user, log events
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
         self.round_events.clear()
         self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
@@ -69,9 +71,9 @@ class LiarsDiceGame:
         print(Fore.CYAN + '<i> Rolling Dice...')
         time.sleep(Constants.PAUSE)
         self.round_rolls.clear()
+        # Roll and record players' dice
         for p0 in self.players:
             p0.roll()
-            # record round rolls for spot-ons and challenges
             self.round_rolls.extend(p0.dice)
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         # TODO
@@ -79,104 +81,112 @@ class LiarsDiceGame:
         # TODO we are gonna have to change this entire loop
         # the players do go in order, but the round doesn't end until there is a bid or a challenge
         # also the order can change
-        for p in range(0, self.num_players):
-            print(
-                f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
-            time.sleep(Constants.PAUSE)
-            # create references to previous event in the round (previous turn actions)
-            prev_event = self.round_events[0]
-            prev_action = prev_event[1]
-            try:
-                if prev_action == 'DICE ROLL':
-                    self.log_event(
-                        [[-1, -1], Constants.ACTIONS[0], 'SYS'])
-                else:
-                    prev_player_nm = prev_event[2]
-                    if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
-                        prev_bid = prev_event[0]
-                        prev_bid_cnt = prev_bid[0]
-                        prev_bid_face = prev_bid[1]
-            except Exception as e:
-                self.print_error(
-                    'process_round: prev_event assignment', e)
-                continue
-            # player takes turn, output (bid, if any) and action are recorded
-            cur_event = [None] * 3
-            try:
-                # Provide player list of round's events so far, and the number
-                # of other dice remaining
-                cur_event = self.players[p].take_turn(
-                    self.round_events, self.count_dice()-self.players[p].num_dice)
-                self.log_event(cur_event)
-                # bid stored in cur_event[0]
-                # action stored in cur_event[1]
-                if cur_event[1] == Constants.ACTIONS[5]:
-                    raise Exception("Blank new_action")
-
-                # player name stored in cur_event[2]
-
-            except Exception as e:
-                self.print_error('process_round: take_turn call', e)
-                cur_event[0] = [-1, -1]
-                cur_event[1] = 'EXCEPTION'
-                cur_event[2] = self.players[p].name
-                self.log_event(cur_event)
-                self.log_events(self.round_events)
-                continue
-
-            # TODO for spot on and challenge:
-            # if someone loses a die, they go first in the next round?
-
-            # process challenge action
-            if cur_event[1] == Constants.ACTIONS[3]:
+        # solution- wrap for in while True, rearrange player array when we break out of for loop
+        round_cont = True
+        while round_cont:
+            for p in range(0, self.num_players):
                 print(
-                    Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
-                self.report_rolls()
-                # challenge success
-                if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
-                    print(Fore.WHITE)
-                    inner_event = [True, Constants.ACTIONS[3],
-                                   self.players[p].name]
-                    self.log_event(inner_event)
-                    self.players[p-1].lose_die()
-                    break
-                # challenge failure
-                elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
-                    inner_event = [False, Constants.ACTIONS[3],
-                                   self.players[p].name]
-                    self.log_event(inner_event)
-                    self.players[p].lose_die()
-                    break
+                    f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
+                time.sleep(Constants.PAUSE)
+                # create references to previous event in the round (previous turn actions)
+                prev_event = self.round_events[0]
+                prev_action = prev_event[1]
+                try:
+                    if prev_action == 'DICE ROLL':
+                        self.log_event(
+                            [[-1, -1], Constants.ACTIONS[0], 'SYS'])
+                    else:
+                        prev_player_nm = prev_event[2]
+                        if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
+                            prev_bid = prev_event[0]
+                            prev_bid_cnt = prev_bid[0]
+                            prev_bid_face = prev_bid[1]
+                except Exception as e:
+                    self.print_error(
+                        'process_round: prev_event assignment', e)
+                    continue
+                # player takes turn, output (bid, if any) and action are recorded
+                cur_event = [None] * 3
+                try:
+                    # Provide player list of round's events so far, and the number
+                    # of other dice remaining
+                    cur_event = self.players[p].take_turn(
+                        self.round_events, self.count_dice()-self.players[p].num_dice)
+                    self.log_event(cur_event)
+                    # bid stored in cur_event[0]
+                    # action stored in cur_event[1]
+                    if cur_event[1] == Constants.ACTIONS[5]:
+                        raise Exception("Blank new_action")
 
-            # TODO process spot-on action
-            if cur_event[1] == Constants.ACTIONS[4]:
-                print(
-                    Fore.WHITE +
-                    f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
-                )
-                # spot-on success
-                if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
-                    print(Fore.CYAN +
-                          '<!> SPOT ON! Everyone else loses a die!')
-                    for p1 in self.players:
-                        if p1.name != self.players[p].name:
-                            p1.lose_die()
-                    break
+                    # player name stored in cur_event[2]
 
-                else:  # spot-on failure
-                    if self.players[p].spot == 'HUMAN':
-                        print(
-                            Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
+                except Exception as e:
+                    self.print_error('process_round: take_turn call', e)
+                    cur_event[0] = [-1, -1]
+                    cur_event[1] = 'EXCEPTION'
+                    cur_event[2] = self.players[p].name
+                    self.log_event(cur_event)
+                    self.log_events(self.round_events)
+                    continue
 
-                    elif self.players[p].spot == 'CPU':
+                # TODO for spot on and challenge:
+                # if someone loses a die, they go first in the next round?
+
+                # process challenge action
+                if cur_event[1] == Constants.ACTIONS[3]:
+                    print(
+                        Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
+                    self.report_rolls()
+                    # challenge success
+                    if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
+                        print(Fore.WHITE)  # TODO print chlg successs
+                        inner_event = [True, Constants.ACTIONS[3],
+                                       self.players[p].name]
+                        self.log_event(inner_event)
+                        self.players[p-1].lose_die()
+                        round_cont = False
+                        break
+                    # challenge failure
+                    elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
+                        # TODO print chlg fail
+                        inner_event = [False, Constants.ACTIONS[3],
+                                       self.players[p].name]
+                        self.log_event(inner_event)
+                        self.players[p].lose_die()
+                        round_cont = False
+                        break
+
+                # TODO process spot-on action
+                if cur_event[1] == Constants.ACTIONS[4]:
+                    print(
+                        Fore.WHITE +
+                        f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
+                    )
+                    # spot-on success
+                    if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
                         print(Fore.CYAN +
-                              f'{self.players[p].name} lost their spot on call!')
+                              '<!> SPOT ON! Everyone else loses a die!')
+                        for p1 in self.players:
+                            if p1.name != self.players[p].name:
+                                p1.lose_die()
+                        round_cont = False
+                        break
 
-                    self.players[p].lose_die()
-                    break
+                    else:  # spot-on failure
+                        if self.players[p].spot == 'HUMAN':
+                            print(
+                                Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
 
-        ''' END OF TURN LOOP '''
+                        elif self.players[p].spot == 'CPU':
+                            print(Fore.CYAN +
+                                  f'{self.players[p].name} lost their spot on call!')
 
+                        self.players[p].lose_die()
+                        round_cont = False
+                        break
+                    '''END OF WHILE ROUND_CONT LOOP'''
+
+        # POST-ROUND TASKS
         # elimination checks
         if self.players[p].num_dice == 0:
             if self.players[p].spot == 'HUMAN':
@@ -201,8 +211,7 @@ class LiarsDiceGame:
                 print(
                     f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
-        # TODO we only increase this when the round is over NOT just when all players have went once.
-        # have to change for loop.
+        # Increment round counter
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
