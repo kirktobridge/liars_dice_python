@@ -136,7 +136,7 @@ class Player:
 
         # If we are the first player
         if prev_action == Constants.ACTIONS[0]:
-            # we have a safe bid (mode)
+            # if we have a safe bid (mode)
             if self.mode_count >= Constants.MINIMUM_BID:
                 output = [Constants.MINIMUM_BID, self.rolls_mode]
             else:  # we have no mode assuming constant is 2

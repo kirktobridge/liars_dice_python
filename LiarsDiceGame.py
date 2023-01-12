@@ -240,14 +240,15 @@ class LiarsDiceGame:
         try:
             # TODO roll_freq = Counter(self.round_rolls)
             for p in self.players:
-                die_freq = Counter(p.dice)
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
                 player_roll_freq = Counter(p.dice)
                 loop_cnt = 0
-                for d in player_roll_freq:
-                    output += f'{player_roll_freq[d]} {d}\'s'
+                for d in sorted(player_roll_freq, key=player_roll_freq.get):
+                    output += str(player_roll_freq[d]) + ' ' + str(d)
+                    if player_roll_freq[d] > 1:
+                        output += '\'s'
                     loop_cnt += 1
-                    if loop_cnt == p.num_dice:
+                    if loop_cnt == len(player_roll_freq):
                         output += "."
                     elif loop_cnt == p.num_dice-1:
                         output += ", and "

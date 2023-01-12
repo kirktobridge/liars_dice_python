@@ -109,6 +109,8 @@ def main():
 
     while run_game:
         run_game = game.process_round()
+        if Constants.DEBUG:
+            game.report_rolls()
 
     print(Fore.BLUE + Style.BRIGHT +
           '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
