@@ -186,7 +186,9 @@ class Player:
                 # a bid is allowed if:
                 # - we are raising (and we are not raising past the total number of dice)
                 # OR - we are matching the count AND this face has not been bid with this count yet
-
+                permissible_bids = [[prev_bid_cnt, face]
+                                    for face in range(1, 7) if face != prev_bid_face]
+                # TODO remove illegal bids from this list
                 # get all possible alternatives (so all possible bids (raise only by 1 for now))
                 # raising requires knowing which bids have already been made
                 # for all other faces besides the one in the previous bid:

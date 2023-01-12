@@ -121,6 +121,9 @@ class LiarsDiceGame:
                 self.log_events(self.round_events)
                 continue
 
+            # TODO for spot on and challenge:
+            # if someone loses a die, they go first in the next round?
+
             # process challenge action
             if cur_event[1] == Constants.ACTIONS[3]:
                 print(
@@ -220,8 +223,8 @@ class LiarsDiceGame:
         try:
             if isinstance(event, list):
                 event_w_cnt = []
-                event_w_cnt.extend(event)
                 event_w_cnt.insert(0, "#" + str(self.event_counter))
+                event_w_cnt.extend(event)
                 self.game_log.append(event_w_cnt)
             elif isinstance(event, str):
                 self.game_log.append(
@@ -239,15 +242,16 @@ class LiarsDiceGame:
                 die_freq = Counter(p.dice)
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
                 player_roll_freq = Counter(p.dice)
+                loop_cnt = 0
                 for d in player_roll_freq:
                     output += f'{player_roll_freq[d]} {d}\'s'
-                    # TODO: fix punctuation behavior
-                    # if d == p.num_dice-1:
-                    #     output += "."
-                    # elif d == p.num_dice-2:
-                    #     output += ", and "
-                    # else:
-                    #     output += ", "
+                    loop_cnt += 1
+                    if loop_cnt == p.num_dice:
+                        output += "."
+                    elif loop_cnt == p.num_dice-1:
+                        output += ", and "
+                    else:
+                        output += ", "
                 print(output)
             # TODO return roll_freq
         except Exception as e:
