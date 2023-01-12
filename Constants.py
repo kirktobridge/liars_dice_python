@@ -20,7 +20,7 @@ PAUSE = 0.5 if not DEBUG else 0.1
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
                 'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +
-              '<i> DO UNDERSTAND, MATEY, THERE BE MANY VARIATIONS O\' THIS GAME. THIS IS MINE.', Fore.BLUE + Style.BRIGHT +
+              '<i> DO UNDERSTAND, MATEY, THERE BE MANY VARIATIONS O\' THIS GAME. THIS BE MINE.', Fore.BLUE + Style.BRIGHT +
               '<i> HERE BE THE RULES. THEY BE IN THE QUEEN\'S ENGLISH, NOT PIRATE.', Fore.WHITE + Style.NORMAL +
               f'<i> At the start of the game, each player will be given {MAX_NUM_DICE} dice.', Fore.BLUE + Style.NORMAL +
               '<i> For every round:', Fore.MAGENTA +
