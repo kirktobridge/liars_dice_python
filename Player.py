@@ -24,11 +24,12 @@ class Player:
         self.num_dice = num_dice
         self.eliminated = eliminated
         self.dice = [-1] * self.num_dice
-        self.rolls_mode = 0
+        self.rolls_mode = 0  # most common roll
         self.wild_count = 0
         self.mode_count = 0
         self.spot = spot
-        self.risk_appetite = 0
+        self.risk_appetite = random.randint()  # TODO)
+        self.peer_pressure_score = 0
         self.bid = []
 
     def lose_die(self):
@@ -49,7 +50,7 @@ class Player:
         for d in range(0, self.num_dice):
             self.dice[d] = random.randint(1, 6)
 
-    @staticmethod
+    @ staticmethod
     def grade(p):
         '''Provides a classification for a probability by comparing a percentage to a
         predetermined set of thresholds found in the Constants file.'''
@@ -176,37 +177,45 @@ class Player:
             elif prev_bid_needed_cnt > 0:  # do I need this? > and face_self_match_cnt > 0:
                 # THREE CHOICES: BID, CHALLENGE, SPOT ON
                 # COMPARE:
-                # - probability that the previous bid is true (there are least a b's)
-                # ---- used for challenging
-                # ---- p(x >= y) = 1 - p(x < y-1)
-                # - probability that the previous bid is exactly true
-                # ---- used for spot-on
-                # - probability of all other legal bids
-                # ---- used for raising/matching bids
-                # we will then compare these three probabilities
-                cumulative_probability = 1 - model.cdf(prev_bid_needed_cnt-1)
-                spot_on_probability = model.pmf(prev_bid_needed_cnt)
-                # produce most probable bid, this will be compared to prev_bid's challenge or spot-on probability
+                # P(CHALLENGE FAILS):
+                #   PROBABILITY that the previous bid is true (there are least a b's)
+                #   p(x >= y) = 1 - p(x < y-1)
+                # P(SPOT ON SUCCEEDS):
+                #   PROBABILITY that the previous bid is exactly true
+                # P(BEST NEW BID):
+                #   used for RAISING OR MATCHING previous BID
+
+                # (1) GET PROBABILITY OF PREVIOUS BID - CHALLENGE
+                #   Lower score means we may consider challenge.
+                cumulative_probability = 1 - \
+                    model.cdf(prev_bid_needed_cnt-1)
+                # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
+                #   Higher score means we may consider calling 'spot on.'
+                spot_on_probability = model.pmf(
+                    prev_bid_needed_cnt)
+                # (3) GET PROBABILITY OF BEST BID
+                #   (3.1) GET PROBABILITY OF ALL LEGAL BIDS
+                #       produce most probable bid, this will be compared to (1) and (2)
+                #       get list of previous bids to check legality of potential bids
                 all_prev_bids = []
-                # get list of previous bids
                 for event in prev_events:
                     if not isinstance(event, str) and \
                             (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
                         all_prev_bids.append(event[0])
 
-                # BUILD LIST OF PERMISSIBLE BIDS:
-                # --- include all count-matching bids not already made this round
+                #       (3.1.1) BUILD LIST OF PERMISSIBLE BIDS:
+                #           (3.1.1.1) include all count-matching bids not already made this round
                 permissible_bids = [[prev_bid_cnt, face]
                                     for face in range(1, 7)
                                     if [prev_bid_cnt, face] not in all_prev_bids]  # if face != prev_bid_face]
-                # --- include all raising bids
+                #           (3.1.1.2) include all raising bids
                 for raise_face in range(1, 7):
                     permissible_bids.append([prev_bid_cnt+1, raise_face])
                 risk_ranking = []
-                #
-                # (tiebreaker: favor most commonly bid face in round so far,
-                # tiebreaker #2: favor highest face)
-                # compare probability for every legal option
+                #   (3.2) GET BEST BID
+                #       (tiebreaker: favor most commonly bid face in round so far,
+                #       tiebreaker #2: favor highest face)
+                #       compare probability for every legal option
                 # TODO do we need: best_bid_probability = 0.0
                 for legal_bid in permissible_bids:
                     needed_cnt = self.get_needed_cnt(legal_bid)
