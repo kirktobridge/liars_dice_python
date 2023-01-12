@@ -88,6 +88,7 @@ class LiarsDiceGame:
         # also the order can change
         # solution- wrap for in while True, rearrange player array when we break out of for loop
         round_cont = True
+        loser_index = -99
         while round_cont:
             for p in range(0, self.num_players):
                 print(
@@ -148,8 +149,10 @@ class LiarsDiceGame:
                         inner_event = [True, Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
-                        self.players[p-1].lose_die()
+                        loser_index = p-1
+                        self.players[loser_index].lose_die()
                         round_cont = False
+                        # refactor this later: process_challenge()
                         break
                     # Challenge FAILURE
                     elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
@@ -158,6 +161,7 @@ class LiarsDiceGame:
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
+                        loser_index = p
                         round_cont = False
                         break
 
@@ -175,6 +179,7 @@ class LiarsDiceGame:
                             if p1.name != self.players[p].name:
                                 p1.lose_die()
                         round_cont = False
+                        # TODO loser_index?
                         break
 
                     else:  # Spot-on FAILURE
@@ -187,13 +192,14 @@ class LiarsDiceGame:
                                   f'{self.players[p].name} lost their spot on call!')
 
                         self.players[p].lose_die()
+                        loser_index = p
                         round_cont = False
                         break
                     '''END OF WHILE ROUND_CONT LOOP'''
 
         ''' POST-ROUND TASKS
         - Process eliminations
-        - Rearrange player array
+        - Rearrange player array TODO
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
@@ -208,6 +214,8 @@ class LiarsDiceGame:
                       f'<X> {self.players[p].name} has been eliminated from the game!')
             try:
                 self.players.pop(p)
+                if loser_index == p:
+                    loser_index = -99
             except Exception as e:
                 print(e)
             self.num_players -= 1
@@ -224,6 +232,10 @@ class LiarsDiceGame:
         if Constants.DEBUG and self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
+
+        # TODO rearrange Player array
+        # well, we don't actually have to rearrange it.
+        # we need to get the for loop to start there, though
 
         return self.game_status
 
