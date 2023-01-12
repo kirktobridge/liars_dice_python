@@ -152,9 +152,7 @@ class Player:
             prev_bid = prev_event[0]  # pulls previous turn's bid
             prev_bid_cnt = prev_bid[0]
             prev_bid_face = prev_bid[1]
-            face_self_match_cnt = self.dice.count(
-                prev_bid_face) + self.count_ones()
-            needed_cnt = prev_bid_cnt - face_self_match_cnt
+            needed_cnt = self.get_needed_cnt(prev_bid)
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
             if needed_cnt == 0:
@@ -175,7 +173,10 @@ class Player:
                 new_action = Constants.ACTION[2]
 
             elif needed_cnt > 0 and face_self_match_cnt > 0:
-                # p(x >= y) = 1 - p(x =< y-1)
+                # p(x >= y) = 1 - p(x < y-1)
+                # we need
+                # - probability that the previous bid is true (there are least a b's)
+                # - probability that the previous bid is exactly true
                 cumulative_probability = 1 - model.cdf(needed_cnt-1)
                 spot_on_probability = model.pmf(needed_cnt)
                 all_prev_bids = []
@@ -189,34 +190,40 @@ class Player:
                 # - we are raising (and we are not raising past the total number of dice)
                 # OR - we are matching the count AND this face has not been bid with this count yet
                 permissible_bids = [[prev_bid_cnt, face]
-                                    for face in range(1, 7) if face != prev_bid_face]
+                                    for face in range(1, 7)]  # if face != prev_bid_face]
+                # TODO remove previously made bids from this list
                 for raise_face in range(1, 7):
                     permissable_bids.append([prev_bid_cnt+1, raise_face])
+                risk_ranking = []
                 for legal_bid in permissible_bids:
-                    # TODO calculate probability, store in sorted array
-                    # then pick highest probability items
-                    # if there is a tie, randomly select from the highest probability set
-                    # TODO remove illegal bids from this list
-                    # get all possible alternatives (so all possible bids (raise only by 1 for now))
-                    # raising requires knowing which bids have already been made
-                    # for all other faces besides the one in the previous bid:
-                    # check the probability of th
-                    # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
-                    # TODO compare these probabilities to probability of each possible raised/face changed bid
-                    # may need to pass all previous events instead of just the one previous event...
-                    # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                    # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                    # favor bidding on these faces if we can
-                    # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                    # risk personality attribute
+                    tmp_needed_cnt = self.get_needed_cnt(legal_bid)
+                    bid_probability = 1 - model.cdf(needed_cnt-1)
+                    risk_ranking.append([bid_probability, legal_bid])
+                risk_ranking.sort(key=take_second)  # TODO change to use lambda
+                # TODO calculate probability, store in sorted array
+                # then pick highest probability items
+                # if there is a tie, randomly select from the highest probability set
+                # TODO remove illegal bids from this list
+                # get all possible alternatives (so all possible bids (raise only by 1 for now))
+                # raising requires knowing which bids have already been made
+                # for all other faces besides the one in the previous bid:
+                # check the probability of those bids
+                # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
+                # TODO compare these probabilities to probability of each possible raised/face changed bid
+                # may need to pass all previous events instead of just the one previous event...
+                # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
+                # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                # favor bidding on these faces if we can
+                # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
+                # risk personality attribute
 
-                    # should the player guess if the previous player was lying/taking bad risk
-                    #  based on how many dice they have and how many dice they bet on?
-                    #
-                    # (3) Decision Making: Evaluate stats and make decision
-                    #
-                    # TODO: bid new face, raise bid, challenge, or spot on
-                    # if previous bid unlikely, challenge
+                # should the player guess if the previous player was lying/taking bad risk
+                #  based on how many dice they have and how many dice they bet on?
+                #
+                # (3) Decision Making: Evaluate stats and make decision
+                #
+                # TODO: bid new face, raise bid, challenge, or spot on
+                # if previous bid unlikely, challenge
 
         else:
             output = [-1, -1]
@@ -230,6 +237,12 @@ class Player:
         #
         return [output, new_action, self.name]
 
+    def get_needed_cnt(self, bid_cnt, bid_face):
+        face_self_match_cnt = self.dice.count(
+            bid_face) + self.count_ones()
+        needed_cnt = bid_cnt - face_self_match_cnt
+        return needed_cnt
+
     def challenge(self, p):
         if self.spot == 'CPU':
             pass  # TODO AI behavior
@@ -239,3 +252,7 @@ class Player:
     def count_ones(self):
         self.wild_count = self.dice.count(1)
         return self.wild_count
+
+    @staticmethod
+    def take_second(elem):
+        return elem[1]
