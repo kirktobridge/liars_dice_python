@@ -53,8 +53,9 @@ class Player:
     def grade(p):
         '''Provides a classification for a probability by comparing a percentage to a
         predetermined set of thresholds found in the Constants file.'''
-        grade = 'VERY LOW'
-        for k, v in sorted(Constants.PROB_THRESHOLDS.items(), key=lambda x: x[1]):
+        grade = Constants.LOWEST_THRESHOLD
+        # sorted(Constants.PROB_THRESHOLDS.items(), key=lambda x: x[1]):
+        for k, v in Constants.PROB_THRESHOLDS:
             if p < v:
                 break
             else:
