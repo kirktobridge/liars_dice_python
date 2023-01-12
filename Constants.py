@@ -7,6 +7,9 @@ MINIMUM_BID = 2
 MULTIPLAYER_ON = False
 ACTIONS = ['START', 'BID', 'RAISE', 'CHLG', 'SPOT', 'BLANK']
 PROB_THRESHOLDS = {
+    'HELL FREEZES OVER': 0.05,
+    'EXTREMELY LOW': 0.10,
+    'VERY LOW': 0.15,
     'LOW': 0.25,
     'MED': 0.5,
     'HIGH': 0.75,
