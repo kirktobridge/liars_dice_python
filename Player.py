@@ -184,35 +184,30 @@ class Player:
                 for event in prev_events:
                     if not isinstance(event, str) and \
                             (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
-                        all_prev_bids.append(event)
+                        all_prev_bids.append(event[0])
                 # get list of possible bids
                 # a bid is allowed if:
                 # - we are raising (and we are not raising past the total number of dice)
                 # OR - we are matching the count AND this face has not been bid with this count yet
                 permissible_bids = [[prev_bid_cnt, face]
-                                    for face in range(1, 7)]  # if face != prev_bid_face]
+                                    for face in range(1, 7)
+                                    if [prev_bid_cnt, face] not in all_prev_bids]  # if face != prev_bid_face]
                 # TODO remove previously made bids from this list
                 for raise_face in range(1, 7):
                     permissable_bids.append([prev_bid_cnt+1, raise_face])
                 risk_ranking = []
+                # compare probability for every legal option
                 for legal_bid in permissible_bids:
                     tmp_needed_cnt = self.get_needed_cnt(legal_bid)
                     bid_probability = 1 - model.cdf(needed_cnt-1)
                     risk_ranking.append([bid_probability, legal_bid])
-                risk_ranking.sort(key=take_second)  # TODO change to use lambda
-                # TODO calculate probability, store in sorted array
-                # then pick highest probability items
-                # if there is a tie, randomly select from the highest probability set
-                # TODO remove illegal bids from this list
-                # get all possible alternatives (so all possible bids (raise only by 1 for now))
-                # raising requires knowing which bids have already been made
-                # for all other faces besides the one in the previous bid:
-                # check the probability of those bids
-                # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
-                # TODO compare these probabilities to probability of each possible raised/face changed bid
-                # may need to pass all previous events instead of just the one previous event...
+                risk_ranking.sort(key=lambda x: x[0], reverse=True)
+                best_bid_probability = risk_ranking[0][0]
+                # TODO compare these probabilities and decide if we should 'spot on', raise/match,
+                #  or challenge
                 # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
                 # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                # may need to search risk_ranking to see how may other bids have the best probability
                 # favor bidding on these faces if we can
                 # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
                 # risk personality attribute
