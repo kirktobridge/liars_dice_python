@@ -76,6 +76,9 @@ class LiarsDiceGame:
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         # TODO
         print(Fore.CYAN + '<i> Dice Rolled')
+        # TODO we are gonna have to change this entire loop
+        # the players do go in order, but the round doesn't end until there is a bid or a challenge
+        # also the order can change
         for p in range(0, self.num_players):
             print(
                 f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
@@ -198,8 +201,8 @@ class LiarsDiceGame:
                 print(
                     f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
-        # Log all events for the round TODO no let's log every time we append to round
-        # self.log_events(self.round_events)
+        # TODO we only increase this when the round is over NOT just when all players have went once.
+        # have to change for loop.
         self.round_num += 1
         if self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
