@@ -17,7 +17,7 @@ PROB_THRESHOLDS = {
     'CERTAIN': 1.0
 }
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
-DEBUG = True
+DEBUG = True  # used to activate behaviors for the developer
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PAUSE = 0.5 if not DEBUG else 0.1
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',

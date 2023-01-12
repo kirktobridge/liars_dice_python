@@ -62,8 +62,13 @@ class LiarsDiceGame:
             return -1
 
     def process_round(self):
-        # Pre-Round Tasks
-        # Notify user, log events
+        '''PRE-ROUND TASKS
+        - Increment Round Counter
+        - Notify User
+        - Log events
+        - Roll dice'''
+        # Increment round counter
+        self.round_num += 1
         print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
         self.round_events.clear()
         self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
@@ -132,12 +137,12 @@ class LiarsDiceGame:
                 # TODO for spot on and challenge:
                 # if someone loses a die, they go first in the next round?
 
-                # process challenge action
+                # Process CHALLENGE action
                 if cur_event[1] == Constants.ACTIONS[3]:
                     print(
                         Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
                     self.report_rolls()
-                    # challenge success
+                    # Challenge SUCCESS
                     if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
                         print(Fore.WHITE)  # TODO print chlg successs
                         inner_event = [True, Constants.ACTIONS[3],
@@ -146,7 +151,7 @@ class LiarsDiceGame:
                         self.players[p-1].lose_die()
                         round_cont = False
                         break
-                    # challenge failure
+                    # Challenge FAILURE
                     elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
                         # TODO print chlg fail
                         inner_event = [False, Constants.ACTIONS[3],
@@ -156,13 +161,13 @@ class LiarsDiceGame:
                         round_cont = False
                         break
 
-                # TODO process spot-on action
+                # Process SPOT ON action
                 if cur_event[1] == Constants.ACTIONS[4]:
                     print(
                         Fore.WHITE +
                         f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
                     )
-                    # spot-on success
+                    # Spot-on SUCCESS
                     if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
                         print(Fore.CYAN +
                               '<!> SPOT ON! Everyone else loses a die!')
@@ -172,7 +177,7 @@ class LiarsDiceGame:
                         round_cont = False
                         break
 
-                    else:  # spot-on failure
+                    else:  # Spot-on FAILURE
                         if self.players[p].spot == 'HUMAN':
                             print(
                                 Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
@@ -186,8 +191,12 @@ class LiarsDiceGame:
                         break
                     '''END OF WHILE ROUND_CONT LOOP'''
 
-        # POST-ROUND TASKS
-        # elimination checks
+        ''' POST-ROUND TASKS
+        - Process eliminations
+        - Rearrange player array
+        - Cap rounds if debugging '''
+
+        # Eliminate players who now have zero dice remaining
         if self.players[p].num_dice == 0:
             if self.players[p].spot == 'HUMAN':
                 print(Fore.BLUE + Style.BRIGHT +
@@ -211,11 +220,11 @@ class LiarsDiceGame:
                 print(
                     f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
-        # Increment round counter
-        self.round_num += 1
-        if self.round_num > self.max_rounds:
+        # Impose max rounds
+        if Constants.DEBUG and self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
+
         return self.game_status
 
     def log_events(self, events):
