@@ -146,19 +146,20 @@ class Player:
 
         # If the previous player made a bid
         elif prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
-            return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
+            # return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event[0]  # pulls previous turn's bid
             prev_bid_cnt = prev_bid[0]
             prev_bid_face = prev_bid[1]
-            needed_cnt = self.get_needed_cnt(prev_bid)
+            prev_bid_needed_cnt = self.get_needed_cnt(
+                prev_bid)
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
-            if needed_cnt == 0:
-                cumulative_probability = 1
+            if prev_bid_needed_cnt == 0:
+                cumulative_probability = 1.0
                 # TODO evaluate spot on conditions?
-            elif needed_cnt < 0:
+            elif prev_bid_needed_cnt < 0:
                 # negative number means we can safely raise this bid
                 # current philosophy for raising is that we don't want to
                 # raise the inherent bid risk for all players (and thus ourselves)
@@ -168,41 +169,62 @@ class Player:
                 # plus a few risked dice. This risk addition could be a personality
                 # attribute of the Player object, perhaps something to randomize (or
                 # create a distribution of across the playerset for a game)
-                spot_on_probability = 0
+                spot_on_probability = 0.0
                 output = [prev_bid_cnt+1, prev_bid_face]
                 new_action = Constants.ACTION[2]
 
-            elif needed_cnt > 0 and face_self_match_cnt > 0:
-                # p(x >= y) = 1 - p(x < y-1)
-                # we need
+            elif prev_bid_needed_cnt > 0:  # do I need this? > and face_self_match_cnt > 0:
+                # THREE CHOICES: BID, CHALLENGE, SPOT ON
+                # COMPARE:
                 # - probability that the previous bid is true (there are least a b's)
+                # ---- used for challenging
+                # ---- p(x >= y) = 1 - p(x < y-1)
                 # - probability that the previous bid is exactly true
-                cumulative_probability = 1 - model.cdf(needed_cnt-1)
-                spot_on_probability = model.pmf(needed_cnt)
+                # ---- used for spot-on
+                # - probability of all other legal bids
+                # ---- used for raising/matching bids
+                # we will then compare these three probabilities
+                cumulative_probability = 1 - model.cdf(prev_bid_needed_cnt-1)
+                spot_on_probability = model.pmf(prev_bid_needed_cnt)
+                # produce most probable bid, this will be compared to prev_bid's challenge or spot-on probability
                 all_prev_bids = []
                 # get list of previous bids
                 for event in prev_events:
                     if not isinstance(event, str) and \
                             (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
                         all_prev_bids.append(event[0])
-                # get list of possible bids
-                # a bid is allowed if:
-                # - we are raising (and we are not raising past the total number of dice)
-                # OR - we are matching the count AND this face has not been bid with this count yet
+
+                # BUILD LIST OF PERMISSIBLE BIDS:
+                # --- include all count-matching bids not already made this round
                 permissible_bids = [[prev_bid_cnt, face]
                                     for face in range(1, 7)
                                     if [prev_bid_cnt, face] not in all_prev_bids]  # if face != prev_bid_face]
-                # TODO remove previously made bids from this list
+                # --- include all raising bids
                 for raise_face in range(1, 7):
-                    permissable_bids.append([prev_bid_cnt+1, raise_face])
+                    permissible_bids.append([prev_bid_cnt+1, raise_face])
                 risk_ranking = []
+                #
+                # (tiebreaker: favor most commonly bid face in round so far,
+                # tiebreaker #2: favor highest face)
                 # compare probability for every legal option
+                # TODO do we need: best_bid_probability = 0.0
                 for legal_bid in permissible_bids:
-                    tmp_needed_cnt = self.get_needed_cnt(legal_bid)
-                    bid_probability = 1 - model.cdf(needed_cnt-1)
+                    needed_cnt = self.get_needed_cnt(legal_bid)
+                    if needed_cnt > 0:
+                        bid_probability = 1.0 - model.cdf(needed_cnt-1)
+                    elif needed_cnt <= 0:
+                        bid_probability = 1.0
+                   # TODO do we need: if bid_probability > best_bid_probability:
                     risk_ranking.append([bid_probability, legal_bid])
                 risk_ranking.sort(key=lambda x: x[0], reverse=True)
+                # favor popular faces? persuadability randomized personality attribute??
+                # get list of best (equally best) bids
                 best_bid_probability = risk_ranking[0][0]
+                best_bids = []
+                for prob in risk_ranking:
+                    if prob[0] == best_bid_probability:
+                        best_bids.append(prob)
+
                 # TODO compare these probabilities and decide if we should 'spot on', raise/match,
                 #  or challenge
                 # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
@@ -232,7 +254,11 @@ class Player:
         #
         return [output, new_action, self.name]
 
-    def get_needed_cnt(self, bid_cnt, bid_face):
+    def get_needed_cnt(self, bid):
+        '''Produces the number of rolled faces needed for a bid to be true,
+        after including the ones we have.'''
+        bid_cnt = bid[0]
+        bid_face = bid[1]
         face_self_match_cnt = self.dice.count(
             bid_face) + self.count_ones()
         needed_cnt = bid_cnt - face_self_match_cnt
@@ -247,7 +273,3 @@ class Player:
     def count_ones(self):
         self.wild_count = self.dice.count(1)
         return self.wild_count
-
-    @staticmethod
-    def take_second(elem):
-        return elem[1]
