@@ -15,7 +15,7 @@ class Player:
     def __init__(self, name, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
-        if Constants.DEBUG == True:
+        if Constants.DEBUG:
             if spot == 'CPU':
                 print(Fore.CYAN + Style.DIM +
                       f'<i> Player {self.name} has been created.')
@@ -36,7 +36,7 @@ class Player:
         count variable.'''
         self.dice[self.num_dice-1] = -1
         self.num_dice -= 1
-        if Constants.DEBUG == True:
+        if Constants.DEBUG:
             print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
 
     def add_die(self):
@@ -123,8 +123,9 @@ class Player:
         # (1) Read Previous Player's Action: from stack (prev_events) given by LiarsDiceGame
         #
         prev_event = prev_events[0]
-        # pulls value of new_action from previous turn
         prev_action = prev_event[1]
+        # pulls value of new_action from previous turn
+
         # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
@@ -180,7 +181,7 @@ class Player:
                 all_prev_bids = []
                 # get list of previous bids
                 for event in prev_events:
-                    if isinstance(event, str) == False and \
+                    if not isinstance(event, str) and \
                             (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
                         all_prev_bids.append(event)
                 # get list of possible bids

@@ -16,7 +16,7 @@ PROB_THRESHOLDS = {
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 DEBUG = True
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
-PAUSE = 0.5 if DEBUG == False else 0.1
+PAUSE = 0.5 if not DEBUG else 0.1
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
                 'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +

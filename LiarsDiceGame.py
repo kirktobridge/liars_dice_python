@@ -15,7 +15,7 @@ from colorama import Fore, Back, Style
 class LiarsDiceGame:
 
     def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS):
-        if Constants.DEBUG == True:
+        if Constants.DEBUG:
             print(Fore.MAGENTA + Style.DIM + '<i> Game Object Intitalized')
         self.num_players = num_players
         self.max_rounds = max_rounds
@@ -45,7 +45,7 @@ class LiarsDiceGame:
     def add_player(self, p):
         try:
             self.players.append(p)
-            if Constants.DEBUG == True:
+            if Constants.DEBUG:
                 print(Fore.MAGENTA + Style.DIM +
                       f'<i> Player {p.name} appended to game player list.')
         except Exception as e:
@@ -130,7 +130,7 @@ class LiarsDiceGame:
                     Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
                 self.report_rolls()
                 # challenge success
-                if self.round_rolls.count(prev_bid_face) < prev_bid_cnt:
+                if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
                     print(Fore.WHITE)
                     inner_event = [True, Constants.ACTIONS[3],
                                    self.players[p].name]
@@ -152,7 +152,7 @@ class LiarsDiceGame:
                     f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
                 )
                 # spot-on success
-                if self.round_rolls.count(prev_bid_face) == prev_bid_cnt:
+                if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
                     print(Fore.CYAN +
                           '<!> SPOT ON! Everyone else loses a die!')
                     for p1 in self.players:
@@ -179,7 +179,8 @@ class LiarsDiceGame:
             if self.players[p].spot == 'HUMAN':
                 print(Fore.BLUE + Style.BRIGHT +
                       f'<X> {self.players[p].name}, you have been eliminated from the game!')
-                self.game_status = False  # game over, human eliminated
+                if Constants.MULTIPLAYER_ON:
+                    self.game_status = False  # game over, human eliminated
             else:
                 print(Fore.WHITE +
                       f'<X> {self.players[p].name} has been eliminated from the game!')
@@ -229,7 +230,7 @@ class LiarsDiceGame:
             elif isinstance(event, str):
                 self.game_log.append(
                     '#' + str(self.event_counter) + ' ' + event)
-            # if Constants.DEBUG == True:
+            # if Constants.DEBUG:
             #     print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:
             self.print_error('log_event')
