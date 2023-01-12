@@ -190,27 +190,33 @@ class Player:
                 # OR - we are matching the count AND this face has not been bid with this count yet
                 permissible_bids = [[prev_bid_cnt, face]
                                     for face in range(1, 7) if face != prev_bid_face]
-                # TODO remove illegal bids from this list
-                # get all possible alternatives (so all possible bids (raise only by 1 for now))
-                # raising requires knowing which bids have already been made
-                # for all other faces besides the one in the previous bid:
-                # check the probability of th
-                # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
-                # TODO compare these probabilities to probability of each possible raised/face changed bid
-                # may need to pass all previous events instead of just the one previous event...
-                # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                # favor bidding on these faces if we can
-                # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                # risk personality attribute
+                for raise_face in range(1, 7):
+                    permissable_bids.append([prev_bid_cnt+1, raise_face])
+                for legal_bid in permissible_bids:
+                    # TODO calculate probability, store in sorted array
+                    # then pick highest probability items
+                    # if there is a tie, randomly select from the highest probability set
+                    # TODO remove illegal bids from this list
+                    # get all possible alternatives (so all possible bids (raise only by 1 for now))
+                    # raising requires knowing which bids have already been made
+                    # for all other faces besides the one in the previous bid:
+                    # check the probability of th
+                    # TODO compare these probabilities and decide if we should 'spot on', raise or challenge
+                    # TODO compare these probabilities to probability of each possible raised/face changed bid
+                    # may need to pass all previous events instead of just the one previous event...
+                    # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
+                    # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                    # favor bidding on these faces if we can
+                    # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
+                    # risk personality attribute
 
-        # should the player guess if the previous player was lying/taking bad risk
-        #  based on how many dice they have and how many dice they bet on?
-        #
-        # (3) Decision Making: Evaluate stats and make decision
-        #
-        # TODO: bid new face, raise bid, challenge, or spot on
-            # if previous bid unlikely, challenge
+                    # should the player guess if the previous player was lying/taking bad risk
+                    #  based on how many dice they have and how many dice they bet on?
+                    #
+                    # (3) Decision Making: Evaluate stats and make decision
+                    #
+                    # TODO: bid new face, raise bid, challenge, or spot on
+                    # if previous bid unlikely, challenge
 
         else:
             output = [-1, -1]
