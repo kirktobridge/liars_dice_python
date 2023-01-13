@@ -28,8 +28,8 @@ class Player:
         self.wild_count = 0
         self.mode_count = 0
         self.spot = spot
-        self.risk_appetite = random.randint()  # TODO)
-        self.peer_pressure_score = 0
+        self.risk_appetite = random.randint(1, 5)  # TODO)
+        self.peer_pressure_score = random.randint(1, 5)
         self.bid = []
 
     def lose_die(self):
@@ -189,10 +189,10 @@ class Player:
                 #   Lower score means we may consider challenge.
                 cumulative_probability = 1 - \
                     model.cdf(prev_bid_needed_cnt-1)
+                # TODO are we using the right function?
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
-                spot_on_probability = model.pmf(
-                    prev_bid_needed_cnt)
+                spot_on_probability = model.pmf(prev_bid_needed_cnt)
                 # (3) GET PROBABILITY OF BEST BID
                 #   (3.1) GET PROBABILITY OF ALL LEGAL BIDS
                 #       produce most probable bid, this will be compared to (1) and (2)
@@ -221,6 +221,7 @@ class Player:
                     needed_cnt = self.get_needed_cnt(legal_bid)
                     if needed_cnt > 0:
                         bid_probability = 1.0 - model.cdf(needed_cnt-1)
+                        # TODO is this the right function?
                     elif needed_cnt <= 0:
                         bid_probability = 1.0
                    # TODO do we need: if bid_probability > best_bid_probability:
@@ -233,23 +234,28 @@ class Player:
                 for prob in risk_ranking:
                     if prob[0] == best_bid_probability:
                         best_bids.append(prob)
+                if len(best_bids) > 1:
+                    # if we are peer pressure sensitive, pick most common
+                    if self.risk_appetite == 5:
+                        # TODO get mode of prev bid faces
+                        # favor mode
 
-                # TODO compare these probabilities and decide if we should 'spot on', raise/match,
-                #  or challenge
-                # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                # may need to search risk_ranking to see how may other bids have the best probability
-                # favor bidding on these faces if we can
-                # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                # risk personality attribute
+                        # TODO compare these probabilities and decide if we should 'spot on', raise/match,
+                        #  or challenge
+                        # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
+                        # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                        # may need to search risk_ranking to see how may other bids have the best probability
+                        # favor bidding on these faces if we can
+                        # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
+                        # risk personality attribute
 
-                # should the player guess if the previous player was lying/taking bad risk
-                #  based on how many dice they have and how many dice they bet on?
-                #
-                # (3) Decision Making: Evaluate stats and make decision
-                #
-                # TODO: bid new face, raise bid, challenge, or spot on
-                # if previous bid unlikely, challenge
+                        # should the player guess if the previous player was lying/taking bad risk
+                        #  based on how many dice they have and how many dice they bet on?
+                        #
+                        # (3) Decision Making: Evaluate stats and make decision
+                        #
+                        # TODO: bid new face, raise bid, challenge, or spot on
+                        # if previous bid unlikely, challenge
 
         else:
             output = [-1, -1]
