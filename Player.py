@@ -230,32 +230,36 @@ class Player:
                 # favor popular faces? persuadability randomized personality attribute??
                 # get list of best (equally best) bids
                 best_bid_probability = risk_ranking[0][0]
-                best_bids = []
-                for prob in risk_ranking:
-                    if prob[0] == best_bid_probability:
-                        best_bids.append(prob)
+                best_bids = [
+                    prob for prob in risk_ranking if prob[0] == best_bid_probability]
                 if len(best_bids) > 1:
                     # if we are peer pressure sensitive, pick most common
                     if self.risk_appetite == 5:
-                        # TODO get mode of prev bid faces
-                        # favor mode
+                        all_prev_bids_faces = [bid[1]
+                                               for all_prev_bid in all_prev_bids]
+                        prev_bids_face_mode = mode(all_prev_bids_faces)
+                        best_bid_candidate = None
+                        for bid in best_bids:
+                            if bid[]
+                        pass
+                    else:
+                        best_bid = best_bids[0]
+                # TODO compare these probabilities and decide if we should 'spot on', raise/match,
+                #  or challenge
+                # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
+                # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                # may need to search risk_ranking to see how may other bids have the best probability
+                # favor bidding on these faces if we can
+                # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
+                # risk personality attribute
 
-                        # TODO compare these probabilities and decide if we should 'spot on', raise/match,
-                        #  or challenge
-                        # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                        # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                        # may need to search risk_ranking to see how may other bids have the best probability
-                        # favor bidding on these faces if we can
-                        # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                        # risk personality attribute
-
-                        # should the player guess if the previous player was lying/taking bad risk
-                        #  based on how many dice they have and how many dice they bet on?
-                        #
-                        # (3) Decision Making: Evaluate stats and make decision
-                        #
-                        # TODO: bid new face, raise bid, challenge, or spot on
-                        # if previous bid unlikely, challenge
+                # should the player guess if the previous player was lying/taking bad risk
+                #  based on how many dice they have and how many dice they bet on?
+                #
+                # (3) Decision Making: Evaluate stats and make decision
+                #
+                # TODO: bid new face, raise bid, challenge, or spot on
+                # if previous bid unlikely, challenge
 
         else:
             output = [-1, -1]
