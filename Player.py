@@ -53,7 +53,7 @@ class Player:
             self.dice[d] = random.randint(1, 6)
 
     @ staticmethod
-    def grade(p):
+    def grade(p: float):
         '''Provides a classification for a probability by comparing a percentage to a
         predetermined set of thresholds found in the Constants file.'''
         grade = Constants.LOWEST_THRESHOLD
@@ -112,6 +112,8 @@ class Player:
             raise Exception('CPUs should not be using bid() function')
 
     def take_turn(self, prev_events: deque, tot_other_dice: int):
+        '''Process turn for a player by analyzing previous moves in the round and probabilities of success on various actions.
+        Returns an outputted bid, an action code, and the player's name.'''
         # TODO form and react to impressions of other players (trust score, expected bids, expected count of ones based on bids)
         # for each turn record
 

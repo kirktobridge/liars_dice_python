@@ -32,6 +32,7 @@ class LiarsDiceGame:
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
+        self.loser_index = -99
 
     def print_error(self, func_name, e=None):
         log_string = (Fore.MAGENTA +
@@ -88,7 +89,6 @@ class LiarsDiceGame:
         # also the order can change
         # solution- wrap for in while True, rearrange player array when we break out of for loop
         round_cont = True
-        loser_index = -99
         while round_cont:
             for p in range(0, self.num_players):
                 print(
@@ -146,7 +146,7 @@ class LiarsDiceGame:
                     # Challenge SUCCESS
                     if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
                         print(Fore.WHITE)  # TODO print chlg successs
-                        inner_event = [True, Constants.ACTIONS[3],
+                        inner_event = ['SUCCESS', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
                         loser_index = p-1
@@ -157,7 +157,7 @@ class LiarsDiceGame:
                     # Challenge FAILURE
                     elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
                         # TODO print chlg fail
-                        inner_event = [False, Constants.ACTIONS[3],
+                        inner_event = ['FAILURE', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
@@ -175,11 +175,13 @@ class LiarsDiceGame:
                     if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
                         print(Fore.CYAN +
                               '<!> SPOT ON! Everyone else loses a die!')
+                        inner_event = ['SUCCESS', Constants.ACTIONS[4],
+                                       self.players[p].name]
+                        self.log_event(inner_event)
                         for p1 in self.players:
                             if p1.name != self.players[p].name:
                                 p1.lose_die()
                         round_cont = False
-                        # TODO loser_index?
                         break
 
                     else:  # Spot-on FAILURE
@@ -191,6 +193,9 @@ class LiarsDiceGame:
                             print(Fore.CYAN +
                                   f'{self.players[p].name} lost their spot on call!')
 
+                        inner_event = ['FAILURE', Constants.ACTIONS[4],
+                                       self.players[p].name]
+                        self.log_event(inner_event)
                         self.players[p].lose_die()
                         loser_index = p
                         round_cont = False
@@ -199,43 +204,50 @@ class LiarsDiceGame:
 
         ''' POST-ROUND TASKS
         - Process eliminations
-        - Rearrange player array TODO
+        - Rearrange player array
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
-        if self.players[p].num_dice == 0:
-            if self.players[p].spot == 'HUMAN':
-                print(Fore.BLUE + Style.BRIGHT +
-                      f'<X> {self.players[p].name}, you have been eliminated from the game!')
-                if Constants.MULTIPLAYER_ON:
-                    self.game_status = False  # game over, human eliminated
-            else:
-                print(Fore.WHITE +
-                      f'<X> {self.players[p].name} has been eliminated from the game!')
-            try:
-                self.players.pop(p)
-                if loser_index == p:
-                    loser_index = -99
-            except Exception as e:
-                print(e)
-            self.num_players -= 1
-            self.count_dice()
-            if self._num_players < 2:
-                print(
-                    f'<!> There is only one player remaining. {self.players[p].name} has won the game!')
-                self.game_status = False
-            else:
-                print(
-                    f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
+        for p1 in range(0, self.num_players):
+
+            if self.players[p1].num_dice == 0:
+
+                if self.players[p1].spot == 'HUMAN':
+                    print(Fore.BLUE + Style.BRIGHT +
+                          f'<X> {self.players[p1].name}, you have been eliminated from the game!')
+                    if Constants.MULTIPLAYER_ON:
+                        self.game_status = False  # game over, human eliminated
+                else:
+                    print(Fore.WHITE +
+                          f'<X> {self.players[p1].name} has been eliminated from the game!')
+                try:
+                    self.players.pop(p)
+                    if loser_index == p:
+                        loser_index = -99
+                except Exception as e:
+                    print(e)
+                self.num_players -= 1
+                self.count_dice()
+            # end of for loop
+
+        # Report state of game or end it
+        if self._num_players < 2:
+            print(
+                f'<!> There is only one player remaining. {self.players[p1].name} has won the game!')
+            self.game_status = False
+        else:
+            print(
+                f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
 
         # Impose max rounds
         if Constants.DEBUG and self.round_num > self.max_rounds:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
 
-        # TODO rearrange Player array
-        # well, we don't actually have to rearrange it.
-        # we need to get the for loop to start there, though
+        # Rearrange Player array
+        if loser_index != -99:
+            self.players.insert(0, self.players.pop[loser_index])
+            loser_index = -99
 
         return self.game_status
 
