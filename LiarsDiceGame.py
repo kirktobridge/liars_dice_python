@@ -84,10 +84,6 @@ class LiarsDiceGame:
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         # TODO
         print(Fore.CYAN + '<i> Dice Rolled')
-        # TODO we are gonna have to change this entire loop
-        # the players do go in order, but the round doesn't end until there is a bid or a challenge
-        # also the order can change
-        # solution- wrap for in while True, rearrange player array when we break out of for loop
         round_cont = True
         while round_cont:
             for p in range(0, self.num_players):
@@ -135,17 +131,22 @@ class LiarsDiceGame:
                     self.log_events(self.round_events)
                     continue
 
-                # TODO for spot on and challenge:
-                # if someone loses a die, they go first in the next round?
-
                 # Process CHALLENGE action
                 if cur_event[1] == Constants.ACTIONS[3]:
                     print(
-                        Fore.WHITE + f'<!> Player {self.players[p]} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
+                        Fore.WHITE + f'<!> Player {self.players[p].name} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!')
                     self.report_rolls()
                     # Challenge SUCCESS
-                    if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) < prev_bid_cnt:
-                        print(Fore.WHITE)  # TODO print chlg successs
+                    prev_bid_actual_cnt = self.round_rolls.count(prev_bid_face)
+                    actual_ones_cnt = self.round_rolls.count(1)
+                    if prev_bid_actual_cnt + actual_ones_cnt < prev_bid_cnt:
+                        output = Fore.WHITE + \
+                            self.players[p].name + \
+                            f'/\'s challenge succeeded- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s)'
+                        if actual_ones_cnt > 0:
+                            output += f' and {actual_ones_cnt} 1\'s!'
+                        else:
+                            output += '!'
                         inner_event = ['SUCCESS', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
@@ -263,7 +264,7 @@ class LiarsDiceGame:
             self.print_error('log_events', e)
 
     def log_event(self, event):
-        # NEW NEW TODO
+        '''Adds entry to game log for analysis by developer.'''
         self.round_events.appendleft(event)
         self.event_counter += 1
         try:
@@ -300,7 +301,5 @@ class LiarsDiceGame:
                     else:
                         output += ", "
                 print(output)
-            # TODO return roll_freq
         except Exception as e:
             self.print_error('report_rolls')
-            # TODO return None
