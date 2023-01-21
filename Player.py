@@ -125,13 +125,13 @@ class Player:
         # (0) HANDLED BY GAME CLASS - ROLL DICE (should happen at beginning of round with other
         # players, not on turn)
         #
-        # (1) Read Previous Player's Action: from stack (prev_events) given by LiarsDiceGame
+        # (I) Read Previous Player's Action: from stack (prev_events) given by LiarsDiceGame
         #
         prev_event = prev_events[0]
         prev_action = prev_event[1]
         # pulls value of new_action from previous turn
 
-        # (2) Statistical Analysis: Find the mode of our roll and our count of ones.
+        # (II) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
@@ -139,14 +139,14 @@ class Player:
         self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
 
-        # If we are the first player
+        # If we are the first player, we must bid
         if prev_action == Constants.ACTIONS[0]:
             # if we have a safe bid (mode)
             if self.mode_count >= Constants.MINIMUM_BID:
                 output = [Constants.MINIMUM_BID +
                           self.risk_appetite, self.rolls_mode]
             else:  # we have no mode assuming constant is 2
-                output = [Constants.MINIMUM_BID + self.risk_appetite-1,
+                output = [Constants.MINIMUM_BID + self.risk_appetite,
                           self.dice[random.randint(0, self.num_dice-1)]]
             new_action = Constants.ACTIONS[1]
 
@@ -222,7 +222,6 @@ class Player:
                 #       (tiebreaker: favor most commonly bid face in round so far,
                 #       tiebreaker #2: favor highest face)
                 #       compare probability for every legal option
-                # TODO do we need: best_bid_probability = 0.0
                 for legal_bid in permissible_bids:
                     needed_cnt = self.get_needed_cnt(legal_bid)
                     if needed_cnt > 0:
@@ -239,7 +238,7 @@ class Player:
                     prob for prob in risk_ranking if prob[0] == best_bid_probability]
                 if len(best_bids) > 1:
                     # if we are peer pressure sensitive, pick most common
-                    if self.peer_pressure_score >= 5:
+                    if self.peer_pressure_score == 1:
                         all_prev_bids_faces = [bid[1]
                                                for all_prev_bid in all_prev_bids]
                         prev_bids_face_mode = mode(all_prev_bids_faces)
@@ -255,22 +254,36 @@ class Player:
                         best_bid = best_bids[0]
                 else:
                     best_bid = best_bids[0]
-                # TODO compare these probabilities and decide if we should 'spot on', raise/match,
-                #  or challenge
-                # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                # may need to search risk_ranking to see how may other bids have the best probability
-                # favor bidding on these faces if we can
-                # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                # risk personality attribute
 
-                # should the player guess if the previous player was lying/taking bad risk
-                #  based on how many dice they have and how many dice they bet on?
-                #
-                # (3) Decision Making: Evaluate stats and make decision
-                #
-                # TODO: bid new face, raise bid, challenge, or spot on
-                # if previous bid unlikely, challenge
+                best_probability = max(
+                    [challenge_success_probability, spot_on_probability, best_bid_probability])
+                if challenge_success_probability == best_probability:
+                    output = [-1, -1]
+                    new_action = Constants.ACTIONS[3]
+                elif spot_on_probability == best_probability:
+                    output = [-1, -1]
+                    new_action = Constants.ACTIONS[4]
+                elif best_bid_probability == best_probability:
+                    output = best_bid
+                    new_action = 1
+                    pass  # TODO raise or bid
+
+                    # TODO compare these probabilities and decide if we should 'spot on', raise/match,
+                    #  or challenge
+                    # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
+                    # get list of previous bids' faces from prev_events array (where action = bid/raise)
+                    # may need to search risk_ranking to see how may other bids have the best probability
+                    # favor bidding on these faces if we can
+                    # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
+                    # risk personality attribute
+
+                    # should the player guess if the previous player was lying/taking bad risk
+                    #  based on how many dice they have and how many dice they bet on?
+                    #
+                    # (III) Decision Making: Evaluate stats and make decision
+                    #
+                    # TODO: bid new face, raise bid, challenge, or spot on
+                    # if previous bid unlikely, challenge
 
         else:
             output = [-1, -1]

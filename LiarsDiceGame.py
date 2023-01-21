@@ -24,10 +24,6 @@ class LiarsDiceGame:
         self.prev_action = ''
         self.game_status = True
         self.round_rolls = []
-        # TODO
-        # you can't bid the same face and count in a round
-        # usually (or always?) safest: bid without raising. is raising always more risky? perhaps
-        # then maybe don't raise unless you there are no face-count combinations left to play at the current count
         self.game_log = []
         self.tot_num_dice = 0
         self.event_counter = 0
@@ -82,7 +78,6 @@ class LiarsDiceGame:
             p0.roll()
             self.round_rolls.extend(p0.dice)
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
-        # TODO
         print(Fore.CYAN + '<i> Dice Rolled')
         round_cont = True
         while round_cont:
@@ -142,11 +137,12 @@ class LiarsDiceGame:
                     if prev_bid_actual_cnt + actual_ones_cnt < prev_bid_cnt:
                         output = Fore.WHITE + \
                             self.players[p].name + \
-                            f'/\'s challenge succeeded- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s)'
+                            f'/\'s challenge succeeds- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s)'
                         if actual_ones_cnt > 0:
                             output += f' and {actual_ones_cnt} 1\'s!'
                         else:
                             output += '!'
+                        print(output)
                         inner_event = ['SUCCESS', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
@@ -157,7 +153,13 @@ class LiarsDiceGame:
                         break
                     # Challenge FAILURE
                     elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
-                        # TODO print chlg fail
+                        output = Fore.WHITE + \
+                            self.players[p].name + \
+                            f'/\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s)'
+                        if actual_ones_cnt > 0:
+                            output += f' and {actual_ones_cnt} 1\'s!'
+                        else:
+                            output += '!'
                         inner_event = ['FAILURE', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
@@ -284,7 +286,6 @@ class LiarsDiceGame:
     def report_rolls(self):
         print(Fore.CYAN + '<i> Lifting cups:\n')
         try:
-            # TODO roll_freq = Counter(self.round_rolls)
             for p in self.players:
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
                 player_roll_freq = Counter(p.dice)
