@@ -110,7 +110,7 @@ class LiarsDiceGame:
                     continue
                 # player takes turn, output (bid, if any) and action are recorded
                 cur_event = [None] * 3
-                try:
+                ''' try:
                     # Provide player list of round's events so far, and the number
                     # of other dice remaining
                     if Constants.DEBUG:
@@ -133,7 +133,18 @@ class LiarsDiceGame:
                     cur_event[2] = self.players[p].name
                     self.log_event(cur_event)
                     self.log_events(self.round_events)
-                    continue
+                    continue '''
+                if Constants.DEBUG:
+                    self.game_log_file.write(
+                        f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice}.\n')
+                    cur_event = self.players[p].take_turn(
+                        self.round_events, self.count_dice()-self.players[p].num_dice)
+                    self.log_event(cur_event)
+                    # bid stored in cur_event[0]
+                    # action stored in cur_event[1]
+                    if cur_event[1] == Constants.ACTIONS[5]:
+                        raise Exception("Blank new_action")
+
                 # Process BID/RAISE action
                 if cur_event[1] == Constants.ACTIONS[1]:
                     print(
@@ -169,8 +180,8 @@ class LiarsDiceGame:
                         loser_index = p-1
                         self.players[loser_index].lose_die()
                         round_cont = False
-                        # refactor this later: process_challenge()
                         break
+                        # refactor this later: process_challenge()
                     # Challenge FAILURE
                     elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
                         output = Fore.WHITE + \
@@ -228,8 +239,12 @@ class LiarsDiceGame:
                         loser_index = p
                         round_cont = False
                         break
-                    '''END OF WHILE ROUND_CONT LOOP'''
+            ''' END OF FOR-PLAYER LOOP'''
+            if Constants.DEBUG:
+                self.game_log_file.write('Broke out of for loop')
 
+        self.game_log_file.write('Broke out of while round_cont loop')
+        ''' END OF WHILE ROUND_CONT LOOP'''
         ''' POST-ROUND TASKS
         - Process eliminations
         - Rearrange player array
@@ -261,7 +276,7 @@ class LiarsDiceGame:
             # end of for loop
 
         # Report state of game or end it
-        if self._num_players < 2:
+        if self.num_players < 2:
             print(
                 f'<!> There is only one player remaining. {self.players[p1].name} has won the game!')
             time.sleep(Constants.PAUSE)

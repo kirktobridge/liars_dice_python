@@ -164,10 +164,9 @@ class Player:
                 prev_bid)
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
-            if prev_bid_needed_cnt == 0:
-                challenge_success_probability = 0
-                # if we know this bid is true, don't challenge
-            elif prev_bid_needed_cnt < 0:
+
+            # if we know this bid is true, don't challenge
+            if prev_bid_needed_cnt < 0:
                 # negative number means we can safely raise this bid
                 # current philosophy for raising is that we don't want to
                 # raise the inherent bid risk for all players (and thus ourselves)
@@ -182,7 +181,7 @@ class Player:
                 output = [prev_bid_cnt+1, prev_bid_face]
                 new_action = Constants.ACTIONS[2]
 
-            elif prev_bid_needed_cnt > 0:
+            elif prev_bid_needed_cnt >= 0:
                 # THREE CHOICES: BID, CHALLENGE, SPOT ON
                 # COMPARE:
                 # P(CHALLENGE FAILS):
@@ -195,8 +194,11 @@ class Player:
 
                 # (1) GET PROBABILITY OF PREVIOUS BID - CHALLENGE
                 #   Lower score means we may consider challenge.
-                challenge_success_probability = model.cdf(
-                    prev_bid_needed_cnt-1)
+                if prev_bid_needed_cnt == 0:
+                    challenge_success_probability = 0
+                else:
+                    challenge_success_probability = model.cdf(
+                        prev_bid_needed_cnt-1)
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
                 spot_on_probability = model.pmf(prev_bid_needed_cnt)
@@ -217,62 +219,70 @@ class Player:
                                     if [prev_bid_cnt, face] not in all_prev_bids]  # if face != prev_bid_face]
                 #           (3.1.1.2) include all raising bids
                 for raise_face in range(1, 7):
-                    permissible_bids.append([prev_bid_cnt+1, raise_face])
+                    if prev_bid_cnt + 1 <= tot_other_dice:
+                        permissible_bids.append([prev_bid_cnt+1, raise_face])
                 risk_ranking = []
                 #   (3.2) GET BEST BID
                 #       (tiebreaker: favor most commonly bid face in round so far,
                 #       tiebreaker #2: favor highest face)
                 #       compare probability for every legal option
-                for legal_bid in permissible_bids:
-                    needed_cnt = self.get_needed_cnt(legal_bid)
-                    if needed_cnt > 0:
-                        bid_probability = 1.0 - model.cdf(needed_cnt-1)
-                        # TODO is this the right function?
-                    elif needed_cnt <= 0:
-                        bid_probability = 1.0
-                    risk_ranking.append([bid_probability, legal_bid])
-                risk_ranking.sort(key=lambda x: x[0], reverse=True)
-                # favor popular faces? persuadability randomized personality attribute??
-                # get list of best (equally best) bids
-                best_bid_probability = risk_ranking[0][0]
-                best_bids = [
-                    prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
-                if len(best_bids) > 1:
-                    # if we are peer pressure sensitive, pick most common
-                    if self.peer_pressure_score == 1:
-                        all_prev_bids_faces = [all_prev_bid[1]
-                                               for all_prev_bid in all_prev_bids]
-                        prev_bids_face_mode = mode(all_prev_bids_faces)
-                        best_bid_candidate = 0
-                        for bid in best_bids:
-                            if bid[1] == prev_bids_face_mode:
-                                best_bid = bid
-                                break
-                            else:
-                                continue
-                    # otherwise just take the top bid
+                best_bid = [-1, -1]
+                if len(permissible_bids) >= 1:
+                    # if there is at least one bid available
+                    for legal_bid in permissible_bids:
+                        needed_cnt = self.get_needed_cnt(legal_bid)
+                        if needed_cnt > 0:
+                            bid_probability = 1.0 - model.cdf(needed_cnt-1)
+                            # TODO is this the right function?
+                        elif needed_cnt <= 0:
+                            bid_probability = 1.0
+                        risk_ranking.append([bid_probability, legal_bid])
+                    risk_ranking.sort(key=lambda x: x[0], reverse=True)
+                    # get list of best (equally best) bids
+                    best_bid_probability = risk_ranking[0][0]
+                    best_bids = [
+                        prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
+                    if len(best_bids) > 1:
+                        # if we are peer pressure sensitive, pick most common
+                        if self.peer_pressure_score == 1:
+                            all_prev_bids_faces = [all_prev_bid[1]
+                                                   for all_prev_bid in all_prev_bids]
+                            prev_bids_face_mode = mode(all_prev_bids_faces)
+                            for bid0 in best_bids:
+                                if bid0[1] == prev_bids_face_mode:
+                                    best_bid = bid0
+                                    break
+                                else:
+                                    continue
+                        # otherwise just take the top bid
+                        else:
+                            best_bid = best_bids[0]
+                    # if there is only one best bid, use it
                     else:
                         best_bid = best_bids[0]
+                # if there are no permissible bids, don't bid
                 else:
-                    best_bid = best_bids[0]
+                    best_bid_probability = 0
+                    best_bid = [-2, -2]  # should never be used
 
                 best_probability = max(
                     [challenge_success_probability, spot_on_probability, best_bid_probability])
-                if challenge_success_probability == best_probability:
-                    output = [-1, -1]
-                    new_action = Constants.ACTIONS[3]
-                elif spot_on_probability == best_probability:
-                    output = [-1, -1]
-                    new_action = Constants.ACTIONS[4]
-                elif best_bid_probability == best_probability:
-                    output = best_bid
-                    if best_bid[0] > prev_bid_cnt:
-                        new_action = Constants.ACTIONS[2]
-                    else:
-                        new_action = Constants.ACTIONS[1]
-                else:
+                if best_probability > 0:
+                    if challenge_success_probability == best_probability:
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[3]
+                    elif spot_on_probability == best_probability:
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[4]
+                    elif best_bid_probability == best_probability:
+                        output = best_bid
+                        if best_bid[0] > prev_bid_cnt:
+                            new_action = Constants.ACTIONS[2]
+                        else:
+                            new_action = Constants.ACTIONS[1]
+                else:  # if no items are possible
                     if self.risk_appetite == 1:
-                        # if kinda risky, challenge
+                        # if personality is kinda risky, challenge
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[3]
                     elif self.risk_appetite == 2:
