@@ -41,6 +41,7 @@ class Player:
         self.num_dice -= 1
         if Constants.DEBUG:
             print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
+            time.sleep(Constants.PAUSE/2)
 
     def add_die(self):
         '''Adds virtual die to Player's dice inventory.'''
