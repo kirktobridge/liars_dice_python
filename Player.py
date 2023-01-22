@@ -233,7 +233,6 @@ class Player:
                         needed_cnt = self.get_needed_cnt(legal_bid)
                         if needed_cnt > 0:
                             bid_probability = 1.0 - model.cdf(needed_cnt-1)
-                            # TODO is this the right function?
                         elif needed_cnt <= 0:
                             bid_probability = 1.0
                         risk_ranking.append([bid_probability, legal_bid])
@@ -254,6 +253,9 @@ class Player:
                                     break
                                 else:
                                     continue
+                            # but if we don't find a mode, then just use the top bid
+                            if best_bid == [-1, -1]:
+                                best_bid = best_bids[0]
                         # otherwise just take the top bid
                         else:
                             best_bid = best_bids[0]
