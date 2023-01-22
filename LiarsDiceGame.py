@@ -1,6 +1,7 @@
 import time
 import os
 import sys
+from datetime import datetime
 import random
 import Constants
 from Player import Player
@@ -25,6 +26,8 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self.game_log = []
+        self.game_log_file = open(
+            f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt', 'w+')
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
@@ -275,9 +278,12 @@ class LiarsDiceGame:
                 event_w_cnt.insert(0, "#" + str(self.event_counter))
                 event_w_cnt.extend(event)
                 self.game_log.append(event_w_cnt)
+                self.game_log_file.write(str(event_w_cnt) + '\n')
             elif isinstance(event, str):
-                self.game_log.append(
-                    '#' + str(self.event_counter) + ' ' + event)
+                event_string = '#' + str(self.event_counter) + ' ' + event
+                self.game_log.append(event_string)
+                self.game_log_file.write(event_string + '\n')
+
             # if Constants.DEBUG:
             #     print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:
