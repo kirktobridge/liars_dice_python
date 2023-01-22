@@ -136,11 +136,13 @@ class Player:
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
         new_action = Constants.ACTIONS[5]
+        output = None
         self.rolls_mode = mode(self.dice)  # what is our most common roll?
         self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
 
         # If we are the first player, we must bid
         if prev_action == Constants.ACTIONS[0]:
+            print('START RECIEVED BY ' + self.name)
             # if we have a safe bid (mode)
             if self.mode_count >= Constants.MINIMUM_BID:
                 output = [Constants.MINIMUM_BID +
@@ -177,7 +179,7 @@ class Player:
                 challenge_success_probability = 0.0
                 spot_on_probability = 0.0
                 output = [prev_bid_cnt+1, prev_bid_face]
-                new_action = Constants.ACTION[2]
+                new_action = Constants.ACTIONS[2]
 
             elif prev_bid_needed_cnt > 0:
                 # THREE CHOICES: BID, CHALLENGE, SPOT ON
@@ -233,7 +235,7 @@ class Player:
                 # get list of best (equally best) bids
                 best_bid_probability = risk_ranking[0][0]
                 best_bids = [
-                    prob for prob in risk_ranking if prob[0] == best_bid_probability]
+                    prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
                 if len(best_bids) > 1:
                     # if we are peer pressure sensitive, pick most common
                     if self.peer_pressure_score == 1:
@@ -288,7 +290,7 @@ class Player:
                 ' TODO CATCHALL BEHAVIOR NOT IMPLEMENTED'
             # TODO catch-all behavior
             raise Exception(
-                Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
+                Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
         #
         # (4) Execute Decision
         #

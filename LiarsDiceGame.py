@@ -20,7 +20,7 @@ class LiarsDiceGame:
             print(Fore.MAGENTA + Style.DIM + '<i> Game Object Intitalized')
         self.num_players = num_players
         self.max_rounds = max_rounds
-        self.round_num = 1
+        self.round_num = 0
         self.players = []
         self.prev_action = ''
         self.game_status = True
@@ -37,10 +37,13 @@ class LiarsDiceGame:
         log_string = (Fore.MAGENTA +
                       f'Exception caught in {func_name}! - ') + str(e)
         print(Style.DIM + log_string)
-        self.log_event(log_string)
+
         fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
-        print(Fore.MAGENTA + Style.DIM + str(sys.exc_info()
-              [1]), fname, sys.exc_info()[2].tb_lineno)
+        log_string2 = str(sys.exc_info()
+                          [1]) + str(fname) + str(sys.exc_info()[2].tb_lineno)
+        print(Fore.MAGENTA + Style.DIM + log_string2)
+
+        self.log_event(log_string + log_string2)
 
     def add_player(self, p):
         try:
@@ -110,6 +113,9 @@ class LiarsDiceGame:
                 try:
                     # Provide player list of round's events so far, and the number
                     # of other dice remaining
+                    if Constants.DEBUG:
+                        self.game_log_file.write(
+                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice}.\n')
                     cur_event = self.players[p].take_turn(
                         self.round_events, self.count_dice()-self.players[p].num_dice)
                     self.log_event(cur_event)
