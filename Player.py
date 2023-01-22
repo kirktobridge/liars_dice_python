@@ -153,7 +153,7 @@ class Player:
             new_action = Constants.ACTIONS[1]
 
         # If the previous player made a bid
-        elif prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
+        elif prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event[0]  # pulls previous turn's bid
@@ -239,7 +239,7 @@ class Player:
                 if len(best_bids) > 1:
                     # if we are peer pressure sensitive, pick most common
                     if self.peer_pressure_score == 1:
-                        all_prev_bids_faces = [bid[1]
+                        all_prev_bids_faces = [all_prev_bid[1]
                                                for all_prev_bid in all_prev_bids]
                         prev_bids_face_mode = mode(all_prev_bids_faces)
                         best_bid_candidate = 0
