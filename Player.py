@@ -152,7 +152,6 @@ class Player:
 
         # If the previous player made a bid
         elif prev_action == (Constants.ACTIONS[1] or Constants.ACTIONS[2]):
-            # return [[-1, -1], Constants.ACTIONS[5] + ' TODO BID/RAISE/CHALLENGE DECISION', self.name]
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event[0]  # pulls previous turn's bid
@@ -180,7 +179,7 @@ class Player:
                 output = [prev_bid_cnt+1, prev_bid_face]
                 new_action = Constants.ACTION[2]
 
-            elif prev_bid_needed_cnt > 0:  # do I need this? > and face_self_match_cnt > 0:
+            elif prev_bid_needed_cnt > 0:
                 # THREE CHOICES: BID, CHALLENGE, SPOT ON
                 # COMPARE:
                 # P(CHALLENGE FAILS):
@@ -195,7 +194,6 @@ class Player:
                 #   Lower score means we may consider challenge.
                 challenge_success_probability = model.cdf(
                     prev_bid_needed_cnt-1)
-                # TODO are we using the right function?
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
                 spot_on_probability = model.pmf(prev_bid_needed_cnt)
@@ -265,33 +263,32 @@ class Player:
                     new_action = Constants.ACTIONS[4]
                 elif best_bid_probability == best_probability:
                     output = best_bid
-                    new_action = 1
-                    pass  # TODO raise or bid
-
-                    # TODO compare these probabilities and decide if we should 'spot on', raise/match,
-                    #  or challenge
-                    # TODO what do we do when nothing we want to say or can say is likely? randomize choice, but:
-                    # get list of previous bids' faces from prev_events array (where action = bid/raise)
-                    # may need to search risk_ranking to see how may other bids have the best probability
-                    # favor bidding on these faces if we can
-                    # and perhaps favor actions with riskier consequences (challenge, spot on) based on a
-                    # risk personality attribute
-
-                    # should the player guess if the previous player was lying/taking bad risk
-                    #  based on how many dice they have and how many dice they bet on?
-                    #
-                    # (III) Decision Making: Evaluate stats and make decision
-                    #
-                    # TODO: bid new face, raise bid, challenge, or spot on
-                    # if previous bid unlikely, challenge
-
+                    if best_bid[0] > prev_bid_cnt:
+                        new_action = Constants.ACTIONS[2]
+                    else:
+                        new_action = Constants.ACTIONS[1]
+                else:
+                    if self.risk_appetite == 1:
+                        # if kinda risky, challenge
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[3]
+                    elif self.risk_appetite == 2:
+                        # if even more risky, spot on
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[4]
+                    else:
+                        output = best_bid
+                        if best_bid[0] > prev_bid_cnt:
+                            new_action = Constants.ACTIONS[2]
+                        else:
+                            new_action = Constants.ACTIONS[1]
         else:
             output = [-1, -1]
             new_action = Constants.ACTIONS[5] + \
                 ' TODO CATCHALL BEHAVIOR NOT IMPLEMENTED'
             # TODO catch-all behavior
-            # raise Exception(
-            #     Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
+            raise Exception(
+                Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Action: {prev_action}')
         #
         # (4) Execute Decision
         #
