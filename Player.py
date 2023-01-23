@@ -9,6 +9,9 @@ import colorama
 from colorama import Fore, Back, Style
 from scipy.stats import binom
 
+# TODO account for situation when we cannot raise or match the bid, we must challenge or spot on
+# TODO how do we choose btween challenge and spot on in this scenario?
+
 
 class Player:
 

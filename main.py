@@ -95,6 +95,7 @@ def main():
         spot = 'HUMAN'
     game.add_player(
         Player(input(Fore.BLUE + '<?> What be yer name, matey? '), spot=spot))
+    # TODO exception handling for user entering name that is in reserved player name list
     rand_int = -1
     rand_ints_used = [-1]
     for p in range(1, num_players):
@@ -109,8 +110,6 @@ def main():
 
     while run_game:
         run_game = game.process_round()
-        if Constants.DEBUG:
-            game.report_rolls()
 
     print(Fore.BLUE + Style.BRIGHT +
           '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')

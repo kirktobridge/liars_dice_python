@@ -136,7 +136,7 @@ class LiarsDiceGame:
                     continue '''
                 if Constants.DEBUG:
                     self.game_log_file.write(
-                        f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice}.\n')
+                        f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     cur_event = self.players[p].take_turn(
                         self.round_events, self.count_dice()-self.players[p].num_dice)
                     self.log_event(cur_event)
@@ -151,7 +151,7 @@ class LiarsDiceGame:
                         Fore.WHITE + f'<!> {self.players[p].name} bids {cur_event[0][0]} {cur_event[0][1]}\'s.')
                     time.sleep(Constants.PAUSE)
                 # Process RAISE action
-                elif cur_event == Constants.ACTIONS[2]:
+                elif cur_event[1] == Constants.ACTIONS[2]:
                     print(
                         Fore.WHITE + f'<!> {self.players[p].name} raises the bid to {cur_event[0][0]} {cur_event[0][1]}\'s.')
                     time.sleep(Constants.PAUSE)
@@ -161,32 +161,35 @@ class LiarsDiceGame:
                         Fore.WHITE + f'<!> {self.players[p].name} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by {prev_player_nm}!')
                     self.report_rolls()
                     time.sleep(Constants.PAUSE)
+                    round_cont = False
                     # Challenge SUCCESS
                     prev_bid_actual_cnt = self.round_rolls.count(prev_bid_face)
+
+                    # only count ones if we're not already counting ones
                     actual_ones_cnt = self.round_rolls.count(1)
-                    if prev_bid_actual_cnt + actual_ones_cnt < prev_bid_cnt:
-                        output = Fore.WHITE + \
-                            self.players[p].name + \
-                            f'/\'s challenge succeeds- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s)'
-                        if actual_ones_cnt > 0:
+                    if prev_bid_face != 1:
+                        checked_cnt = prev_bid_actual_cnt + actual_ones_cnt
+                    else:
+                        checked_cnt = prev_bid_actual_cnt
+                    # success condition
+                    if checked_cnt < prev_bid_cnt:
+                        output = f'{self.players[p].name}\'s challenge succeeds- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s'
+                        if actual_ones_cnt > 0 and prev_bid_face != 1:
                             output += f' and {actual_ones_cnt} 1\'s!'
                         else:
                             output += '!'
-                        print(output)
+                        print(Fore.WHITE + output)
                         time.sleep(Constants.PAUSE)
                         inner_event = ['SUCCESS', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
-                        loser_index = p-1
-                        self.players[loser_index].lose_die()
-                        round_cont = False
-                        break
+                        self.loser_index = p-1
+                        self.players[self.loser_index].lose_die()
                         # refactor this later: process_challenge()
                     # Challenge FAILURE
-                    elif self.round_rolls.count(prev_bid_face) >= prev_bid_cnt:
+                    elif checked_cnt >= prev_bid_cnt:
                         output = Fore.WHITE + \
-                            self.players[p].name + \
-                            f'/\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s)'
+                            f'{self.players[p].name}\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s)'
                         if actual_ones_cnt > 0:
                             output += f' and {actual_ones_cnt} 1\'s!'
                         else:
@@ -197,9 +200,8 @@ class LiarsDiceGame:
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
-                        loser_index = p
-                        round_cont = False
-                        break
+                        self.loser_index = p
+                    break
 
                 # Process SPOT ON action
                 if cur_event[1] == Constants.ACTIONS[4]:
@@ -236,14 +238,14 @@ class LiarsDiceGame:
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
-                        loser_index = p
+                        self.loser_index = p
                         round_cont = False
                         break
             ''' END OF FOR-PLAYER LOOP'''
             if Constants.DEBUG:
-                self.game_log_file.write('Broke out of for loop')
+                self.game_log_file.write('End of for loop\n')
 
-        self.game_log_file.write('Broke out of while round_cont loop')
+        self.game_log_file.write('Broke out of while round_cont loop\n')
         ''' END OF WHILE ROUND_CONT LOOP'''
         ''' POST-ROUND TASKS
         - Process eliminations
@@ -251,6 +253,7 @@ class LiarsDiceGame:
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
+        # TODO this is not working, modifying array while iterating over it, fix this
         for p1 in range(0, self.num_players):
 
             if self.players[p1].num_dice == 0:
@@ -266,9 +269,9 @@ class LiarsDiceGame:
                           f'<X> {self.players[p1].name} has been eliminated from the game!')
                     time.sleep(Constants.PAUSE)
                 try:
-                    self.players.pop(p)
-                    if loser_index == p:
-                        loser_index = -99
+                    self.players.pop(p1)
+                    if self.loser_index == p1:  # TODO verify fix
+                        self.loser_index = -99
                 except Exception as e:
                     print(e)
                 self.num_players -= 1
@@ -292,13 +295,14 @@ class LiarsDiceGame:
             self.game_status = False
 
         # Rearrange Player array
-        if loser_index != -99:
-            self.players.insert(0, self.players.pop[loser_index])
-            loser_index = -99
+        if self.loser_index != -99:
+            self.players.insert(0, self.players.pop(self.loser_index))
+            self.loser_index = -99
 
         return self.game_status
 
     def log_events(self, events):
+        '''log_event for multiple events.'''
         try:
             log_stop = len(events)
             if len(events) < 1:
@@ -335,7 +339,7 @@ class LiarsDiceGame:
         try:
             for p in self.players:
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
-                player_roll_freq = Counter(p.dice)
+                player_roll_freq = Counter(p.dice[:p.num_dice-1])
                 loop_cnt = 0
                 for d in sorted(player_roll_freq, key=player_roll_freq.get):
                     output += str(player_roll_freq[d]) + ' ' + str(d)
