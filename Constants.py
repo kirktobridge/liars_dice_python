@@ -2,7 +2,7 @@ import colorama
 from colorama import Fore, Style
 MAX_NUM_DICE = 6
 MAX_PLAYERS = 3
-MAX_ROUNDS = 2
+MAX_ROUNDS = 100
 MINIMUM_BID = 2
 MULTIPLAYER_ON = False
 ACTIONS = ['START', 'BID', 'RAISE', 'CHLG', 'SPOT', 'BLANK']
@@ -21,7 +21,7 @@ PEER_PRESSURE_DISTRIBUTION = [0] * 2 + [1]
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 DEBUG = True  # used to activate behaviors for the developer
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
-PAUSE = 0.5 if DEBUG else 1
+PAUSE = 0 if DEBUG else 1
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
                 'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +
