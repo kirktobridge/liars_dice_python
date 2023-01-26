@@ -88,8 +88,10 @@ class LiarsDiceGame:
         round_cont = True
         while round_cont:
             for p in range(0, self.num_players):
-                print(
-                    f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
+                print(self.players[p].name)  # TODO
+                print(self.players[p].dice[:self.players[p].num_dice])  # TODO
+                print(str(self.players[p].num_dice) + 'dice ' +
+                      f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
                 time.sleep(Constants.PAUSE)
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
@@ -189,7 +191,7 @@ class LiarsDiceGame:
                     # Challenge FAILURE
                     elif checked_cnt >= prev_bid_cnt:
                         output = Fore.WHITE + \
-                            f'{self.players[p].name}\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s)'
+                            f'{self.players[p].name}\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s'
                         if actual_ones_cnt > 0:
                             output += f' and {actual_ones_cnt} 1\'s!'
                         else:
@@ -202,12 +204,13 @@ class LiarsDiceGame:
                         self.players[p].lose_die()
                         self.loser_index = p
                     break
+                # TODO appears players are not being eliminated
 
                 # Process SPOT ON action
                 if cur_event[1] == Constants.ACTIONS[4]:
                     print(
                         Fore.WHITE +
-                        f'<!> {self.players[p]} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
+                        f'<!> {self.players[p].name} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
                     )
                     # Spot-on SUCCESS
                     time.sleep(Constants.PAUSE)
@@ -254,34 +257,46 @@ class LiarsDiceGame:
 
         # Eliminate players who now have zero dice remaining
         # TODO this is not working, modifying array while iterating over it, fix this
+        # Announce eliminations, signal end of game for 1P mode
         for p1 in range(0, self.num_players):
-
+            print(
+                f'{self.players[p1].name}  has {self.players[p1].num_dice} dice')
             if self.players[p1].num_dice == 0:
+                self.players[p1].eliminated = True
+                self.num_players -= 1
 
                 if self.players[p1].spot == 'HUMAN':
                     print(Fore.BLUE + Style.BRIGHT +
                           f'<X> {self.players[p1].name}, you have been eliminated from the game!')
                     time.sleep(Constants.PAUSE)
                     if not Constants.MULTIPLAYER_ON:
-                        self.game_status = False  # game over, human eliminated
+                        self.game_status = False  # game over, human eliminated if in single-human mode
                 else:
                     print(Fore.WHITE +
                           f'<X> {self.players[p1].name} has been eliminated from the game!')
                     time.sleep(Constants.PAUSE)
-                try:
-                    self.players.pop(p1)
-                    if self.loser_index == p1:  # TODO verify fix
-                        self.loser_index = -99
-                except Exception as e:
-                    print(e)
-                self.num_players -= 1
-                self.count_dice()
+                # if we are eliminating the player who just lost,
+                # we won't need to rearrange the array for them
+                # set index back to -99 so it is ignored by rearrange instructions
+                if self.loser_index == p1:
+                    self.loser_index = -99
+
             # end of for loop
+        # Eliminate players from self.players
+        for p2 in self.players:
+            print('p2 loop running')
+            if p2.eliminated:
+                if Constants.DEBUG:
+                    self.game_log_file.write(
+                        f'{p2.name} is being removed from the player array')
+                self.players.remove(p2)
+
+        self.count_dice()
 
         # Report state of game or end it
         if self.num_players < 2:
             print(
-                f'<!> There is only one player remaining. {self.players[p1].name} has won the game!')
+                f'<!> There is only one player remaining. {self.players[0].name} has won the game!')
             time.sleep(Constants.PAUSE)
             self.game_status = False
         else:
@@ -339,7 +354,7 @@ class LiarsDiceGame:
         try:
             for p in self.players:
                 output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
-                player_roll_freq = Counter(p.dice[:p.num_dice-1])
+                player_roll_freq = Counter(p.dice[:p.num_dice])
                 loop_cnt = 0
                 for d in sorted(player_roll_freq, key=player_roll_freq.get):
                     output += str(player_roll_freq[d]) + ' ' + str(d)

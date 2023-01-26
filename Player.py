@@ -41,7 +41,13 @@ class Player:
         '''Removes virtual die from the Player object, and updates Player's dice
         count variable.'''
         self.dice[self.num_dice-1] = -1
+        if Constants.DEBUG:
+            print(Fore.MAGENTA + Style.DIM +
+                  f'{self.name} had {self.num_dice} dice')
         self.num_dice -= 1
+        if Constants.DEBUG:
+            print(Fore.MAGENTA + Style.DIM +
+                  f'{self.name} now has {self.num_dice} dice')
         if Constants.DEBUG:
             print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
             time.sleep(Constants.PAUSE/2)
@@ -141,8 +147,14 @@ class Player:
         # using a scipy function to calculate the binomial cumulative probability.
         new_action = Constants.ACTIONS[5]
         output = None
-        self.rolls_mode = mode(self.dice)  # what is our most common roll?
-        self.mode_count = self.dice.count(self.rolls_mode) + self.count_ones()
+        # what is our most common roll?
+        if self.num_dice > 1:
+            self.rolls_mode = mode(self.dice[:self.num_dice])
+            self.mode_count = self.dice.count(
+                self.rolls_mode) + self.count_ones()
+        else:
+            self.rolls_mode = self.dice[0]
+            self.mode_count = 1
 
         # If we are the first player, we must bid
         if prev_action == Constants.ACTIONS[0]:
@@ -273,12 +285,17 @@ class Player:
                 best_probability = max(
                     [challenge_success_probability, spot_on_probability, best_bid_probability])
                 if best_probability > 0:
-                    if challenge_success_probability == best_probability:
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[3]
-                    elif spot_on_probability == best_probability:
+                    # if calling spot on is our best bet
+                    if spot_on_probability == best_probability:
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[4]
+                    # if it's only 1/3 likely, but we like risk anyway, then call spot on
+                    elif spot_on_probability > 0.33 and self.risk_appetite == Constants.MAX_RISK_SCORE:
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[4]
+                    elif challenge_success_probability == best_probability:
+                        output = [-1, -1]
+                        new_action = Constants.ACTIONS[3]
                     elif best_bid_probability == best_probability:
                         output = best_bid
                         if best_bid[0] > prev_bid_cnt:
@@ -286,11 +303,11 @@ class Player:
                         else:
                             new_action = Constants.ACTIONS[1]
                 else:  # if no items are possible
-                    if self.risk_appetite == 1:
+                    if self.risk_appetite == Constants.MAX_RISK_SCORE-1:
                         # if personality is kinda risky, challenge
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[3]
-                    elif self.risk_appetite == 2:
+                    elif self.risk_appetite == Constants.MAX_RISK_SCORE:
                         # if even more risky, spot on
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[4]
