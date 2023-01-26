@@ -9,8 +9,9 @@ import colorama
 from colorama import Fore, Back, Style
 from scipy.stats import binom
 
-# TODO account for situation when we cannot raise or match the bid, we must challenge or spot on
-# TODO how do we choose btween challenge and spot on in this scenario?
+# TODO refactorings for readability (bidding, getting probability, etc
+# TODO behavior for human bidding/raising/challenging
+# TODO add behavior for raising by more than 1
 
 
 class Player:
@@ -290,7 +291,7 @@ class Player:
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[4]
                     # if it's only 1/3 likely, but we like risk anyway, then call spot on
-                    elif spot_on_probability > 0.33 and self.risk_appetite == Constants.MAX_RISK_SCORE:
+                    elif spot_on_probability > Constants.MIN_SPOT_ON_RISK and self.risk_appetite == Constants.MAX_RISK_SCORE:
                         output = [-1, -1]
                         new_action = Constants.ACTIONS[4]
                     elif challenge_success_probability == best_probability:

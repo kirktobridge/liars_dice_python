@@ -16,6 +16,7 @@ PROB_THRESHOLDS = {
     'VERY HIGH': 0.95,
     'CERTAIN': 1.0
 }
+MIN_SPOT_ON_RISK = 0.1
 RISK_APPETITE_DISTRIBUTION = [0] * 5 + [1] * 3 + [2] * 2
 MAX_RISK_SCORE = max(RISK_APPETITE_DISTRIBUTION)
 PEER_PRESSURE_DISTRIBUTION = [0] * 2 + [1]
@@ -71,6 +72,3 @@ TITLE_CARD = [
     "| (____/\___) (___| )   ( || ) \ \__   /\____) |  | (__/  )___) (___| (____/\| (____/\\",
     "(_______/\_______/|/     \||/   \__/   \_______)  (______/ \_______/(_______/(_______/",
     "singleplayer edition\nBY @KIRKTOBRIDGE - GITHUB.COM/KIRKTOBRIDGE"]
-
-# but must limit bid's count to max number of dice available
-# if (prev_bid_cnt + 1) <= (tot_other_dice + self.num_dice):
