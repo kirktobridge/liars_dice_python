@@ -59,6 +59,7 @@ class LiarsDiceGame:
             self.tot_num_dice = 0  # reset count
             for p in self.players:
                 self.tot_num_dice += p.num_dice
+                # TODO map()?
             return self.tot_num_dice
         except Exception as e:
             self.print_error('count_dice')

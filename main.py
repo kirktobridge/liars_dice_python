@@ -8,7 +8,7 @@ import random
 
 
 def main():
-    '''Handles user inputs to set up a LiarsDiceGame object. 
+    '''Handles user inputs to set up a LiarsDiceGame object.
     Provides the rules of the game if reqeuested.
     Triggers game start and prints game log upon completion.'''
     colorama.init(autoreset=True)
@@ -58,7 +58,7 @@ def main():
                         Fore.RED + Style.DIM + '<!> Matey... yer\' not makin\' any sense.')
                 elif num_players < 0:
                     raise AttributeError(
-                        Fore.RED + Style.DIM + '<!> Did yer mother drop ye\' on yer\' head as a child?')
+                        Fore.RED + Style.DIM + random.choice(Constants.INSULTS))
                 elif num_players > Constants.MAX_PLAYERS:
                     input_fails += 1
                     raise AttributeError(
@@ -71,7 +71,7 @@ def main():
             if input_fails > 2:
                 time.sleep(Constants.PAUSE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      '<i> \'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!')
+                      random.choice(Constants.INSULTS))
                 # TODO randomize insults
             time.sleep(Constants.PAUSE)
             continue
@@ -80,7 +80,7 @@ def main():
             if input_fails > 2:
                 time.sleep(Constants.PAUSE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      '<i> The problem is not the problem. The problem is your attitude about the problem.')
+                      random.choice(Constants.INSULTS))
                 # TODO randomize insults
             time.sleep(Constants.PAUSE)
             continue
@@ -93,9 +93,27 @@ def main():
         spot = 'CPU'
     else:
         spot = 'HUMAN'
-    game.add_player(
-        Player(input(Fore.BLUE + '<?> What be yer name, matey? '), spot=spot))
-    # TODO exception handling for user entering name that is in reserved player name list
+    player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
+    while True and not Constants.MULTIPLAYER_ON:
+        try:
+            player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
+            if player_names_upper.count(str.upper(player_name)) > 0:
+                input_fails += 1
+                raise AttributeError(
+                    Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
+            else:
+                game.add_player(Player(player_name))  # TODO make human
+                break
+        except Exception as e:
+            print(e)
+            if input_fails > 2:
+                time.sleep(Constants.PAUSE)
+                print(Fore.YELLOW + Style.NORMAL +
+                      random.choice(Constants.INSULTS))
+                # TODO randomize insults
+            time.sleep(Constants.PAUSE)
+            continue
+
     rand_int = -1
     rand_ints_used = [-1]
     for p in range(1, num_players):

@@ -9,7 +9,7 @@ import colorama
 from colorama import Fore, Back, Style
 from scipy.stats import binom
 
-# TODO refactorings for readability (bidding, getting probability, etc
+# TODO refactorings for readability (bidding, getting probability, etc)
 # TODO behavior for human bidding/raising/challenging
 # TODO add behavior for raising by more than 1
 

@@ -25,6 +25,13 @@ LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 DEBUG = True  # used to activate behaviors for the developer
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PAUSE = 0 if DEBUG else 1
+INSULTS = ['\'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!',
+           'Did yer mother drop ye\' on yer\' head as a child?',
+           'The problem is not the problem. The problem is your attitude about the problem.'
+           'I\'ll eat yer parrot an\' drink yer rum, ye scabrous, foul-smellin\' rogue! ... Ahoy!',
+           'I\'d hang ye from a yardarm, but ye\'d break the mast, ye slimy, slack-jawed landlubber!'
+           'I\'ll strap a cannon to yer bootstraps an\' send ye to Davy Jones, ye mangy, daft codfish!',
+           'Thar be seven seas, like the number o\' teeth ye has, ye feculent, mangy landlubber!']
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
                 'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
 GAME_RULES = [Fore.YELLOW +
