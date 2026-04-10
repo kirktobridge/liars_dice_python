@@ -1,3 +1,6 @@
+## claude branch
+Working on this game with Claude Code now. Forked from the main branch so I can keep the original for posterity.
+
 # liars_dice_python
 Python simulation of Liar's Dice (includes the 'Spot On' variation). One human player only.
 The game is modeled using three classes:
