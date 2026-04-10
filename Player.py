@@ -63,7 +63,7 @@ class Player:
         for d in range(0, self.num_dice):
             self.dice[d] = random.randint(1, 6)
 
-    @ staticmethod
+    @staticmethod
     def grade(p: float):
         '''Provides a classification for a probability by comparing a percentage to a
         predetermined set of thresholds found in the Constants file.'''

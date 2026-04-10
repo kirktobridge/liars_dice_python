@@ -31,7 +31,7 @@ class LiarsDiceGame:
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
-        self.loser_index = -99
+        self.round_loser = None
 
     def print_error(self, func_name, e=None):
         log_string = (Fore.MAGENTA +
@@ -83,7 +83,7 @@ class LiarsDiceGame:
         # Roll and record players' dice
         for p0 in self.players:
             p0.roll()
-            self.round_rolls.extend(p0.dice)
+            self.round_rolls.extend(p0.dice[:p0.num_dice])
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         print(Fore.CYAN + '<i> Dice Rolled')
         round_cont = True
@@ -113,22 +113,15 @@ class LiarsDiceGame:
                     continue
                 # player takes turn, output (bid, if any) and action are recorded
                 cur_event = [None] * 3
-                ''' try:
-                    # Provide player list of round's events so far, and the number
-                    # of other dice remaining
+                try:
                     if Constants.DEBUG:
                         self.game_log_file.write(
-                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice}.\n')
+                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     cur_event = self.players[p].take_turn(
                         self.round_events, self.count_dice()-self.players[p].num_dice)
                     self.log_event(cur_event)
-                    # bid stored in cur_event[0]
-                    # action stored in cur_event[1]
                     if cur_event[1] == Constants.ACTIONS[5]:
                         raise Exception("Blank new_action")
-
-                    # player name stored in cur_event[2]
-
                 except Exception as e:
                     self.print_error('process_round: take_turn call', e)
                     cur_event[0] = [-1, -1]
@@ -136,17 +129,7 @@ class LiarsDiceGame:
                     cur_event[2] = self.players[p].name
                     self.log_event(cur_event)
                     self.log_events(self.round_events)
-                    continue '''
-                if Constants.DEBUG:
-                    self.game_log_file.write(
-                        f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
-                    cur_event = self.players[p].take_turn(
-                        self.round_events, self.count_dice()-self.players[p].num_dice)
-                    self.log_event(cur_event)
-                    # bid stored in cur_event[0]
-                    # action stored in cur_event[1]
-                    if cur_event[1] == Constants.ACTIONS[5]:
-                        raise Exception("Blank new_action")
+                    continue
 
                 # Process BID/RAISE action
                 if cur_event[1] == Constants.ACTIONS[1]:
@@ -186,8 +169,8 @@ class LiarsDiceGame:
                         inner_event = ['SUCCESS', Constants.ACTIONS[3],
                                        self.players[p].name]
                         self.log_event(inner_event)
-                        self.loser_index = p-1
-                        self.players[self.loser_index].lose_die()
+                        self.round_loser = self.players[p-1]
+                        self.round_loser.lose_die()
                         # refactor this later: process_challenge()
                     # Challenge FAILURE
                     elif checked_cnt >= prev_bid_cnt:
@@ -203,7 +186,7 @@ class LiarsDiceGame:
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
-                        self.loser_index = p
+                        self.round_loser = self.players[p]
                     break
                 # TODO appears players are not being eliminated
 
@@ -242,7 +225,7 @@ class LiarsDiceGame:
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
-                        self.loser_index = p
+                        self.round_loser = self.players[p]
                         round_cont = False
                         break
             ''' END OF FOR-PLAYER LOOP'''
@@ -257,40 +240,30 @@ class LiarsDiceGame:
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
-        # TODO this is not working, modifying array while iterating over it, fix this
-        # Announce eliminations, signal end of game for 1P mode
-        for p1 in range(0, self.num_players):
-            print(
-                f'{self.players[p1].name}  has {self.players[p1].num_dice} dice')
-            if self.players[p1].num_dice == 0:
-                self.players[p1].eliminated = True
-                self.num_players -= 1
-
-                if self.players[p1].spot == 'HUMAN':
+        players_to_remove = []
+        for player in self.players:
+            print(f'{player.name}  has {player.num_dice} dice')
+            if player.num_dice == 0:
+                player.eliminated = True
+                players_to_remove.append(player)
+                if player.spot == 'HUMAN':
                     print(Fore.BLUE + Style.BRIGHT +
-                          f'<X> {self.players[p1].name}, you have been eliminated from the game!')
+                          f'<X> {player.name}, you have been eliminated from the game!')
                     time.sleep(Constants.PAUSE)
                     if not Constants.MULTIPLAYER_ON:
                         self.game_status = False  # game over, human eliminated if in single-human mode
                 else:
                     print(Fore.WHITE +
-                          f'<X> {self.players[p1].name} has been eliminated from the game!')
+                          f'<X> {player.name} has been eliminated from the game!')
                     time.sleep(Constants.PAUSE)
-                # if we are eliminating the player who just lost,
-                # we won't need to rearrange the array for them
-                # set index back to -99 so it is ignored by rearrange instructions
-                if self.loser_index == p1:
-                    self.loser_index = -99
 
-            # end of for loop
-        # Eliminate players from self.players
-        for p2 in self.players:
-            print('p2 loop running')
-            if p2.eliminated:
-                if Constants.DEBUG:
-                    self.game_log_file.write(
-                        f'{p2.name} is being removed from the player array')
-                self.players.remove(p2)
+        for player in players_to_remove:
+            if Constants.DEBUG:
+                self.game_log_file.write(
+                    f'{player.name} is being removed from the player array')
+            self.players.remove(player)
+
+        self.num_players = len(self.players)
 
         self.count_dice()
 
@@ -310,10 +283,11 @@ class LiarsDiceGame:
             print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
             self.game_status = False
 
-        # Rearrange Player array
-        if self.loser_index != -99:
-            self.players.insert(0, self.players.pop(self.loser_index))
-            self.loser_index = -99
+        # Rearrange Player array so loser goes first next round
+        if self.round_loser is not None and self.round_loser in self.players:
+            self.players.remove(self.round_loser)
+            self.players.insert(0, self.round_loser)
+            self.round_loser = None
 
         return self.game_status
 
