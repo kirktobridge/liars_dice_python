@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import Constants
 from Player import Player
+from models import Action, Bid, TurnResult
 
 
 class TestPlayerInit(unittest.TestCase):
@@ -84,37 +85,37 @@ class TestGetNeededCnt(unittest.TestCase):
     def test_basic_no_wilds(self):
         # Two 3s, no ones; bid is 4 threes → needs 2 more
         self.p.dice = [3, 3, 2, 4, 5, -1]
-        self.assertEqual(self.p.get_needed_cnt([4, 3]), 2)
+        self.assertEqual(self.p.get_needed_cnt(Bid(4, 3)), 2)
 
     def test_ones_count_as_wild(self):
         # One 3, one wild (1); bid is 4 threes → have 2 effective, need 2 more
         self.p.dice = [3, 1, 2, 4, 5, -1]
-        self.assertEqual(self.p.get_needed_cnt([4, 3]), 2)
+        self.assertEqual(self.p.get_needed_cnt(Bid(4, 3)), 2)
 
     def test_bid_on_ones_no_double_count(self):
         # Two 1s; bid is 3 ones → needs 1 more (ones should NOT be counted twice)
         self.p.dice = [1, 1, 2, 4, 5, -1]
-        self.assertEqual(self.p.get_needed_cnt([3, 1]), 1)
+        self.assertEqual(self.p.get_needed_cnt(Bid(3, 1)), 1)
 
     def test_bid_on_ones_exact(self):
         # Three 1s; bid is 3 ones → needed = 0
         self.p.dice = [1, 1, 1, 4, 5, -1]
-        self.assertEqual(self.p.get_needed_cnt([3, 1]), 0)
+        self.assertEqual(self.p.get_needed_cnt(Bid(3, 1)), 0)
 
     def test_negative_needed_means_guaranteed(self):
         # Four 3s; bid is 3 threes → already guaranteed (needed < 0)
         self.p.dice = [3, 3, 3, 3, 5, -1]
-        self.assertLess(self.p.get_needed_cnt([3, 3]), 0)
+        self.assertLess(self.p.get_needed_cnt(Bid(3, 3)), 0)
 
     def test_exact_match_needed_zero(self):
         # Two 3s; bid is exactly 2 threes → needed = 0
         self.p.dice = [3, 3, 2, 4, 5, -1]
-        self.assertEqual(self.p.get_needed_cnt([2, 3]), 0)
+        self.assertEqual(self.p.get_needed_cnt(Bid(2, 3)), 0)
 
     def test_wild_plus_face_reduces_needed(self):
         # Two 6s and two wilds (1s); bid is 5 sixes → have 4 effective, need 1 more
         self.p.dice = [6, 6, 1, 1, 2, -1]
-        self.assertEqual(self.p.get_needed_cnt([5, 6]), 1)
+        self.assertEqual(self.p.get_needed_cnt(Bid(5, 6)), 1)
 
 
 class TestGrade(unittest.TestCase):
@@ -140,10 +141,10 @@ class TestGrade(unittest.TestCase):
 
 class TestTakeTurnCPU(unittest.TestCase):
     def _start_events(self):
-        return deque([[[-1, -1], Constants.ACTIONS[0], 'SYS']])
+        return deque([TurnResult(None, Action.START, 'SYS')])
 
     def _bid_events(self, cnt, face, name="OtherPlayer"):
-        return deque([[[cnt, face], Constants.ACTIONS[1], name]])
+        return deque([TurnResult(Bid(cnt, face), Action.BID, name)])
 
     def _make_cpu(self, dice=None, num_dice=5):
         p = Player("CPU_Test")
@@ -154,56 +155,57 @@ class TestTakeTurnCPU(unittest.TestCase):
     def test_start_returns_bid_action(self):
         p = self._make_cpu()
         result = p.take_turn(self._start_events(), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[1])  # BID
-        self.assertEqual(result[2], "CPU_Test")
+        self.assertEqual(result.action, Action.BID)
+        self.assertEqual(result.player_name, "CPU_Test")
 
-    def test_start_bid_is_valid_list(self):
+    def test_start_bid_is_valid_bid(self):
         p = self._make_cpu()
         result = p.take_turn(self._start_events(), 5)
-        bid = result[0]
-        self.assertIsInstance(bid, list)
-        self.assertEqual(len(bid), 2)
-        self.assertGreater(bid[0], 0)
-        self.assertIn(bid[1], range(1, 7))
+        bid = result.bid
+        self.assertIsInstance(bid, Bid)
+        self.assertGreater(bid.count, 0)
+        self.assertIn(bid.face, range(1, 7))
 
     def test_result_always_has_three_fields(self):
         p = self._make_cpu()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(len(result), 3)
+        self.assertIsInstance(result, TurnResult)
+        self.assertIsNotNone(result.action)
+        self.assertIsNotNone(result.player_name)
 
     def test_after_bid_returns_valid_action(self):
         p = self._make_cpu()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertIn(result[1], Constants.ACTIONS[:5])
+        self.assertIn(result.action, [Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON])
 
     def test_after_bid_player_name_in_result(self):
         p = self._make_cpu()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result[2], "CPU_Test")
+        self.assertEqual(result.player_name, "CPU_Test")
 
-    def test_challenge_output_is_minus_one(self):
-        """When player challenges, output bid should be [-1, -1]."""
+    def test_challenge_output_is_none(self):
+        """When player challenges, bid should be None."""
         # Force a challenge by making the bid obviously false (impossible count)
         p = self._make_cpu(dice=[3, 3, 3, 3, 3])
         # Bid count higher than all dice — challenge should be favorable
-        events = deque([[[50, 6], Constants.ACTIONS[1], "Other"]])
+        events = deque([TurnResult(Bid(50, 6), Action.BID, "Other")])
         result = p.take_turn(events, 5)
-        if result[1] == Constants.ACTIONS[3]:  # if challenge was chosen
-            self.assertEqual(result[0], [-1, -1])
+        if result.action == Action.CHALLENGE:  # if challenge was chosen
+            self.assertIsNone(result.bid)
 
     def test_one_die_player_can_take_turn(self):
         p = self._make_cpu(dice=[4], num_dice=1)
         result = p.take_turn(self._start_events(), 5)
-        self.assertEqual(len(result), 3)
-        self.assertIn(result[1], Constants.ACTIONS[:5])
+        self.assertIsInstance(result, TurnResult)
+        self.assertIn(result.action, [Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON])
 
 
 class TestTakeTurnHuman(unittest.TestCase):
     def _start_events(self):
-        return deque([[[-1, -1], Constants.ACTIONS[0], 'SYS']])
+        return deque([TurnResult(None, Action.START, 'SYS')])
 
     def _bid_events(self, cnt, face, name="OtherPlayer"):
-        return deque([[[cnt, face], Constants.ACTIONS[1], name]])
+        return deque([TurnResult(Bid(cnt, face), Action.BID, name)])
 
     def _make_human(self):
         p = Player("Human_Test", spot="HUMAN")
@@ -215,37 +217,37 @@ class TestTakeTurnHuman(unittest.TestCase):
     def test_human_opening_bid(self, mock_input):
         p = self._make_human()
         result = p.take_turn(self._start_events(), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[1])  # BID
-        self.assertEqual(result[0], [3, 4])
-        self.assertEqual(result[2], "Human_Test")
+        self.assertEqual(result.action, Action.BID)
+        self.assertEqual(result.bid, Bid(3, 4))
+        self.assertEqual(result.player_name, "Human_Test")
 
     @patch('builtins.input', side_effect=['C'])
     def test_human_challenge(self, mock_input):
         p = self._make_human()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[3])  # CHALLENGE
-        self.assertEqual(result[0], [-1, -1])
+        self.assertEqual(result.action, Action.CHALLENGE)
+        self.assertIsNone(result.bid)
 
     @patch('builtins.input', side_effect=['S'])
     def test_human_spot_on(self, mock_input):
         p = self._make_human()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[4])  # SPOT
-        self.assertEqual(result[0], [-1, -1])
+        self.assertEqual(result.action, Action.SPOT_ON)
+        self.assertIsNone(result.bid)
 
     @patch('builtins.input', side_effect=['B', '3', '5'])
     def test_human_raise(self, mock_input):
         p = self._make_human()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[2])  # RAISE (count went up)
-        self.assertEqual(result[0], [3, 5])
+        self.assertEqual(result.action, Action.RAISE)  # RAISE (count went up)
+        self.assertEqual(result.bid, Bid(3, 5))
 
     @patch('builtins.input', side_effect=['INVALID', 'bad input', 'C'])
     def test_human_invalid_then_valid_choice(self, mock_input):
         """Bad action input retries until a valid choice is given."""
         p = self._make_human()
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result[1], Constants.ACTIONS[3])  # CHALLENGE
+        self.assertEqual(result.action, Action.CHALLENGE)
 
     @patch('builtins.input', side_effect=['B', 'notanumber', '2', '3'])
     def test_human_bid_invalid_count_retries(self, mock_input):
@@ -253,7 +255,7 @@ class TestTakeTurnHuman(unittest.TestCase):
         p = self._make_human()
         # Previous bid was 1, 3 — bidding 2, 3 is a valid raise
         result = p.take_turn(self._bid_events(1, 3), 5)
-        self.assertEqual(result[0], [2, 3])
+        self.assertEqual(result.bid, Bid(2, 3))
 
     @patch('builtins.input', side_effect=['B', '2', '3'])
     def test_human_bid_same_face_same_count_invalid(self, mock_input):
@@ -264,7 +266,7 @@ class TestTakeTurnHuman(unittest.TestCase):
         p = self._make_human()
         result = p.take_turn(self._bid_events(1, 2), 5)
         # [2, 3] with prev [1, 2]: count went up (2 > 1), so this is a RAISE
-        self.assertEqual(result[1], Constants.ACTIONS[2])
+        self.assertEqual(result.action, Action.RAISE)
 
 
 if __name__ == '__main__':

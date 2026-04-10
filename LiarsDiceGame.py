@@ -8,6 +8,7 @@ from Player import Player
 from collections import deque, Counter
 import colorama
 from colorama import Fore, Back, Style
+from models import Action, Bid, TurnResult
 
 # class for the game object
 # 5 dice to start
@@ -84,6 +85,10 @@ class LiarsDiceGame:
         for p0 in self.players:
             p0.roll()
             self.round_rolls.extend(p0.dice[:p0.num_dice])
+        # DICE ROLL is intentionally kept as a raw list sentinel (not a TurnResult) because
+        # it has no Action enum equivalent and is only ever compared here before being
+        # replaced by TurnResult(Action.START). Phase 2/3 should convert this if DICE ROLL
+        # needs to become a first-class event type.
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         print(Fore.CYAN + '<i> Dice Rolled')
         round_cont = True
@@ -100,53 +105,49 @@ class LiarsDiceGame:
                 time.sleep(Constants.PAUSE)
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
-                prev_action = prev_event[1]
                 try:
-                    if prev_action == 'DICE ROLL':
-                        self.log_event(
-                            [[-1, -1], Constants.ACTIONS[0], 'SYS'])
+                    if isinstance(prev_event, list) and prev_event[1] == 'DICE ROLL':
+                        self.log_event(TurnResult(None, Action.START, 'SYS'))
                     else:
-                        prev_player_nm = prev_event[2]
-                        if prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
-                            prev_bid = prev_event[0]
-                            prev_bid_cnt = prev_bid[0]
-                            prev_bid_face = prev_bid[1]
+                        prev_player_nm = prev_event.player_name
+                        if prev_event.action in (Action.BID, Action.RAISE):
+                            prev_bid = prev_event.bid
+                            prev_bid_cnt = prev_bid.count
+                            prev_bid_face = prev_bid.face
                 except Exception as e:
                     self.print_error(
                         'process_round: prev_event assignment', e)
                     continue
                 # player takes turn, output (bid, if any) and action are recorded
-                cur_event = [None] * 3
+                cur_event = TurnResult(None, Action.NONE, '')
                 try:
                     if Constants.DEBUG:
                         self.game_log_file.write(
-                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
+                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0].action} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     cur_event = self.players[p].take_turn(
                         self.round_events, tot_dice-self.players[p].num_dice)
                     self.log_event(cur_event)
-                    if cur_event[1] == Constants.ACTIONS[5]:
+                    if cur_event.action == Action.NONE:
                         raise Exception("Blank new_action")
                 except Exception as e:
                     self.print_error('process_round: take_turn call', e)
-                    cur_event[0] = [-1, -1]
-                    cur_event[1] = 'EXCEPTION'
-                    cur_event[2] = self.players[p].name
+                    cur_event = TurnResult(None, Action.NONE, self.players[p].name)
                     self.log_event(cur_event)
                     self.log_events(self.round_events)
                     continue
 
                 # Process BID/RAISE action
-                if cur_event[1] == Constants.ACTIONS[1]:
+                if cur_event.action == Action.BID:
                     print(
-                        Fore.WHITE + f'<!> {self.players[p].name} bids {cur_event[0][0]} {cur_event[0][1]}\'s.')
+                        Fore.WHITE + f'<!> {self.players[p].name} bids {cur_event.bid.count} {cur_event.bid.face}\'s.')
                     time.sleep(Constants.PAUSE)
                 # Process RAISE action
-                elif cur_event[1] == Constants.ACTIONS[2]:
+                elif cur_event.action == Action.RAISE:
                     print(
-                        Fore.WHITE + f'<!> {self.players[p].name} raises the bid to {cur_event[0][0]} {cur_event[0][1]}\'s.')
+                        Fore.WHITE + f'<!> {self.players[p].name} raises the bid to {cur_event.bid.count} {cur_event.bid.face}\'s.')
                     time.sleep(Constants.PAUSE)
                 # Process CHALLENGE action
-                elif cur_event[1] == Constants.ACTIONS[3]:
+                elif cur_event.action == Action.CHALLENGE:
                     print(
                         Fore.WHITE + f'<!> {self.players[p].name} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by {prev_player_nm}!')
                     self.report_rolls()
@@ -170,7 +171,7 @@ class LiarsDiceGame:
                             output += '!'
                         print(Fore.WHITE + output)
                         time.sleep(Constants.PAUSE)
-                        inner_event = ['SUCCESS', Constants.ACTIONS[3],
+                        inner_event = ['SUCCESS', Action.CHALLENGE,
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.round_loser = self.players[p-1]
@@ -186,7 +187,7 @@ class LiarsDiceGame:
                             output += '!'
                         print(output)
                         time.sleep(Constants.PAUSE)
-                        inner_event = ['FAILURE', Constants.ACTIONS[3],
+                        inner_event = ['FAILURE', Action.CHALLENGE,
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
@@ -195,7 +196,7 @@ class LiarsDiceGame:
                 # TODO appears players are not being eliminated
 
                 # Process SPOT ON action
-                if cur_event[1] == Constants.ACTIONS[4]:
+                if cur_event.action == Action.SPOT_ON:
                     print(
                         Fore.WHITE +
                         f'<!> {self.players[p].name} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
@@ -205,7 +206,7 @@ class LiarsDiceGame:
                     if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
                         print(Fore.CYAN +
                               '<!> SPOT ON! Everyone else loses a die!')
-                        inner_event = ['SUCCESS', Constants.ACTIONS[4],
+                        inner_event = ['SUCCESS', Action.SPOT_ON,
                                        self.players[p].name]
                         self.log_event(inner_event)
                         time.sleep(Constants.PAUSE)
@@ -225,7 +226,7 @@ class LiarsDiceGame:
                                   f'<!> {self.players[p].name} lost their spot on call!')
                         time.sleep(Constants.PAUSE)
 
-                        inner_event = ['FAILURE', Constants.ACTIONS[4],
+                        inner_event = ['FAILURE', Action.SPOT_ON,
                                        self.players[p].name]
                         self.log_event(inner_event)
                         self.players[p].lose_die()
@@ -312,7 +313,11 @@ class LiarsDiceGame:
         self.round_events.appendleft(event)
         self.event_counter += 1
         try:
-            if isinstance(event, list):
+            if isinstance(event, TurnResult):
+                event_w_cnt = ["#" + str(self.event_counter), str(event.bid), str(event.action), event.player_name]
+                self.game_log.append(event_w_cnt)
+                self.game_log_file.write(str(event_w_cnt) + '\n')
+            elif isinstance(event, list):
                 event_w_cnt = []
                 event_w_cnt.insert(0, "#" + str(self.event_counter))
                 event_w_cnt.extend(event)

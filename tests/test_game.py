@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import Constants
 from Player import Player
 from LiarsDiceGame import LiarsDiceGame
+from models import Action, Bid, TurnResult
 
 
 def make_game(num_players=3):
@@ -86,7 +87,7 @@ class TestLogEvent(unittest.TestCase):
         self.game = make_game(2)
 
     def test_log_list_event(self):
-        event = [[2, 3], 'BID', 'Alice']
+        event = TurnResult(Bid(2, 3), Action.BID, 'Alice')
         self.game.log_event(event)
         self.assertEqual(self.game.event_counter, 1)
         self.assertEqual(len(self.game.round_events), 1)
@@ -97,15 +98,15 @@ class TestLogEvent(unittest.TestCase):
         self.assertIn(len(self.game.game_log), [1])
 
     def test_log_increments_counter(self):
-        self.game.log_event([[1, 2], 'BID', 'Alice'])
-        self.game.log_event([[2, 3], 'RAISE', 'Bob'])
+        self.game.log_event(TurnResult(Bid(1, 2), Action.BID, 'Alice'))
+        self.game.log_event(TurnResult(Bid(2, 3), Action.RAISE, 'Bob'))
         self.assertEqual(self.game.event_counter, 2)
 
     def test_round_events_is_deque_stack(self):
         """Most recent event is at index 0 (appendleft)."""
-        self.game.log_event([[1, 2], 'BID', 'Alice'])
-        self.game.log_event([[2, 3], 'RAISE', 'Bob'])
-        self.assertEqual(self.game.round_events[0][1], 'RAISE')
+        self.game.log_event(TurnResult(Bid(1, 2), Action.BID, 'Alice'))
+        self.game.log_event(TurnResult(Bid(2, 3), Action.RAISE, 'Bob'))
+        self.assertEqual(self.game.round_events[0].action, Action.RAISE)
 
 
 class TestChallengeResolution(unittest.TestCase):

@@ -7,6 +7,7 @@ import random
 import Constants
 from colorama import Fore, Style
 from scipy.stats import binom
+from models import Action, Bid, TurnResult
 
 # TODO refactorings for readability (bidding, getting probability, etc)
 # TODO behavior for human bidding/raising/challenging
@@ -76,7 +77,7 @@ class Player:
         # ie each Player will have slightly different risk tolerance levels
         return grade
 
-    def bid(self, tot_other_dice: int):
+    def bid(self, tot_other_dice: int) -> Bid:
         '''Allows human user to bid.'''
         bid_count = None
         bid_face = None
@@ -107,8 +108,7 @@ class Player:
                         Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: '))
                     if bid_face < 1 or bid_face > 6:
                         raise Exception('<!> Ye\' cannot do that, matey.')
-                    new_bid = [bid_count, bid_face]
-                    return new_bid
+                    return Bid(bid_count, bid_face)
 
                 except ValueError:
                     print(Fore.RED + Style.DIM +
@@ -120,9 +120,9 @@ class Player:
         else:
             raise Exception('CPUs should not be using bid() function')
 
-    def take_turn(self, prev_events: deque, tot_other_dice: int):
+    def take_turn(self, prev_events: deque, tot_other_dice: int) -> TurnResult:
         '''Process turn for a player by analyzing previous moves in the round and probabilities of success on various actions.
-        Returns an outputted bid, an action code, and the player's name.'''
+        Returns a TurnResult with bid, action, and player name.'''
         # TODO form and react to impressions of other players (trust score, expected bids, expected count of ones based on bids)
         # for each turn record
 
@@ -137,27 +137,27 @@ class Player:
         # (I) Read Previous Player's Action: from stack (prev_events) given by LiarsDiceGame
         #
         prev_event = prev_events[0]
-        prev_action = prev_event[1]
+        prev_action = prev_event.action
         # pulls value of new_action from previous turn
 
         # (II) Statistical Analysis: Find the mode of our roll and our count of ones.
         # Use this information, along with the number of other players' dice,
         # to calculate the probability of the previous bid being true. This can be done
         # using a scipy function to calculate the binomial cumulative probability.
-        new_action = Constants.ACTIONS[5]
-        output = None
+        new_action = Action.NONE
+        output: 'Bid | None' = None
 
         # Human player decision
         if self.spot == 'HUMAN':
             print(Fore.BLUE + f'<i> Your dice: {self.dice[:self.num_dice]}')
-            if prev_action == Constants.ACTIONS[0]:  # START - must bid
+            if prev_action == Action.START:  # START - must bid
                 print(Fore.BLUE + '<i> You go first — make the opening bid.')
                 output = self.bid(tot_other_dice)
-                new_action = Constants.ACTIONS[1]
-            elif prev_action in (Constants.ACTIONS[1], Constants.ACTIONS[2]):
-                prev_bid = prev_event[0]
-                prev_bid_cnt, prev_bid_face = prev_bid[0], prev_bid[1]
-                prev_player = prev_event[2]
+                new_action = Action.BID
+            elif prev_action in (Action.BID, Action.RAISE):
+                prev_bid = prev_event.bid
+                prev_bid_cnt, prev_bid_face = prev_bid.count, prev_bid.face
+                prev_player = prev_event.player_name
                 print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid_cnt} {prev_bid_face}\'s.')
                 while True:
                     try:
@@ -170,19 +170,19 @@ class Player:
                 if choice in ('B', 'BID', 'R', 'RAISE'):
                     while True:
                         output = self.bid(tot_other_dice)
-                        if output[0] < prev_bid_cnt or (output[0] == prev_bid_cnt and output[1] == prev_bid_face):
+                        if output.count < prev_bid_cnt or (output.count == prev_bid_cnt and output.face == prev_bid_face):
                             print(Fore.RED + Style.DIM +
                                   f'<!> Illegal bid — must raise the count above {prev_bid_cnt}, or bid a different face at count {prev_bid_cnt}.')
                             continue
                         break
-                    new_action = Constants.ACTIONS[2] if output[0] > prev_bid_cnt else Constants.ACTIONS[1]
+                    new_action = Action.RAISE if output.count > prev_bid_cnt else Action.BID
                 elif choice in ('C', 'CHALLENGE'):
-                    output = [-1, -1]
-                    new_action = Constants.ACTIONS[3]
+                    output = None
+                    new_action = Action.CHALLENGE
                 else:  # SPOT
-                    output = [-1, -1]
-                    new_action = Constants.ACTIONS[4]
-            return [output, new_action, self.name]
+                    output = None
+                    new_action = Action.SPOT_ON
+            return TurnResult(output, new_action, self.name)
 
         # what is our most common roll?
         if self.num_dice > 1:
@@ -194,26 +194,24 @@ class Player:
             self.mode_count = 1
 
         # If we are the first player, we must bid
-        if prev_action == Constants.ACTIONS[0]:
+        if prev_action == Action.START:
             print('START RECIEVED BY ' + self.name)
             # if we have a safe bid (mode)
             if self.mode_count >= Constants.MINIMUM_BID:
-                output = [Constants.MINIMUM_BID +
-                          self.risk_appetite, self.rolls_mode]
+                output = Bid(Constants.MINIMUM_BID + self.risk_appetite, self.rolls_mode)
             else:  # we have no mode assuming constant is 2
-                output = [Constants.MINIMUM_BID + self.risk_appetite,
-                          self.dice[random.randint(0, self.num_dice-1)]]
-            new_action = Constants.ACTIONS[1]
+                output = Bid(Constants.MINIMUM_BID + self.risk_appetite,
+                             self.dice[random.randint(0, self.num_dice-1)])
+            new_action = Action.BID
 
         # If the previous player made a bid
-        elif prev_action == Constants.ACTIONS[1] or prev_action == Constants.ACTIONS[2]:
+        elif prev_action == Action.BID or prev_action == Action.RAISE:
             model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
             # ns and 1s count as ns
-            prev_bid = prev_event[0]  # pulls previous turn's bid
-            prev_bid_cnt = prev_bid[0]
-            prev_bid_face = prev_bid[1]
-            prev_bid_needed_cnt = self.get_needed_cnt(
-                prev_bid)
+            prev_bid = prev_event.bid  # pulls previous turn's bid
+            prev_bid_cnt = prev_bid.count
+            prev_bid_face = prev_bid.face
+            prev_bid_needed_cnt = self.get_needed_cnt(prev_bid)
             # needed count is how many dice with the desired face we need for the previous bid
             # to be true, factoring in the roll we already know the outcome for (ours)
 
@@ -230,8 +228,8 @@ class Player:
                 # create a distribution of across the playerset for a game)
                 challenge_success_probability = 0.0
                 spot_on_probability = 0.0
-                output = [prev_bid_cnt+1, prev_bid_face]
-                new_action = Constants.ACTIONS[2]
+                output = Bid(prev_bid_cnt + 1, prev_bid_face)
+                new_action = Action.RAISE
 
             elif prev_bid_needed_cnt >= 0:
                 # THREE CHOICES: BID, CHALLENGE, SPOT ON
@@ -258,27 +256,27 @@ class Player:
                 #   (3.1) GET PROBABILITY OF ALL LEGAL BIDS
                 #       produce most probable bid, this will be compared to (1) and (2)
                 #       get list of previous bids to check legality of potential bids
-                all_prev_bids = []
+                all_prev_bids: list[Bid] = []
                 for event in prev_events:
-                    if not isinstance(event, str) and \
-                            (event[1] == Constants.ACTIONS[1] or event[1] == Constants.ACTIONS[2]):
-                        all_prev_bids.append(event[0])
+                    if isinstance(event, TurnResult) and \
+                            event.action in (Action.BID, Action.RAISE):
+                        all_prev_bids.append(event.bid)
 
                 #       (3.1.1) BUILD LIST OF PERMISSIBLE BIDS:
                 #           (3.1.1.1) include all count-matching bids not already made this round
-                permissible_bids = [[prev_bid_cnt, face]
+                permissible_bids = [Bid(prev_bid_cnt, face)
                                     for face in range(1, 7)
-                                    if [prev_bid_cnt, face] not in all_prev_bids]  # if face != prev_bid_face]
+                                    if Bid(prev_bid_cnt, face) not in all_prev_bids]
                 #           (3.1.1.2) include all raising bids
                 for raise_face in range(1, 7):
                     if prev_bid_cnt + 1 <= tot_other_dice:
-                        permissible_bids.append([prev_bid_cnt+1, raise_face])
+                        permissible_bids.append(Bid(prev_bid_cnt + 1, raise_face))
                 risk_ranking = []
                 #   (3.2) GET BEST BID
                 #       (tiebreaker: favor most commonly bid face in round so far,
                 #       tiebreaker #2: favor highest face)
                 #       compare probability for every legal option
-                best_bid = [-1, -1]
+                best_bid: 'Bid | None' = None  # None means no permissible bids — the else branch below should raise or challenge
                 if len(permissible_bids) >= 1:
                     # if there is at least one bid available
                     for legal_bid in permissible_bids:
@@ -291,22 +289,21 @@ class Player:
                     risk_ranking.sort(key=lambda x: x[0], reverse=True)
                     # get list of best (equally best) bids
                     best_bid_probability = risk_ranking[0][0]
-                    best_bids = [
+                    best_bids: list[Bid] = [
                         prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
                     if len(best_bids) > 1:
                         # if we are peer pressure sensitive, pick most common
                         if self.peer_pressure_score == 1:
-                            all_prev_bids_faces = [all_prev_bid[1]
-                                                   for all_prev_bid in all_prev_bids]
+                            all_prev_bids_faces = [b.face for b in all_prev_bids]
                             prev_bids_face_mode = mode(all_prev_bids_faces)
                             for bid0 in best_bids:
-                                if bid0[1] == prev_bids_face_mode:
+                                if bid0.face == prev_bids_face_mode:
                                     best_bid = bid0
                                     break
                                 else:
                                     continue
                             # but if we don't find a mode, then just use the top bid
-                            if best_bid == [-1, -1]:
+                            if best_bid is None:
                                 best_bid = best_bids[0]
                         # otherwise just take the top bid
                         else:
@@ -317,60 +314,59 @@ class Player:
                 # if there are no permissible bids, don't bid
                 else:
                     best_bid_probability = 0
-                    best_bid = [-2, -2]  # should never be used
+                    best_bid = None  # no permissible bids — should never be used as a bid output
 
                 best_probability = max(
                     [challenge_success_probability, spot_on_probability, best_bid_probability])
                 if best_probability > 0:
                     # if calling spot on is our best bet
                     if spot_on_probability == best_probability:
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[4]
+                        output = None
+                        new_action = Action.SPOT_ON
                     # if it's only 1/3 likely, but we like risk anyway, then call spot on
                     elif spot_on_probability > Constants.MIN_SPOT_ON_RISK and self.risk_appetite == Constants.MAX_RISK_SCORE:
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[4]
+                        output = None
+                        new_action = Action.SPOT_ON
                     elif challenge_success_probability == best_probability:
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[3]
+                        output = None
+                        new_action = Action.CHALLENGE
                     elif best_bid_probability == best_probability:
                         output = best_bid
-                        if best_bid[0] > prev_bid_cnt:
-                            new_action = Constants.ACTIONS[2]
+                        if best_bid.count > prev_bid_cnt:
+                            new_action = Action.RAISE
                         else:
-                            new_action = Constants.ACTIONS[1]
+                            new_action = Action.BID
                 else:  # if no items are possible
                     if self.risk_appetite == Constants.MAX_RISK_SCORE-1:
                         # if personality is kinda risky, challenge
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[3]
+                        output = None
+                        new_action = Action.CHALLENGE
                     elif self.risk_appetite == Constants.MAX_RISK_SCORE:
                         # if even more risky, spot on
-                        output = [-1, -1]
-                        new_action = Constants.ACTIONS[4]
+                        output = None
+                        new_action = Action.SPOT_ON
                     else:
                         output = best_bid
-                        if best_bid[0] > prev_bid_cnt:
-                            new_action = Constants.ACTIONS[2]
+                        if best_bid is not None and best_bid.count > prev_bid_cnt:
+                            new_action = Action.RAISE
                         else:
-                            new_action = Constants.ACTIONS[1]
+                            new_action = Action.BID
         else:
-            output = [-1, -1]
-            new_action = Constants.ACTIONS[5] + \
-                ' TODO CATCHALL BEHAVIOR NOT IMPLEMENTED'
+            output = None
+            new_action = Action.NONE
             # TODO catch-all behavior
             raise Exception(
                 Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
         #
         # (4) Execute Decision
         #
-        return [output, new_action, self.name]
+        return TurnResult(output, new_action, self.name)
 
-    def get_needed_cnt(self, bid: list[int]):
+    def get_needed_cnt(self, bid: Bid) -> int:
         '''Produces the number of rolled faces needed for a bid to be true,
         after including the ones we have.'''
-        bid_cnt = bid[0]
-        bid_face = bid[1]
+        bid_cnt = bid.count
+        bid_face = bid.face
         if bid_face == 1:
             face_self_match_cnt = self.dice.count(bid_face)
         else:
