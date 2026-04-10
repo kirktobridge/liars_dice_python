@@ -195,7 +195,8 @@ class Player:
 
         # If we are the first player, we must bid
         if prev_action == Action.START:
-            print('START RECIEVED BY ' + self.name)
+            if Constants.DEBUG == True:
+                print('START RECIEVED BY ' + self.name)
             # if we have a safe bid (mode)
             if self.mode_count >= Constants.MINIMUM_BID:
                 output = Bid(Constants.MINIMUM_BID + self.risk_appetite, self.rolls_mode)
