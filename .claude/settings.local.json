@@ -4,7 +4,8 @@
       "Bash(python main.py)",
       "Bash(python)",
       "Bash(python -m pytest tests/ -v --tb=short)",
-      "Bash(pip install:*)"
+      "Bash(pip install:*)",
+      "Bash(python -m pytest tests/test_game.py tests/test_player.py -v)"
     ]
   }
 }
