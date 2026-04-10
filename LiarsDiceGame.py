@@ -153,17 +153,11 @@ class LiarsDiceGame:
                     self.report_rolls()
                     time.sleep(Constants.PAUSE)
                     round_cont = False
-                    # Challenge SUCCESS
+                    prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
+                    succeeded, loser = self._resolve_challenge(prev_bid_obj, self.players[p], self.players[p-1])
                     prev_bid_actual_cnt = self.round_rolls.count(prev_bid_face)
-
-                    # only count ones if we're not already counting ones
                     actual_ones_cnt = self.round_rolls.count(1)
-                    if prev_bid_face != 1:
-                        checked_cnt = prev_bid_actual_cnt + actual_ones_cnt
-                    else:
-                        checked_cnt = prev_bid_actual_cnt
-                    # success condition
-                    if checked_cnt < prev_bid_cnt:
+                    if succeeded:
                         output = f'{self.players[p].name}\'s challenge succeeds- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s'
                         if actual_ones_cnt > 0 and prev_bid_face != 1:
                             output += f' and {actual_ones_cnt} 1\'s!'
@@ -171,14 +165,9 @@ class LiarsDiceGame:
                             output += '!'
                         print(Fore.WHITE + output)
                         time.sleep(Constants.PAUSE)
-                        inner_event = ['SUCCESS', Action.CHALLENGE,
-                                       self.players[p].name]
+                        inner_event = ['SUCCESS', Action.CHALLENGE, self.players[p].name]
                         self.log_event(inner_event)
-                        self.round_loser = self.players[p-1]
-                        self.round_loser.lose_die()
-                        # refactor this later: process_challenge()
-                    # Challenge FAILURE
-                    elif checked_cnt >= prev_bid_cnt:
+                    else:
                         output = Fore.WHITE + \
                             f'{self.players[p].name}\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s'
                         if actual_ones_cnt > 0:
@@ -187,11 +176,10 @@ class LiarsDiceGame:
                             output += '!'
                         print(output)
                         time.sleep(Constants.PAUSE)
-                        inner_event = ['FAILURE', Action.CHALLENGE,
-                                       self.players[p].name]
+                        inner_event = ['FAILURE', Action.CHALLENGE, self.players[p].name]
                         self.log_event(inner_event)
-                        self.players[p].lose_die()
-                        self.round_loser = self.players[p]
+                    self.round_loser = loser
+                    loser.lose_die()
                     break
                 # TODO appears players are not being eliminated
 
@@ -201,36 +189,30 @@ class LiarsDiceGame:
                         Fore.WHITE +
                         f'<!> {self.players[p].name} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
                     )
-                    # Spot-on SUCCESS
                     time.sleep(Constants.PAUSE)
-                    if self.round_rolls.count(prev_bid_face) + self.round_rolls.count(1) == prev_bid_cnt:
-                        print(Fore.CYAN +
-                              '<!> SPOT ON! Everyone else loses a die!')
-                        inner_event = ['SUCCESS', Action.SPOT_ON,
-                                       self.players[p].name]
+                    prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
+                    succeeded, losers = self._resolve_spot_on(prev_bid_obj, self.players[p])
+                    if succeeded:
+                        print(Fore.CYAN + '<!> SPOT ON! Everyone else loses a die!')
+                        inner_event = ['SUCCESS', Action.SPOT_ON, self.players[p].name]
                         self.log_event(inner_event)
                         time.sleep(Constants.PAUSE)
-                        for p1 in self.players:
-                            if p1.name != self.players[p].name:
-                                p1.lose_die()
+                        for loser in losers:
+                            loser.lose_die()
                         round_cont = False
                         break
-
                     else:  # Spot-on FAILURE
                         if self.players[p].spot == 'HUMAN':
                             print(
                                 Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
-
                         elif self.players[p].spot == 'CPU':
                             print(Fore.CYAN +
                                   f'<!> {self.players[p].name} lost their spot on call!')
                         time.sleep(Constants.PAUSE)
-
-                        inner_event = ['FAILURE', Action.SPOT_ON,
-                                       self.players[p].name]
+                        inner_event = ['FAILURE', Action.SPOT_ON, self.players[p].name]
                         self.log_event(inner_event)
-                        self.players[p].lose_die()
-                        self.round_loser = self.players[p]
+                        losers[0].lose_die()
+                        self.round_loser = losers[0]
                         round_cont = False
                         break
             ''' END OF FOR-PLAYER LOOP'''
@@ -245,30 +227,20 @@ class LiarsDiceGame:
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
-        players_to_remove = []
         for player in self.players:
             print(f'{player.name}  has {player.num_dice} dice')
-            if player.num_dice == 0:
-                player.eliminated = True
-                players_to_remove.append(player)
-                if player.spot == 'HUMAN':
-                    print(Fore.BLUE + Style.BRIGHT +
-                          f'<X> {player.name}, you have been eliminated from the game!')
-                    time.sleep(Constants.PAUSE)
-                    if not Constants.MULTIPLAYER_ON:
-                        self.game_status = False  # game over, human eliminated if in single-human mode
-                else:
-                    print(Fore.WHITE +
-                          f'<X> {player.name} has been eliminated from the game!')
-                    time.sleep(Constants.PAUSE)
-
-        for player in players_to_remove:
-            if Constants.DEBUG:
-                self.game_log_file.write(
-                    f'{player.name} is being removed from the player array')
-            self.players.remove(player)
-
-        self.num_players = len(self.players)
+        removed_players = self._eliminate_players()
+        for player in removed_players:
+            if player.spot == 'HUMAN':
+                print(Fore.BLUE + Style.BRIGHT +
+                      f'<X> {player.name}, you have been eliminated from the game!')
+                time.sleep(Constants.PAUSE)
+                if not Constants.MULTIPLAYER_ON:
+                    self.game_status = False  # game over, human eliminated if in single-human mode
+            else:
+                print(Fore.WHITE +
+                      f'<X> {player.name} has been eliminated from the game!')
+                time.sleep(Constants.PAUSE)
 
         self.count_dice()
 
@@ -289,10 +261,7 @@ class LiarsDiceGame:
             self.game_status = False
 
         # Rearrange Player array so loser goes first next round
-        if self.round_loser is not None and self.round_loser in self.players:
-            self.players.remove(self.round_loser)
-            self.players.insert(0, self.round_loser)
-            self.round_loser = None
+        self._reorder_for_next_round()
 
         return self.game_status
 
@@ -354,3 +323,45 @@ class LiarsDiceGame:
                 print(output)
         except Exception as e:
             self.print_error('report_rolls')
+
+    def _resolve_challenge(
+        self, prev_bid: Bid, challenger: 'Player', bidder: 'Player'
+    ) -> tuple[bool, 'Player']:
+        """Returns (challenge_succeeded, loser). No print/sleep/side effects."""
+        actual_cnt = self.round_rolls.count(prev_bid.face)
+        ones_cnt   = self.round_rolls.count(1)
+        checked    = actual_cnt + ones_cnt if prev_bid.face != 1 else actual_cnt
+        succeeded  = checked < prev_bid.count
+        return (succeeded, bidder if succeeded else challenger)
+
+    def _resolve_spot_on(
+        self, prev_bid: Bid, caller: 'Player'
+    ) -> tuple[bool, list]:
+        """Returns (spot_on_succeeded, list_of_players_who_lose_a_die). No print/sleep/side effects."""
+        actual_cnt = self.round_rolls.count(prev_bid.face)
+        ones_cnt   = self.round_rolls.count(1)
+        actual     = actual_cnt + ones_cnt if prev_bid.face != 1 else actual_cnt
+        succeeded  = (actual == prev_bid.count)
+        if succeeded:
+            return (True, [p for p in self.players if p.name != caller.name])
+        return (False, [caller])
+
+    def _eliminate_players(self) -> list:
+        """Removes zero-dice players from self.players; marks eliminated; updates num_players.
+        Returns removed list (caller handles printing and game_status)."""
+        to_remove = [p for p in self.players if p.num_dice == 0]
+        for player in to_remove:
+            player.eliminated = True
+            if Constants.DEBUG:
+                self.game_log_file.write(
+                    f'{player.name} is being removed from the player array')
+            self.players.remove(player)
+        self.num_players = len(self.players)
+        return to_remove
+
+    def _reorder_for_next_round(self) -> None:
+        """Moves self.round_loser to front of self.players if they are still in the game."""
+        if self.round_loser is not None and self.round_loser in self.players:
+            self.players.remove(self.round_loser)
+            self.players.insert(0, self.round_loser)
+            self.round_loser = None

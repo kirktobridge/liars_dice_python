@@ -129,37 +129,24 @@ class TestChallengeResolution(unittest.TestCase):
         return game, challenger, bidder
 
     def test_challenge_success_bidder_loses_die(self):
-        """Challenge succeeds: fewer dice than bid → bidder loses die."""
+        """Challenge succeeds: fewer dice than bid → _resolve_challenge returns bidder as loser."""
         game, challenger, bidder = self._setup_game_at_challenge(
-            actual_dice=[1, 2, 3, 4, 5, 6],  # only one 6
+            actual_dice=[1, 2, 3, 4, 5, 6],  # count(6)+count(1) = 1+1 = 2 < 3
             bid_cnt=3, bid_face=6
         )
-        bidder_dice_before = bidder.num_dice
-        # challenge success: count(6) + count(1) = 1 + 1 = 2 < 3
-        prev_bid_cnt = 3
-        prev_bid_face = 6
-        prev_bid_actual_cnt = game.round_rolls.count(prev_bid_face)
-        actual_ones_cnt = game.round_rolls.count(1)
-        checked_cnt = prev_bid_actual_cnt + actual_ones_cnt  # ones are wild
-        self.assertLess(checked_cnt, prev_bid_cnt)  # confirm challenge succeeds
-        # simulate the consequence
-        game.round_loser = bidder
-        game.round_loser.lose_die()
-        self.assertEqual(bidder.num_dice, bidder_dice_before - 1)
+        succeeded, loser = game._resolve_challenge(Bid(3, 6), challenger, bidder)
+        self.assertTrue(succeeded)
+        self.assertIs(loser, bidder)
 
     def test_challenge_failure_challenger_loses_die(self):
-        """Challenge fails: enough dice match bid → challenger loses die."""
+        """Challenge fails: enough dice match bid → _resolve_challenge returns challenger as loser."""
         game, challenger, bidder = self._setup_game_at_challenge(
-            actual_dice=[6, 6, 6, 4, 5, 2],  # three 6s
+            actual_dice=[6, 6, 6, 4, 5, 2],  # count(6)+count(1) = 3+0 = 3 >= 3
             bid_cnt=3, bid_face=6
         )
-        challenger_dice_before = challenger.num_dice
-        prev_bid_actual_cnt = game.round_rolls.count(6)
-        actual_ones_cnt = game.round_rolls.count(1)
-        checked_cnt = prev_bid_actual_cnt + actual_ones_cnt
-        self.assertGreaterEqual(checked_cnt, 3)  # confirm challenge fails
-        challenger.lose_die()
-        self.assertEqual(challenger.num_dice, challenger_dice_before - 1)
+        succeeded, loser = game._resolve_challenge(Bid(3, 6), challenger, bidder)
+        self.assertFalse(succeeded)
+        self.assertIs(loser, challenger)
 
 
 class TestEliminationLogic(unittest.TestCase):
@@ -173,18 +160,15 @@ class TestEliminationLogic(unittest.TestCase):
         for p in [p1, p2, p3]:
             game.add_player(p)
 
-        players_to_remove = [p for p in game.players if p.num_dice == 0]
-        for p in players_to_remove:
-            p.eliminated = True
-            game.players.remove(p)
-        game.num_players = len(game.players)
+        removed = game._eliminate_players()
 
         self.assertEqual(game.num_players, 2)
         self.assertNotIn(p2, game.players)
         self.assertTrue(p2.eliminated)
+        self.assertIn(p2, removed)
 
     def test_multiple_zero_dice_removed_without_skipping(self):
-        """Collect-then-remove: all zero-dice players are removed, not just some."""
+        """_eliminate_players removes all zero-dice players in one pass."""
         game = make_game(4)
         p1 = make_player("Alice", num_dice=3)
         p2 = make_player("Bob", num_dice=0)
@@ -193,14 +177,12 @@ class TestEliminationLogic(unittest.TestCase):
         for p in [p1, p2, p3, p4]:
             game.add_player(p)
 
-        players_to_remove = [p for p in game.players if p.num_dice == 0]
-        for p in players_to_remove:
-            game.players.remove(p)
-        game.num_players = len(game.players)
+        removed = game._eliminate_players()
 
         self.assertEqual(game.num_players, 2)
         self.assertNotIn(p2, game.players)
         self.assertNotIn(p3, game.players)
+        self.assertEqual(len(removed), 2)
 
 
 class TestRoundLoserReorder(unittest.TestCase):
@@ -215,16 +197,13 @@ class TestRoundLoserReorder(unittest.TestCase):
             game.add_player(p)
 
         game.round_loser = p3
-        if game.round_loser in game.players:
-            game.players.remove(game.round_loser)
-            game.players.insert(0, game.round_loser)
-            game.round_loser = None
+        game._reorder_for_next_round()
 
         self.assertEqual(game.players[0], p3)
         self.assertIsNone(game.round_loser)
 
     def test_eliminated_loser_not_reinserted(self):
-        """If loser was eliminated, they should not be re-added."""
+        """If loser was eliminated, _reorder_for_next_round should not re-add them."""
         game = make_game(2)
         p1 = make_player("Alice")
         p2 = make_player("Bob", num_dice=0)
@@ -232,10 +211,7 @@ class TestRoundLoserReorder(unittest.TestCase):
         # p2 was eliminated and already removed — NOT in game.players
 
         game.round_loser = p2
-        if game.round_loser is not None and game.round_loser in game.players:
-            game.players.remove(game.round_loser)
-            game.players.insert(0, game.round_loser)
-        game.round_loser = None
+        game._reorder_for_next_round()
 
         self.assertEqual(len(game.players), 1)
         self.assertNotIn(p2, game.players)
