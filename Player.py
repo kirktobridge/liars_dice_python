@@ -5,8 +5,7 @@ from collections import deque
 import time
 import random
 import Constants
-import colorama
-from colorama import Fore, Back, Style
+from colorama import Fore, Style
 from scipy.stats import binom
 
 # TODO refactorings for readability (bidding, getting probability, etc)
@@ -68,7 +67,7 @@ class Player:
         predetermined set of thresholds found in the Constants file.'''
         grade = Constants.LOWEST_THRESHOLD
         # sorted(Constants.PROB_THRESHOLDS.items(), key=lambda x: x[1]):
-        for k, v in Constants.PROB_THRESHOLDS:
+        for k, v in Constants.PROB_THRESHOLDS.items():
             if p < v:
                 break
             else:
@@ -156,9 +155,9 @@ class Player:
                 output = self.bid(tot_other_dice)
                 new_action = Constants.ACTIONS[1]
             elif prev_action in (Constants.ACTIONS[1], Constants.ACTIONS[2]):
-                prev_bid = prev_events[0][0]
+                prev_bid = prev_event[0]
                 prev_bid_cnt, prev_bid_face = prev_bid[0], prev_bid[1]
-                prev_player = prev_events[0][2]
+                prev_player = prev_event[2]
                 print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid_cnt} {prev_bid_face}\'s.')
                 while True:
                     try:

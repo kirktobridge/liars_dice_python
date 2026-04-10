@@ -87,6 +87,7 @@ class LiarsDiceGame:
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
         print(Fore.CYAN + '<i> Dice Rolled')
         round_cont = True
+        tot_dice = self.count_dice()
         while round_cont:
             for p in range(0, self.num_players):
                 round_msg = ''
@@ -121,7 +122,7 @@ class LiarsDiceGame:
                         self.game_log_file.write(
                             f'Passing prev_event {self.round_events[0]} and action {self.round_events[0][1]} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     cur_event = self.players[p].take_turn(
-                        self.round_events, self.count_dice()-self.players[p].num_dice)
+                        self.round_events, tot_dice-self.players[p].num_dice)
                     self.log_event(cur_event)
                     if cur_event[1] == Constants.ACTIONS[5]:
                         raise Exception("Blank new_action")
