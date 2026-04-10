@@ -89,10 +89,13 @@ class LiarsDiceGame:
         round_cont = True
         while round_cont:
             for p in range(0, self.num_players):
-                print(self.players[p].name)  # TODO
-                print(self.players[p].dice[:self.players[p].num_dice])  # TODO
-                print(str(self.players[p].num_dice) + 'dice ' +
-                      f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn')
+                round_msg = ''
+                if Constants.DEBUG == True:
+                    print(self.players[p].name)  # TODO
+                    print(self.players[p].dice[:self.players[p].num_dice])  # TODO
+                    round_msg = str(self.players[p].num_dice) + 'dice '
+                round_msg += f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn'
+                print(round_msg)
                 time.sleep(Constants.PAUSE)
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]

@@ -89,10 +89,6 @@ def main():
         break
 
     game = LiarsDiceGame(num_players)
-    if Constants.DEBUG == True:
-        spot = 'CPU'
-    else:
-        spot = 'HUMAN'
     player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
     while True and not Constants.MULTIPLAYER_ON:
         try:
@@ -102,7 +98,7 @@ def main():
                 raise AttributeError(
                     Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
             else:
-                game.add_player(Player(player_name))  # TODO make human
+                game.add_player(Player(player_name, spot='HUMAN'))
                 break
         except Exception as e:
             print(e)

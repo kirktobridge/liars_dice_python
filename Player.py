@@ -36,7 +36,6 @@ class Player:
             Constants.RISK_APPETITE_DISTRIBUTION)
         self.peer_pressure_score = random.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
-        self.bid = []
 
     def lose_die(self):
         '''Removes virtual die from the Player object, and updates Player's dice
@@ -95,12 +94,12 @@ class Player:
                     # TODO prevent from betting count higher than possible
                     break
 
-                except TypeError:
+                except ValueError:
                     print(Fore.RED + Style.DIM +
                           '<!> Arrrgh, ye must provide an integer, matey!')
                     continue
                 except Exception as e:
-                    print(Fore.RED + Style.DIM + e)
+                    print(Fore.RED + Style.DIM + str(e))
                     continue
 
             while True:
@@ -112,12 +111,12 @@ class Player:
                     new_bid = [bid_count, bid_face]
                     return new_bid
 
-                except TypeError:
+                except ValueError:
                     print(Fore.RED + Style.DIM +
                           '<!> Arrrgh, ye must provide an integer, matey!')
                     continue
                 except Exception as e:
-                    print(Fore.RED + Style.DIM + e)
+                    print(Fore.RED + Style.DIM + str(e))
                     continue
         else:
             raise Exception('CPUs should not be using bid() function')
@@ -148,6 +147,44 @@ class Player:
         # using a scipy function to calculate the binomial cumulative probability.
         new_action = Constants.ACTIONS[5]
         output = None
+
+        # Human player decision
+        if self.spot == 'HUMAN':
+            print(Fore.BLUE + f'<i> Your dice: {self.dice[:self.num_dice]}')
+            if prev_action == Constants.ACTIONS[0]:  # START - must bid
+                print(Fore.BLUE + '<i> You go first — make the opening bid.')
+                output = self.bid(tot_other_dice)
+                new_action = Constants.ACTIONS[1]
+            elif prev_action in (Constants.ACTIONS[1], Constants.ACTIONS[2]):
+                prev_bid = prev_events[0][0]
+                prev_bid_cnt, prev_bid_face = prev_bid[0], prev_bid[1]
+                prev_player = prev_events[0][2]
+                print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid_cnt} {prev_bid_face}\'s.')
+                while True:
+                    try:
+                        choice = input(Fore.BLUE + '<?> Your action — [B]id/Raise, [C]hallenge, [S]pot On: ').strip().upper()
+                        if choice not in ('B', 'BID', 'R', 'RAISE', 'C', 'CHALLENGE', 'S', 'SPOT'):
+                            raise ValueError('<!> Say B, C, or S, matey!')
+                        break
+                    except ValueError as e:
+                        print(Fore.RED + Style.DIM + str(e))
+                if choice in ('B', 'BID', 'R', 'RAISE'):
+                    while True:
+                        output = self.bid(tot_other_dice)
+                        if output[0] < prev_bid_cnt or (output[0] == prev_bid_cnt and output[1] == prev_bid_face):
+                            print(Fore.RED + Style.DIM +
+                                  f'<!> Illegal bid — must raise the count above {prev_bid_cnt}, or bid a different face at count {prev_bid_cnt}.')
+                            continue
+                        break
+                    new_action = Constants.ACTIONS[2] if output[0] > prev_bid_cnt else Constants.ACTIONS[1]
+                elif choice in ('C', 'CHALLENGE'):
+                    output = [-1, -1]
+                    new_action = Constants.ACTIONS[3]
+                else:  # SPOT
+                    output = [-1, -1]
+                    new_action = Constants.ACTIONS[4]
+            return [output, new_action, self.name]
+
         # what is our most common roll?
         if self.num_dice > 1:
             self.rolls_mode = mode(self.dice[:self.num_dice])
@@ -335,8 +372,10 @@ class Player:
         after including the ones we have.'''
         bid_cnt = bid[0]
         bid_face = bid[1]
-        face_self_match_cnt = self.dice.count(
-            bid_face) + self.count_ones()
+        if bid_face == 1:
+            face_self_match_cnt = self.dice.count(bid_face)
+        else:
+            face_self_match_cnt = self.dice.count(bid_face) + self.count_ones()
         needed_cnt = bid_cnt - face_self_match_cnt
         return needed_cnt
 
