@@ -1,13 +1,9 @@
-import time
 import os
 import sys
 from datetime import datetime
-import random
 import Constants
 from Player import Player
-from collections import deque, Counter
-import colorama
-from colorama import Fore, Back, Style
+from collections import deque
 from models import Action, Bid, TurnResult
 
 # class for the game object
@@ -16,9 +12,10 @@ from models import Action, Bid, TurnResult
 
 class LiarsDiceGame:
 
-    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS):
+    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None):
+        self._on_event = on_event or (lambda e: None)
         if Constants.DEBUG:
-            print(Fore.MAGENTA + Style.DIM + '<i> Game Object Intitalized')
+            self._emit('debug', msg='Game Object Initialized')
         self.num_players = num_players
         self.max_rounds = max_rounds
         self.round_num = 0
@@ -34,24 +31,25 @@ class LiarsDiceGame:
         self.round_events = deque()
         self.round_loser = None
 
+    def _emit(self, event_type: str, **data) -> None:
+        self._on_event({'type': event_type, **data})
+
     def print_error(self, func_name, e=None):
-        log_string = (Fore.MAGENTA +
-                      f'Exception caught in {func_name}! - ') + str(e)
-        print(Style.DIM + log_string)
-
-        fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
-        log_string2 = str(sys.exc_info()
-                          [1]) + str(fname) + str(sys.exc_info()[2].tb_lineno)
-        print(Fore.MAGENTA + Style.DIM + log_string2)
-
-        self.log_event(log_string + log_string2)
+        log_string = f'Exception caught in {func_name}! - {e}'
+        try:
+            fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
+            log_string2 = str(sys.exc_info()[1]) + str(fname) + str(sys.exc_info()[2].tb_lineno)
+            message = log_string + log_string2
+        except Exception:
+            message = log_string
+        self._emit('error', func_name=func_name, message=message)
+        self.log_event(message)
 
     def add_player(self, p):
         try:
             self.players.append(p)
             if Constants.DEBUG:
-                print(Fore.MAGENTA + Style.DIM +
-                      f'<i> Player {p.name} appended to game player list.')
+                self._emit('debug', msg=f'Player {p.name} appended to game player list.')
         except Exception as e:
             self.print_error('add_player')
 
@@ -74,12 +72,10 @@ class LiarsDiceGame:
         - Roll dice'''
         # Increment round counter
         self.round_num += 1
-        print(Fore.WHITE + f'<!> Round {self.round_num} Begin')
+        self._emit('round_started', round_num=self.round_num)
         self.round_events.clear()
         self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
-        time.sleep(Constants.PAUSE)
-        print(Fore.CYAN + '<i> Rolling Dice...')
-        time.sleep(Constants.PAUSE)
+        self._emit('dice_rolling')
         self.round_rolls.clear()
         # Roll and record players' dice
         for p0 in self.players:
@@ -90,19 +86,17 @@ class LiarsDiceGame:
         # replaced by TurnResult(Action.START). Phase 2/3 should convert this if DICE ROLL
         # needs to become a first-class event type.
         self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
-        print(Fore.CYAN + '<i> Dice Rolled')
+        self._emit('dice_rolled')
         round_cont = True
         tot_dice = self.count_dice()
         while round_cont:
             for p in range(0, self.num_players):
-                round_msg = ''
-                if Constants.DEBUG == True:
-                    print(self.players[p].name)
-                    print(self.players[p].dice[:self.players[p].num_dice])
-                    round_msg = str(self.players[p].num_dice) + 'dice '
-                round_msg += f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn'
-                print(round_msg)
-                time.sleep(Constants.PAUSE)
+                if Constants.DEBUG:
+                    self._emit('debug', msg=f'{self.players[p].name}: {self.players[p].dice[:self.players[p].num_dice]}')
+                self._emit('turn_started',
+                           player_name=self.players[p].name,
+                           num_dice=self.players[p].num_dice,
+                           round_num=self.round_num)
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
                 try:
@@ -136,48 +130,42 @@ class LiarsDiceGame:
                     self.log_events(self.round_events)
                     continue
 
-                # Process BID/RAISE action
+                # Process BID action
                 if cur_event.action == Action.BID:
-                    print(
-                        Fore.WHITE + f'<!> {self.players[p].name} bids {cur_event.bid.count} {cur_event.bid.face}\'s.')
-                    time.sleep(Constants.PAUSE)
+                    self._emit('bid_made',
+                               player_name=self.players[p].name,
+                               count=cur_event.bid.count,
+                               face=cur_event.bid.face)
                 # Process RAISE action
                 elif cur_event.action == Action.RAISE:
-                    print(
-                        Fore.WHITE + f'<!> {self.players[p].name} raises the bid to {cur_event.bid.count} {cur_event.bid.face}\'s.')
-                    time.sleep(Constants.PAUSE)
+                    self._emit('raise_made',
+                               player_name=self.players[p].name,
+                               count=cur_event.bid.count,
+                               face=cur_event.bid.face)
                 # Process CHALLENGE action
                 elif cur_event.action == Action.CHALLENGE:
-                    print(
-                        Fore.WHITE + f'<!> {self.players[p].name} has challenged the previous bid of {prev_bid_cnt} {prev_bid_face}s made by {prev_player_nm}!')
-                    self.report_rolls()
-                    time.sleep(Constants.PAUSE)
+                    self._emit('challenge_called',
+                               challenger_name=self.players[p].name,
+                               bidder_name=prev_player_nm,
+                               bid_count=prev_bid_cnt,
+                               bid_face=prev_bid_face)
+                    self._emit('rolls_revealed', player_rolls=[
+                        {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
+                        for pl in self.players])
                     round_cont = False
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, loser = self._resolve_challenge(prev_bid_obj, self.players[p], self.players[p-1])
                     prev_bid_actual_cnt = self.round_rolls.count(prev_bid_face)
                     actual_ones_cnt = self.round_rolls.count(1)
-                    if succeeded:
-                        output = f'{self.players[p].name}\'s challenge succeeds- there are only {prev_bid_actual_cnt} {prev_bid_face}\'s'
-                        if actual_ones_cnt > 0 and prev_bid_face != 1:
-                            output += f' and {actual_ones_cnt} 1\'s!'
-                        else:
-                            output += '!'
-                        print(Fore.WHITE + output)
-                        time.sleep(Constants.PAUSE)
-                        inner_event = ['SUCCESS', Action.CHALLENGE, self.players[p].name]
-                        self.log_event(inner_event)
-                    else:
-                        output = Fore.WHITE + \
-                            f'{self.players[p].name}\'s challenge fails- there are actually {prev_bid_actual_cnt} {prev_bid_face}\'s'
-                        if actual_ones_cnt > 0:
-                            output += f' and {actual_ones_cnt} 1\'s!'
-                        else:
-                            output += '!'
-                        print(output)
-                        time.sleep(Constants.PAUSE)
-                        inner_event = ['FAILURE', Action.CHALLENGE, self.players[p].name]
-                        self.log_event(inner_event)
+                    self._emit('challenge_resolved',
+                               succeeded=succeeded,
+                               challenger_name=self.players[p].name,
+                               bid_count=prev_bid_cnt,
+                               bid_face=prev_bid_face,
+                               actual_count=prev_bid_actual_cnt,
+                               ones_count=actual_ones_cnt)
+                    inner_event = ['SUCCESS' if succeeded else 'FAILURE', Action.CHALLENGE, self.players[p].name]
+                    self.log_event(inner_event)
                     self.round_loser = loser
                     loser.lose_die()
                     break
@@ -185,30 +173,28 @@ class LiarsDiceGame:
 
                 # Process SPOT ON action
                 if cur_event.action == Action.SPOT_ON:
-                    print(
-                        Fore.WHITE +
-                        f'<!> {self.players[p].name} has called \'SPOT ON\' on the previous bid of {prev_bid_cnt} {prev_bid_face}s made by Player {prev_player_nm}!'
-                    )
-                    time.sleep(Constants.PAUSE)
+                    self._emit('spot_on_called',
+                               caller_name=self.players[p].name,
+                               bidder_name=prev_player_nm,
+                               bid_count=prev_bid_cnt,
+                               bid_face=prev_bid_face)
+                    self._emit('rolls_revealed', player_rolls=[
+                        {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
+                        for pl in self.players])
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, losers = self._resolve_spot_on(prev_bid_obj, self.players[p])
+                    self._emit('spot_on_resolved',
+                               succeeded=succeeded,
+                               caller_name=self.players[p].name,
+                               caller_spot=self.players[p].spot)
                     if succeeded:
-                        print(Fore.CYAN + '<!> SPOT ON! Everyone else loses a die!')
                         inner_event = ['SUCCESS', Action.SPOT_ON, self.players[p].name]
                         self.log_event(inner_event)
-                        time.sleep(Constants.PAUSE)
                         for loser in losers:
                             loser.lose_die()
                         round_cont = False
                         break
                     else:  # Spot-on FAILURE
-                        if self.players[p].spot == 'HUMAN':
-                            print(
-                                Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
-                        elif self.players[p].spot == 'CPU':
-                            print(Fore.CYAN +
-                                  f'<!> {self.players[p].name} lost their spot on call!')
-                        time.sleep(Constants.PAUSE)
                         inner_event = ['FAILURE', Action.SPOT_ON, self.players[p].name]
                         self.log_event(inner_event)
                         losers[0].lose_die()
@@ -227,38 +213,27 @@ class LiarsDiceGame:
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
-        if Constants.DEBUG == True:
-                for player in self.players:
-                    print(f'{player.name} has {player.num_dice} dice')
+        if Constants.DEBUG:
+            for player in self.players:
+                self._emit('debug', msg=f'{player.name} has {player.num_dice} dice')
         removed_players = self._eliminate_players()
         for player in removed_players:
-            if player.spot == 'HUMAN':
-                print(Fore.BLUE + Style.BRIGHT +
-                      f'<X> {player.name}, you have been eliminated from the game!')
-                time.sleep(Constants.PAUSE)
-                if not Constants.MULTIPLAYER_ON:
-                    self.game_status = False  # game over, human eliminated if in single-human mode
-            else:
-                print(Fore.WHITE +
-                      f'<X> {player.name} has been eliminated from the game!')
-                time.sleep(Constants.PAUSE)
+            self._emit('player_eliminated', player_name=player.name, spot=player.spot)
+            if player.spot == 'HUMAN' and not Constants.MULTIPLAYER_ON:
+                self.game_status = False
 
         self.count_dice()
 
         # Report state of game or end it
         if self.num_players < 2:
-            print(
-                f'<!> There is only one player remaining. {self.players[0].name} has won the game!')
-            time.sleep(Constants.PAUSE)
+            self._emit('game_won', winner_name=self.players[0].name)
             self.game_status = False
         else:
-            print(
-                f'<!> There are {self.num_players} players and a total of {self.tot_num_dice} dice remaining.')
-            time.sleep(Constants.PAUSE)
+            self._emit('round_summary', num_players=self.num_players, tot_num_dice=self.tot_num_dice)
 
         # Impose max rounds
         if Constants.DEBUG and self.round_num > self.max_rounds:
-            print(Fore.CYAN + '<!> Max rounds reached. Ending game...')
+            self._emit('debug', msg='Max rounds reached. Ending game...')
             self.game_status = False
 
         # Rearrange Player array so loser goes first next round
@@ -297,33 +272,8 @@ class LiarsDiceGame:
                 event_string = '#' + str(self.event_counter) + ' ' + event
                 self.game_log.append(event_string)
                 self.game_log_file.write(event_string + '\n')
-
-            # if Constants.DEBUG:
-            #     print(Fore.MAGENTA + Style.DIM + '<!> Event Logged')
         except Exception as e:
             self.print_error('log_event')
-
-    def report_rolls(self):
-        print(Fore.CYAN + '<i> Lifting cups:\n')
-        try:
-            for p in self.players:
-                output = Fore.CYAN + f'<i> {p.name}\'s rolls: '
-                player_roll_freq = Counter(p.dice[:p.num_dice])
-                loop_cnt = 0
-                for d in sorted(player_roll_freq, key=player_roll_freq.get):
-                    output += str(player_roll_freq[d]) + ' ' + str(d)
-                    if player_roll_freq[d] > 1:
-                        output += '\'s'
-                    loop_cnt += 1
-                    if loop_cnt == len(player_roll_freq):
-                        output += "."
-                    elif loop_cnt == p.num_dice-1:
-                        output += ", and "
-                    else:
-                        output += ", "
-                print(output)
-        except Exception as e:
-            self.print_error('report_rolls')
 
     def _resolve_challenge(
         self, prev_bid: Bid, challenger: 'Player', bidder: 'Player'

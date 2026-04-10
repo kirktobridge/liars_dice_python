@@ -13,7 +13,7 @@ from models import Action, Bid, TurnResult
 
 
 def make_game(num_players=3):
-    """Create a LiarsDiceGame with a mocked log file."""
+    """Create a LiarsDiceGame with a mocked log file. No on_event renderer (no-op lambda)."""
     with patch('builtins.open', mock_open()):
         game = LiarsDiceGame(num_players)
     return game
@@ -231,6 +231,42 @@ class TestRoundRollsSentinels(unittest.TestCase):
             game.round_rolls.extend(p.dice[:p.num_dice])
         self.assertNotIn(-1, game.round_rolls)
         self.assertEqual(len(game.round_rolls), 5)
+
+
+class TestFullRoundIntegration(unittest.TestCase):
+    def test_round_increments_state_no_renderer(self):
+        """process_round() mutates game state AND fires _emit() correctly."""
+        events = []
+        game = make_game(2)
+        game._on_event = events.append  # collect emitted events
+        p1 = make_player("P1", num_dice=5, dice=[3, 3, 3, 3, 3])
+        p2 = make_player("P2", num_dice=5, dice=[6, 6, 6, 6, 6])
+        game.add_player(p1)
+        game.add_player(p2)
+
+        with patch.object(p1, 'roll'), \
+             patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn',
+                          return_value=TurnResult(Bid(2, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn',
+                          return_value=TurnResult(None, Action.CHALLENGE, 'P2')):
+            status = game.process_round()
+
+        # round_rolls: [3,3,3,3,3,6,6,6,6,6] → count(3)=5, count(1)=0, checked=5 >= bid=2
+        # → challenge FAILS → P2 loses a die (5→4)
+        self.assertEqual(game.round_num, 1)
+        self.assertEqual(p1.num_dice, 5)
+        self.assertEqual(p2.num_dice, 4)
+        self.assertEqual(game.tot_num_dice, 9)
+        self.assertTrue(status)   # game still running, 2 players remain
+
+        # Smoke-test that the dispatcher is actually wired, not just state
+        event_types = [e['type'] for e in events]
+        self.assertIn('round_started', event_types)
+        self.assertIn('bid_made', event_types)
+        self.assertIn('challenge_called', event_types)
+        self.assertIn('challenge_resolved', event_types)
+        self.assertIn('round_summary', event_types)
 
 
 if __name__ == '__main__':
