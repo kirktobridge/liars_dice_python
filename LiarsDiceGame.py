@@ -97,8 +97,8 @@ class LiarsDiceGame:
             for p in range(0, self.num_players):
                 round_msg = ''
                 if Constants.DEBUG == True:
-                    print(self.players[p].name)  # TODO
-                    print(self.players[p].dice[:self.players[p].num_dice])  # TODO
+                    print(self.players[p].name)
+                    print(self.players[p].dice[:self.players[p].num_dice])
                     round_msg = str(self.players[p].num_dice) + 'dice '
                 round_msg += f'<*> Round {self.round_num}: {self.players[p].name}\'s Turn'
                 print(round_msg)
@@ -227,8 +227,9 @@ class LiarsDiceGame:
         - Cap rounds if debugging '''
 
         # Eliminate players who now have zero dice remaining
-        for player in self.players:
-            print(f'{player.name}  has {player.num_dice} dice')
+        if Constants.DEBUG == True:
+                for player in self.players:
+                    print(f'{player.name} has {player.num_dice} dice')
         removed_players = self._eliminate_players()
         for player in removed_players:
             if player.spot == 'HUMAN':
