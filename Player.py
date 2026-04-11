@@ -16,7 +16,7 @@ from models import Action, Bid, TurnResult
 
 class Player:
 
-    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE):
+    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
         if Constants.DEBUG:
@@ -32,9 +32,10 @@ class Player:
         self.wild_count = 0
         self.mode_count = 0
         self.spot = spot
-        self.risk_appetite = random.choice(
+        self._rng = rng if rng is not None else random.Random()
+        self.risk_appetite = self._rng.choice(
             Constants.RISK_APPETITE_DISTRIBUTION)
-        self.peer_pressure_score = random.choice(
+        self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
 
     def lose_die(self):
@@ -60,7 +61,7 @@ class Player:
         '''Generates random values for the Player's held dice between 1 and 6,
         simulating rolls of a six-sided dice.'''
         for d in range(0, self.num_dice):
-            self.dice[d] = random.randint(1, 6)
+            self.dice[d] = self._rng.randint(1, 6)
 
     @staticmethod
     def grade(p: float):
@@ -202,7 +203,7 @@ class Player:
                 output = Bid(Constants.MINIMUM_BID + self.risk_appetite, self.rolls_mode)
             else:  # we have no mode assuming constant is 2
                 output = Bid(Constants.MINIMUM_BID + self.risk_appetite,
-                             self.dice[random.randint(0, self.num_dice-1)])
+                             self.dice[self._rng.randint(0, self.num_dice-1)])
             new_action = Action.BID
 
         # If the previous player made a bid

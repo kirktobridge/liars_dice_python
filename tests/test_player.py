@@ -269,5 +269,34 @@ class TestTakeTurnHuman(unittest.TestCase):
         self.assertEqual(result.action, Action.RAISE)
 
 
+import random as _random
+
+
+class TestTakeTurnDeterministic(unittest.TestCase):
+    """Proves that seeding the RNG produces identical take_turn results."""
+
+    def _make(self, seed: int) -> Player:
+        rng = _random.Random(seed)
+        p = Player('Tester', rng=rng)
+        p.dice = [3, 3, 3, 3, 3]
+        p.num_dice = 5
+        return p
+
+    def test_same_seed_same_start_result(self):
+        r1 = self._make(42).take_turn(deque([TurnResult(None, Action.START, 'SYS')]), 15)
+        r2 = self._make(42).take_turn(deque([TurnResult(None, Action.START, 'SYS')]), 15)
+        self.assertEqual(r1.action, r2.action)
+        self.assertEqual(r1.bid, r2.bid)
+
+    def test_different_seeds_may_differ(self):
+        """Sanity check: different seeds don't always collide."""
+        results = set()
+        for seed in range(20):
+            r = self._make(seed).take_turn(
+                deque([TurnResult(None, Action.START, 'SYS')]), 15)
+            results.add((r.action, r.bid))
+        self.assertGreater(len(results), 1)
+
+
 if __name__ == '__main__':
     unittest.main()

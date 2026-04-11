@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 from datetime import datetime
 import Constants
 from Player import Player
@@ -12,8 +13,9 @@ from models import Action, Bid, TurnResult
 
 class LiarsDiceGame:
 
-    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None):
+    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None, rng: random.Random | None = None):
         self._on_event = on_event or (lambda e: None)
+        self._rng = rng if rng is not None else random.Random()
         if Constants.DEBUG:
             self._emit('debug', msg='Game Object Initialized')
         self.num_players = num_players
@@ -24,8 +26,8 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self.game_log = []
-        self.game_log_file = open(
-            f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt', 'w+')
+        log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt' if on_event else os.devnull
+        self.game_log_file = open(log_path, 'w+')
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
