@@ -219,8 +219,6 @@ class LiarsDiceGame:
         removed_players = self._eliminate_players()
         for player in removed_players:
             self._emit('player_eliminated', player_name=player.name, spot=player.spot)
-            if player.spot == 'HUMAN' and not Constants.MULTIPLAYER_ON:
-                self.game_status = False
 
         self.count_dice()
 
