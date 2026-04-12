@@ -35,6 +35,9 @@ class Player:
         self._rng = rng if rng is not None else random.Random()
         self.risk_appetite = self._rng.choice(
             Constants.RISK_APPETITE_DISTRIBUTION)
+        jitter = self._rng.uniform(-0.03, 0.03)
+        risk_shift = (self.risk_appetite / Constants.MAX_RISK_SCORE) * 0.06
+        self.spot_on_threshold = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_shift + jitter)
         self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
 
@@ -335,7 +338,7 @@ class Player:
                         output = None
                         new_action = Action.SPOT_ON
                     # if it's only 1/3 likely, but we like risk anyway, then call spot on
-                    elif spot_on_probability > Constants.MIN_SPOT_ON_RISK and self.risk_appetite == Constants.MAX_RISK_SCORE:
+                    elif spot_on_probability > self.spot_on_threshold and self.risk_appetite == Constants.MAX_RISK_SCORE:
                         output = None
                         new_action = Action.SPOT_ON
                     elif challenge_success_probability == best_probability:
