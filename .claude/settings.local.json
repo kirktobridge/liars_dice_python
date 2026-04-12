@@ -10,7 +10,8 @@
       "Bash(python -m pytest test_game.py test_player.py -v)",
       "Bash(python -m pytest -v)",
       "Bash(python simulate.py)",
-      "Bash(rtk git:*)"
+      "Bash(rtk git:*)",
+      "Bash(python -m pytest tests/ -q --tb=short)"
     ]
   }
 }

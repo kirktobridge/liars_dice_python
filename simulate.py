@@ -205,7 +205,24 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
 
 
 if __name__ == '__main__':
-    df = run_tournament(1000, num_players=4)
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Run a Liar\'s Dice tournament simulation.')
+    parser.add_argument(
+        '-n', '--num-games',
+        type=int,
+        default=1000,
+        help='Number of games to simulate (default: 1000)'
+    )
+    parser.add_argument(
+        '-p', '--num-players',
+        type=int,
+        default=4,
+        help='Number of players per game (default: 4)'
+    )
+    args = parser.parse_args()
+
+    df = run_tournament(args.num_games, num_players=args.num_players)
     print(df['winner'].value_counts())
     print(f"Avg rounds: {df['rounds'].mean():.1f}")
     show_tournament_stats(df)
