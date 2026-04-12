@@ -19,6 +19,9 @@
       "Bash(python simulate.py -n 100 -p 4)",
       "Bash(python -m pytest tests/test_game.py::TestRunGame::test_returns_expected_keys tests/test_game.py::TestRunTournament::test_columns_present -v)",
       "Read(//c/Users/isaac/Local/ Documents/Software/ Projects/liars-dice-python/**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\isaac\\.claude"
     ]
   }
 }
