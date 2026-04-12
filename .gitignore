@@ -1,4 +1,5 @@
 # my additions
+.claude/settings.local.json
 .claude
 *LiarsDiceGame_Log.txt
 *.html
