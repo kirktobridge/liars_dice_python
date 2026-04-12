@@ -173,7 +173,7 @@ class Player:
                         output = self.bid(tot_other_dice)
                         if output.count < prev_bid_cnt or (output.count == prev_bid_cnt and output.face == prev_bid_face):
                             print(Fore.RED + Style.DIM +
-                                  f'<!> Illegal bid — must raise the count above {prev_bid_cnt}, or bid a different face at count {prev_bid_cnt}.')
+                                  f'<!> Yarrr, that\'s not allowed, matey, yer bid must raise th\' count above {prev_bid_cnt}, or bid a diff\'rent face at count {prev_bid_cnt}.')
                             continue
                         break
                     new_action = Action.RAISE if output.count > prev_bid_cnt else Action.BID
