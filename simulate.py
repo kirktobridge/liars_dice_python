@@ -1,4 +1,5 @@
 import random
+from tqdm import tqdm
 import pandas as pd
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
@@ -22,9 +23,24 @@ def run_game(seed: int, num_players: int, bot_configs: list[dict] | None = None)
 
 
 def run_tournament(n: int, num_players: int = 4) -> pd.DataFrame:
-    results = [run_game(seed=i, num_players=num_players) for i in range(n)]
-    return pd.DataFrame(results)
+    results = []
+    # Throttle tqdm updates for large simulations to avoid render overhead
+    update_interval = max(1, n // 1000)  # ~1000 updates regardless of n
 
+    with tqdm(
+        range(n),
+        desc="Simulating games",
+        unit="game",
+        miniters=update_interval,
+        dynamic_ncols=True,
+        colour="green",
+    ) as pbar:
+        for i in pbar:
+            result = run_game(seed=i, num_players=num_players)
+            results.append(result)
+            pbar.set_postfix(last_winner=result['winner'], rounds=result['rounds'])
+
+    return pd.DataFrame(results)
 
 def show_tournament_stats(df: pd.DataFrame) -> None:
     """Render a Civ 5 end-screen style stats dashboard and save html + png."""
