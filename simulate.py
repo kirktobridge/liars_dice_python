@@ -19,6 +19,12 @@ def run_game(seed: int, num_players: int, bot_configs: list[dict] | None = None)
         pass
     winner_name = game.players[0].name
     winner = players[winner_name]
+    player_data = {}
+    for name in names:
+        p = players[name]
+        safe = name.replace(' ', '_')
+        player_data[f'p_{safe}_risk'] = p.risk_appetite
+        player_data[f'p_{safe}_peer'] = p.peer_pressure_score
     return {
         'seed': seed,
         'winner': winner_name,
@@ -26,6 +32,7 @@ def run_game(seed: int, num_players: int, bot_configs: list[dict] | None = None)
         'num_players': num_players,
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
+        **player_data,
     }
 
 
@@ -152,9 +159,47 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
             showlegend=True,
         ))
 
+    # --- 7. Player Profiles Table ---
+    all_players = Constants.PLAYER_NAMES[:df['num_players'].iloc[0]]
+    profile_header = ['Player', 'Wins', 'Win %', 'Conservative', 'Moderate', 'Aggressive', 'Independent', 'Peer Pressure']
+    profile_cols = {col: [] for col in profile_header}
+    for player in all_players:
+        safe = player.replace(' ', '_')
+        risk_col = f'p_{safe}_risk'
+        peer_col = f'p_{safe}_peer'
+        wins = int((df['winner'] == player).sum())
+        profile_cols['Player'].append(player)
+        profile_cols['Wins'].append(str(wins))
+        profile_cols['Win %'].append(f"{wins / n_games * 100:.1f}%")
+        profile_cols['Conservative'].append(f"{(df[risk_col] == 0).mean() * 100:.1f}%")
+        profile_cols['Moderate'].append(f"{(df[risk_col] == 1).mean() * 100:.1f}%")
+        profile_cols['Aggressive'].append(f"{(df[risk_col] == 2).mean() * 100:.1f}%")
+        profile_cols['Independent'].append(f"{(df[peer_col] == 0).mean() * 100:.1f}%")
+        profile_cols['Peer Pressure'].append(f"{(df[peer_col] == 1).mean() * 100:.1f}%")
+
+    row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(len(all_players))]
+    profile_table = go.Table(
+        header=dict(
+            values=profile_header,
+            fill_color='#2a2a2e',
+            font=dict(color='#FFD700', size=13),
+            align='center',
+            line_color='#444',
+            height=32,
+        ),
+        cells=dict(
+            values=[profile_cols[col] for col in profile_header],
+            fill_color=[row_colors] * len(profile_header),
+            font=dict(color='#e8e8e8', size=12),
+            align=['left'] + ['center'] * (len(profile_header) - 1),
+            line_color='#444',
+            height=28,
+        ),
+    )
+
     # --- Assemble subplots ---
     fig = make_subplots(
-        rows=2, cols=3,
+        rows=3, cols=3,
         subplot_titles=(
             'Win Rate',
             'Game Length Distribution',
@@ -162,14 +207,18 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
             'Rounds per Winner',
             'Longest Win Streak',
             'Winner Personality Profile',
+            'Player Profiles',
+            '',
+            '',
         ),
         specs=[
             [{'type': 'bar'},      {'type': 'histogram'}, {'type': 'scatter'}],
             [{'type': 'box'},      {'type': 'bar'},        {'type': 'bar'}],
+            [{'type': 'table', 'colspan': 3}, None, None],
         ],
         column_widths=[0.28, 0.36, 0.36],
-        row_heights=[0.5, 0.5],
-        vertical_spacing=0.18,
+        row_heights=[0.35, 0.35, 0.30],
+        vertical_spacing=0.14,
         horizontal_spacing=0.08,
     )
 
@@ -186,18 +235,30 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
     for pb in personality_bars:
         fig.add_trace(pb, row=2, col=3)
 
-    # Mean line annotation on histogram (using paper coords for y)
-    fig.add_vline(
-        x=mean_rounds,
+    # Row 3
+    fig.add_trace(profile_table, row=3, col=1)
+
+    # Mean line annotation on histogram
+    # (add_vline can't be used here because go.Table in row 3 has no xaxis)
+    hist_xref = 'x2'
+    fig.add_shape(
+        type='line',
+        x0=mean_rounds, x1=mean_rounds,
+        y0=0, y1=1,
+        xref=hist_xref,
+        yref='y2 domain',
         line=dict(color='#FFD700', width=2, dash='dash'),
-        annotation_text=f'mean {mean_rounds:.1f}',
-        annotation_position='top right',
-        annotation_font_color='#FFD700',
-        row=1, col=2,
+    )
+    fig.add_annotation(
+        x=mean_rounds, y=1,
+        xref=hist_xref, yref='y2 domain',
+        text=f'mean {mean_rounds:.1f}',
+        showarrow=False,
+        font=dict(color='#FFD700', size=10),
+        xanchor='left', yanchor='top',
     )
 
     # Annotate fastest / longest game
-    hist_xref = 'x2'
     hist_yref = 'y2'
     fig.add_annotation(
         x=fastest_row['rounds'], y=0,
@@ -224,7 +285,7 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
             x=0.5,
             xanchor='center',
         ),
-        height=900,
+        height=1300,
         width=1600,
         legend=dict(
             title='Player',
