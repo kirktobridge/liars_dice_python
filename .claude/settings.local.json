@@ -12,7 +12,12 @@
       "Bash(python simulate.py)",
       "Bash(rtk git:*)",
       "Bash(python -m pytest tests/ -q --tb=short)",
-      "Bash(python -m pytest tests/test_game.py::TestRunTournament -v)"
+      "Bash(python -m pytest tests/test_game.py::TestRunTournament -v)",
+      "Bash(python -c \"import Constants; print\\(Constants.PLAYER_NAMES\\); print\\(Constants.RISK_APPETITE_DISTRIBUTION\\); print\\(Constants.PEER_PRESSURE_DISTRIBUTION\\)\")",
+      "Bash(python -c ':*)",
+      "Bash(python simulate.py -n 10 -p 4)",
+      "Bash(python simulate.py -n 100 -p 4)",
+      "Bash(python -m pytest tests/test_game.py::TestRunGame::test_returns_expected_keys tests/test_game.py::TestRunTournament::test_columns_present -v)"
     ]
   }
 }
