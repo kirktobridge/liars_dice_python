@@ -6,15 +6,18 @@ from Player import Player
 import Constants
 
 
-def run_game(seed: int, num_players: int, bot_configs: list[dict] | None = None) -> dict:
+def run_game(seed: int, num_players: int, players: dict[str, Player] | None = None) -> dict:
     rng = random.Random(seed)
     game = LiarsDiceGame(num_players, rng=rng)  # no on_event renderer = silent
     names = Constants.PLAYER_NAMES[:num_players]
-    players = {}
+    if players is None:
+        players = {name: Player(name, rng=rng) for name in names}
+    else:
+        for p in players.values():
+            p.reset()
+            p._rng = rng  # rebind so dice rolls use this game's RNG
     for name in names:
-        p = Player(name, rng=rng)
-        players[name] = p
-        game.add_player(p)
+        game.add_player(players[name])
     while game.process_round():
         pass
     winner_name = game.players[0].name
@@ -37,6 +40,11 @@ def run_game(seed: int, num_players: int, bot_configs: list[dict] | None = None)
 
 
 def run_tournament(n: int, num_players: int = 4) -> pd.DataFrame:
+    # Create players once so personalities persist across all games
+    personality_rng = random.Random(0)
+    names = Constants.PLAYER_NAMES[:num_players]
+    persistent_players = {name: Player(name, rng=personality_rng) for name in names}
+
     results = []
     # Throttle tqdm updates for large simulations to avoid render overhead
     update_interval = max(1, n // 1000)  # ~1000 updates regardless of n
@@ -50,7 +58,7 @@ def run_tournament(n: int, num_players: int = 4) -> pd.DataFrame:
         colour="green",
     ) as pbar:
         for i in pbar:
-            result = run_game(seed=i, num_players=num_players)
+            result = run_game(seed=i, num_players=num_players, players=persistent_players)
             results.append(result)
             pbar.set_postfix(last_winner=result['winner'], rounds=result['rounds'])
 
@@ -160,22 +168,23 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
         ))
 
     # --- 7. Player Profiles Table ---
+    risk_labels = {0: 'Conservative', 1: 'Moderate', 2: 'Aggressive'}
+    peer_labels = {0: 'Independent', 1: 'Follows Crowd'}
     all_players = Constants.PLAYER_NAMES[:df['num_players'].iloc[0]]
-    profile_header = ['Player', 'Wins', 'Win %', 'Conservative', 'Moderate', 'Aggressive', 'Independent', 'Peer Pressure']
+    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure']
     profile_cols = {col: [] for col in profile_header}
     for player in all_players:
         safe = player.replace(' ', '_')
         risk_col = f'p_{safe}_risk'
         peer_col = f'p_{safe}_peer'
         wins = int((df['winner'] == player).sum())
+        risk_val = int(df[risk_col].iloc[0])
+        peer_val = int(df[peer_col].iloc[0])
         profile_cols['Player'].append(player)
         profile_cols['Wins'].append(str(wins))
         profile_cols['Win %'].append(f"{wins / n_games * 100:.1f}%")
-        profile_cols['Conservative'].append(f"{(df[risk_col] == 0).mean() * 100:.1f}%")
-        profile_cols['Moderate'].append(f"{(df[risk_col] == 1).mean() * 100:.1f}%")
-        profile_cols['Aggressive'].append(f"{(df[risk_col] == 2).mean() * 100:.1f}%")
-        profile_cols['Independent'].append(f"{(df[peer_col] == 0).mean() * 100:.1f}%")
-        profile_cols['Peer Pressure'].append(f"{(df[peer_col] == 1).mean() * 100:.1f}%")
+        profile_cols['Risk Appetite'].append(risk_labels[risk_val])
+        profile_cols['Peer Pressure'].append(peer_labels[peer_val])
 
     row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(len(all_players))]
     profile_table = go.Table(
@@ -206,7 +215,7 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
             'Cumulative Win Rate Over Time',
             'Rounds per Winner',
             'Longest Win Streak',
-            'Winner Personality Profile',
+            'Win Rate by Personality Type',
             'Player Profiles',
             '',
             '',

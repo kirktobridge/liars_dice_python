@@ -38,6 +38,15 @@ class Player:
         self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
 
+    def reset(self) -> None:
+        """Reset per-game state; personality traits (risk_appetite, peer_pressure_score) are preserved."""
+        self.num_dice = Constants.MAX_NUM_DICE
+        self.dice = [-1] * self.num_dice
+        self.rolls_mode = 0
+        self.wild_count = 0
+        self.mode_count = 0
+        self.eliminated = False
+
     def lose_die(self):
         '''Removes virtual die from the Player object, and updates Player's dice
         count variable.'''
