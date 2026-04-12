@@ -1,7 +1,5 @@
 import random
 import pandas as pd
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 import Constants
@@ -30,6 +28,9 @@ def run_tournament(n: int, num_players: int = 4) -> pd.DataFrame:
 
 def show_tournament_stats(df: pd.DataFrame) -> None:
     """Render a Civ 5 end-screen style stats dashboard and save html + png."""
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
     df = df.sort_values('seed').reset_index(drop=True)
     n_games = len(df)
     medal_colors = {0: '#FFD700', 1: '#C0C0C0', 2: '#CD7F32'}

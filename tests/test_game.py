@@ -10,6 +10,7 @@ import Constants
 from Player import Player
 from LiarsDiceGame import LiarsDiceGame
 from models import Action, Bid, TurnResult
+from simulate import run_game, run_tournament
 
 
 def make_game(num_players=3):
@@ -267,6 +268,58 @@ class TestFullRoundIntegration(unittest.TestCase):
         self.assertIn('challenge_called', event_types)
         self.assertIn('challenge_resolved', event_types)
         self.assertIn('round_summary', event_types)
+
+
+class TestRunGame(unittest.TestCase):
+    def test_returns_expected_keys(self):
+        result = run_game(seed=0, num_players=3)
+        self.assertSetEqual(set(result.keys()), {'seed', 'winner', 'rounds', 'num_players'})
+
+    def test_seed_echoed_in_result(self):
+        result = run_game(seed=42, num_players=3)
+        self.assertEqual(result['seed'], 42)
+
+    def test_num_players_echoed_in_result(self):
+        result = run_game(seed=0, num_players=3)
+        self.assertEqual(result['num_players'], 3)
+
+    def test_winner_is_a_known_player_name(self):
+        result = run_game(seed=0, num_players=3)
+        self.assertIn(result['winner'], Constants.PLAYER_NAMES)
+
+    def test_rounds_is_positive_integer(self):
+        result = run_game(seed=0, num_players=3)
+        self.assertIsInstance(result['rounds'], int)
+        self.assertGreater(result['rounds'], 0)
+
+    def test_same_seed_is_deterministic(self):
+        r1 = run_game(seed=7, num_players=4)
+        r2 = run_game(seed=7, num_players=4)
+        self.assertEqual(r1, r2)
+
+    def test_different_seeds_may_differ(self):
+        results = {run_game(seed=s, num_players=4)['winner'] for s in range(20)}
+        self.assertGreater(len(results), 1)
+
+
+class TestRunTournament(unittest.TestCase):
+    def test_returns_dataframe(self):
+        import pandas as pd
+        df = run_tournament(n=5, num_players=3)
+        self.assertIsInstance(df, pd.DataFrame)
+
+    def test_row_count_matches_n(self):
+        df = run_tournament(n=10, num_players=3)
+        self.assertEqual(len(df), 10)
+
+    def test_columns_present(self):
+        df = run_tournament(n=5, num_players=3)
+        self.assertSetEqual(set(df.columns), {'seed', 'winner', 'rounds', 'num_players'})
+
+    def test_seeds_are_range_n(self):
+        n = 8
+        df = run_tournament(n=n, num_players=3)
+        self.assertListEqual(sorted(df['seed'].tolist()), list(range(n)))
 
 
 if __name__ == '__main__':
