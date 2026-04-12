@@ -57,7 +57,7 @@ def run_tournament(n: int, num_players: int = 4) -> pd.DataFrame:
     return pd.DataFrame(results)
 
 def show_tournament_stats(df: pd.DataFrame) -> None:
-    """Render a Civ 5 end-screen style stats dashboard and save html + png."""
+    """Render a end stats dashboard and save html + png."""
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
 
