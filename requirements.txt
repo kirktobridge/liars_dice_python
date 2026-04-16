@@ -3,6 +3,6 @@ pandas==3.0.2
 plotly==6.7.0
 scipy==1.17.1
 tqdm==4.67.3
-
+kaleido==1.2.0
 # dev
 pytest==9.0.3
