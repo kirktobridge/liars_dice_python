@@ -9,6 +9,8 @@ from colorama import Fore, Style
 from scipy.stats import binom
 from models import Action, Bid, TurnResult
 
+_binom_cache: dict[int, binom] = {}
+
 # TODO refactorings for readability (bidding, getting probability, etc)
 # TODO behavior for human bidding/raising/challenging
 # TODO add behavior for raising by more than 1
@@ -220,7 +222,9 @@ class Player:
 
         # If the previous player made a bid
         elif prev_action == Action.BID or prev_action == Action.RAISE:
-            model = binom(n=tot_other_dice, p=2/6)  # set up binomial model
+            if tot_other_dice not in _binom_cache:
+                _binom_cache[tot_other_dice] = binom(n=tot_other_dice, p=2/6)
+            model = _binom_cache[tot_other_dice]  # set up binomial model
             # ns and 1s count as ns
             prev_bid = prev_event.bid  # pulls previous turn's bid
             prev_bid_cnt = prev_bid.count
