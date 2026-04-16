@@ -25,12 +25,12 @@ class LiarsDiceGame:
         self.prev_action = ''
         self.game_status = True
         self.round_rolls = []
-        self.game_log = []
         self._logging = on_event is not None
         if self._logging:
-            log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt'
-            self.game_log_file = open(log_path, 'w+')
+            self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt'
+            self.game_log_file = open(self._log_path, 'w+')
         else:
+            self._log_path = None
             self.game_log_file = None
         self.tot_num_dice = 0
         self.event_counter = 0
@@ -267,17 +267,12 @@ class LiarsDiceGame:
         try:
             if isinstance(event, TurnResult):
                 event_w_cnt = ["#" + str(self.event_counter), str(event.bid), str(event.action), event.player_name]
-                self.game_log.append(event_w_cnt)
                 self.game_log_file.write(str(event_w_cnt) + '\n')
             elif isinstance(event, list):
-                event_w_cnt = []
-                event_w_cnt.insert(0, "#" + str(self.event_counter))
-                event_w_cnt.extend(event)
-                self.game_log.append(event_w_cnt)
+                event_w_cnt = ["#" + str(self.event_counter)] + event
                 self.game_log_file.write(str(event_w_cnt) + '\n')
             elif isinstance(event, str):
                 event_string = '#' + str(self.event_counter) + ' ' + event
-                self.game_log.append(event_string)
                 self.game_log_file.write(event_string + '\n')
         except Exception as e:
             self.print_error('log_event')
@@ -287,6 +282,12 @@ class LiarsDiceGame:
         if self._logging and self.game_log_file:
             self.game_log_file.close()
             self.game_log_file = None
+
+    def __enter__(self) -> 'LiarsDiceGame':
+        return self
+
+    def __exit__(self, *_) -> None:
+        self.close()
 
     def _resolve_challenge(
         self, prev_bid: Bid, challenger: 'Player', bidder: 'Player'

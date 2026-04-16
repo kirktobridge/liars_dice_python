@@ -218,11 +218,9 @@ def main():
 
     print(Fore.BLUE + Style.BRIGHT +
           '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
-    if Constants.DEBUG == True:
-        time.sleep(Constants.PAUSE*5)
-        print(Fore.MAGENTA + '----- GAME LOG -----')
-        for entry in game.game_log:
-            print(entry)
+    if Constants.DEBUG == True and game._log_path:
+        print(Fore.MAGENTA + f'----- GAME LOG: {game._log_path} -----')
+    game.close()
 
 
 if __name__ == '__main__':

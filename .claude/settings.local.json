@@ -28,7 +28,8 @@
       "Bash(python3 -m ensurepip)",
       "Bash(python3 -m pip install pytest scipy)",
       "Bash(python3 -m pytest tests/test_game.py tests/test_player.py -v)",
-      "Bash(python3 -c \"import pytest; print\\(pytest.__file__\\)\")"
+      "Bash(python3 -c \"import pytest; print\\(pytest.__file__\\)\")",
+      "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -v)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"

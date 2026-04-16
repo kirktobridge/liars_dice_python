@@ -8,7 +8,6 @@ import Constants
 
 def run_game(seed: int, num_players: int, players: dict[str, Player] | None = None) -> dict:
     rng = random.Random(seed)
-    game = LiarsDiceGame(num_players, rng=rng)  # no on_event renderer = silent
     names = Constants.PLAYER_NAMES[:num_players]
     if players is None:
         players = {name: Player(name, rng=rng) for name in names}
@@ -16,11 +15,12 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
         for p in players.values():
             p.reset()
             p._rng = rng  # rebind so dice rolls use this game's RNG
-    for name in names:
-        game.add_player(players[name])
-    while game.process_round():
-        pass
-    winner_name = game.players[0].name
+    with LiarsDiceGame(num_players, rng=rng) as game:  # no on_event renderer = silent
+        for name in names:
+            game.add_player(players[name])
+        while game.process_round():
+            pass
+        winner_name = game.players[0].name
     winner = players[winner_name]
     player_data = {}
     for name in names:
