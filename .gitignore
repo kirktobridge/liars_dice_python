@@ -1,6 +1,5 @@
 # my additions
-.claude/settings.local.json
-.claude
+.claude/
 *LiarsDiceGame_Log.txt
 *.html
 *.png
