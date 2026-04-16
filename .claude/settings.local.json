@@ -1,36 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python main.py)",
-      "Bash(python)",
-      "Bash(python -m pytest tests/ -v --tb=short)",
-      "Bash(pip install:*)",
-      "Bash(python -m pytest tests/test_game.py tests/test_player.py -v)",
-      "Bash(python -m pytest tests/test_game.py tests/test_player.py -v --tb=no -q)",
-      "Bash(python -m pytest test_game.py test_player.py -v)",
-      "Bash(python -m pytest -v)",
-      "Bash(python simulate.py)",
-      "Bash(rtk git:*)",
-      "Bash(python -m pytest tests/ -q --tb=short)",
-      "Bash(python -m pytest tests/test_game.py::TestRunTournament -v)",
-      "Bash(python -c \"import Constants; print\\(Constants.PLAYER_NAMES\\); print\\(Constants.RISK_APPETITE_DISTRIBUTION\\); print\\(Constants.PEER_PRESSURE_DISTRIBUTION\\)\")",
-      "Bash(python -c ':*)",
-      "Bash(python simulate.py -n 10 -p 4)",
-      "Bash(python simulate.py -n 100 -p 4)",
-      "Bash(python -m pytest tests/test_game.py::TestRunGame::test_returns_expected_keys tests/test_game.py::TestRunTournament::test_columns_present -v)",
-      "Read(//c/Users/isaac/Local/ Documents/Software/ Projects/liars-dice-python/**)",
-      "Bash(python3 -m pytest test_game.py test_player.py -v)",
-      "Bash(pip3 install *)",
-      "Bash(python3 -m pip install -r /home/glamdring/liars_dice_python/requirements.txt)",
-      "Read(//home/glamdring/**)",
-      "Bash(conda activate *)",
-      "Bash(conda run *)",
-      "Bash(python3 -m ensurepip)",
-      "Bash(python3 -m pip install pytest scipy)",
-      "Bash(python3 -m pytest tests/test_game.py tests/test_player.py -v)",
-      "Bash(python3 -c \"import pytest; print\\(pytest.__file__\\)\")",
       "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -v)",
-      "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -q)"
+      "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -q)",
+      "Bash(.venv/bin/python -m pytest tests/ -v)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"

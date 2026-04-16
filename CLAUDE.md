@@ -8,9 +8,9 @@
 - `test_game.py` / `test_player.py` — unittest suite with mock_open and @patch(builtins.input)
 
 ## Test Commands
-- Run all tests: `python -m pytest test_game.py test_player.py -v`
-- Run single file: `python -m pytest test_player.py -v`
-- Run single test: `python -m pytest test_player.py::TestGetNeededCnt::test_bid_on_ones_no_double_count -v`
+- Run all tests: `.venv/bin/pytest tests/test_game.py tests/test_player.py -v`
+- Run single file: `.venv/bin/pytest tests/test_player.py -v`
+- Run single test: `.venv/bin/pytest tests/test_player.py::TestGetNeededCnt::test_bid_on_ones_no_double_count -v`
 
 ## Code Style
 - Python 3.10+. Use dataclasses and Enum from stdlib. Type hints on all new functions.
@@ -19,10 +19,5 @@
 - All new tests go in the existing test files. Keep make_game() / make_player() helpers in test_game.py
 
 ## Important Constraints
-- DO NOT change game rules, win conditions, or scoring logic during refactors
 - DO NOT break the existing pirate-voice CLI experience in main.py
 - ALWAYS run the full test suite before committing. All tests must pass green.
-- Constants.ACTIONS is currently a list — do not remove it until Phase 1 is fully complete
-
-## Active Refactor Branch
-Working through a 5-phase refactor. See REFACTOR_PLAN.md for phase status.
