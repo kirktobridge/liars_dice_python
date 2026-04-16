@@ -274,11 +274,12 @@ class Player:
                 #   (3.1) GET PROBABILITY OF ALL LEGAL BIDS
                 #       produce most probable bid, this will be compared to (1) and (2)
                 #       get list of previous bids to check legality of potential bids
-                all_prev_bids: list[Bid] = []
-                for event in prev_events:
-                    if isinstance(event, TurnResult) and \
-                            event.action in (Action.BID, Action.RAISE):
-                        all_prev_bids.append(event.bid)
+                all_prev_bids: set[Bid] = {
+                    event.bid
+                    for event in prev_events
+                    if isinstance(event, TurnResult)
+                    and event.action in (Action.BID, Action.RAISE)
+                }
 
                 #       (3.1.1) BUILD LIST OF PERMISSIBLE BIDS:
                 #           (3.1.1.1) include all count-matching bids not already made this round
