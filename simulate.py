@@ -381,8 +381,12 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
     fig.update_yaxes(title_text='Wins', row=2, col=3)
 
     fig.write_html('tournament_stats.html')
-    fig.write_image('tournament_stats.png', scale=2)
-    print('Saved tournament_stats.html and tournament_stats.png')
+    print('Saved tournament_stats.html')
+    try:
+        fig.write_image('tournament_stats.png', scale=2)
+        print('Saved tournament_stats.png')
+    except Exception:
+        print('Skipped tournament_stats.png (Chrome not found — run `plotly_get_chrome` to enable)')
 
 
 if __name__ == '__main__':
