@@ -20,6 +20,15 @@
             "command": ".venv/bin/python -m pytest tests/ -q --tb=short 2>&1"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/diagnose-before-retry.sh"
+          }
+        ]
       }
     ]
   }
