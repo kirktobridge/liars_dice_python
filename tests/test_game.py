@@ -94,9 +94,12 @@ class TestLogEvent(unittest.TestCase):
         self.assertEqual(len(self.game.round_events), 1)
 
     def test_log_string_event(self):
-        self.game.log_event("test event")
-        self.assertEqual(self.game.event_counter, 1)
-        self.assertIn(len(self.game.game_log), [1])
+        # game_log only populated when on_event is set (_logging=True)
+        with patch('builtins.open', mock_open()):
+            game = LiarsDiceGame(2, on_event=lambda e: None)
+        game.log_event("test event")
+        self.assertEqual(game.event_counter, 1)
+        self.assertIn(len(game.game_log), [1])
 
     def test_log_increments_counter(self):
         self.game.log_event(TurnResult(Bid(1, 2), Action.BID, 'Alice'))

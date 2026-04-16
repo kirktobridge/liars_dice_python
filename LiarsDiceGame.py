@@ -26,8 +26,12 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self.game_log = []
-        log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt' if on_event else os.devnull
-        self.game_log_file = open(log_path, 'w+')
+        self._logging = on_event is not None
+        if self._logging:
+            log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt'
+            self.game_log_file = open(log_path, 'w+')
+        else:
+            self.game_log_file = None
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
@@ -117,7 +121,7 @@ class LiarsDiceGame:
                 # player takes turn, output (bid, if any) and action are recorded
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
-                    if Constants.DEBUG:
+                    if Constants.DEBUG and self._logging:
                         self.game_log_file.write(
                             f'Passing prev_event {self.round_events[0]} and action {self.round_events[0].action} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     cur_event = self.players[p].take_turn(
@@ -204,10 +208,11 @@ class LiarsDiceGame:
                         round_cont = False
                         break
             ''' END OF FOR-PLAYER LOOP'''
-            if Constants.DEBUG:
+            if Constants.DEBUG and self._logging:
                 self.game_log_file.write('End of for loop\n')
 
-        self.game_log_file.write('Broke out of while round_cont loop\n')
+        if self._logging:
+            self.game_log_file.write('Broke out of while round_cont loop\n')
         ''' END OF WHILE ROUND_CONT LOOP'''
         ''' POST-ROUND TASKS
         - Process eliminations
@@ -257,6 +262,8 @@ class LiarsDiceGame:
         '''Adds entry to game log for analysis by developer.'''
         self.round_events.appendleft(event)
         self.event_counter += 1
+        if not self._logging:
+            return
         try:
             if isinstance(event, TurnResult):
                 event_w_cnt = ["#" + str(self.event_counter), str(event.bid), str(event.action), event.player_name]
@@ -274,6 +281,12 @@ class LiarsDiceGame:
                 self.game_log_file.write(event_string + '\n')
         except Exception as e:
             self.print_error('log_event')
+
+    def close(self) -> None:
+        """Close the log file if one was opened."""
+        if self._logging and self.game_log_file:
+            self.game_log_file.close()
+            self.game_log_file = None
 
     def _resolve_challenge(
         self, prev_bid: Bid, challenger: 'Player', bidder: 'Player'
@@ -303,7 +316,7 @@ class LiarsDiceGame:
         to_remove = [p for p in self.players if p.num_dice == 0]
         for player in to_remove:
             player.eliminated = True
-            if Constants.DEBUG:
+            if Constants.DEBUG and self._logging:
                 self.game_log_file.write(
                     f'{player.name} is being removed from the player array')
             self.players.remove(player)

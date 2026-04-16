@@ -18,7 +18,17 @@
       "Bash(python simulate.py -n 10 -p 4)",
       "Bash(python simulate.py -n 100 -p 4)",
       "Bash(python -m pytest tests/test_game.py::TestRunGame::test_returns_expected_keys tests/test_game.py::TestRunTournament::test_columns_present -v)",
-      "Read(//c/Users/isaac/Local/ Documents/Software/ Projects/liars-dice-python/**)"
+      "Read(//c/Users/isaac/Local/ Documents/Software/ Projects/liars-dice-python/**)",
+      "Bash(python3 -m pytest test_game.py test_player.py -v)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -m pip install -r /home/glamdring/liars_dice_python/requirements.txt)",
+      "Read(//home/glamdring/**)",
+      "Bash(conda activate *)",
+      "Bash(conda run *)",
+      "Bash(python3 -m ensurepip)",
+      "Bash(python3 -m pip install pytest scipy)",
+      "Bash(python3 -m pytest tests/test_game.py tests/test_player.py -v)",
+      "Bash(python3 -c \"import pytest; print\\(pytest.__file__\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"
