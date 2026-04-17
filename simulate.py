@@ -142,7 +142,7 @@ def run_tournament(
     elim_rows  = [row for r in results for row in r.pop('_elim_rows', [])]
     return pd.DataFrame(results), pd.DataFrame(round_rows), pd.DataFrame(elim_rows)
 
-def show_tournament_stats(df: pd.DataFrame) -> None:
+def show_tournament_stats(df: pd.DataFrame, df_rounds: pd.DataFrame, df_eliminations: pd.DataFrame) -> None:
     """Render a end stats dashboard and save html + png."""
     import plotly.graph_objects as go
     from plotly.subplots import make_subplots
@@ -283,6 +283,34 @@ def show_tournament_stats(df: pd.DataFrame) -> None:
             height=28,
         ),
     )
+
+    # --- 8. Derived stats (data ready for future charts) ---
+    chall = df_rounds[df_rounds['action_type'] == 'challenge']
+    chall_called = chall.groupby('action_caller').size().rename('called')
+    chall_won = chall[chall['challenge_succeeded']].groupby('action_caller').size().rename('won')
+    chall_stats = pd.concat([chall_called, chall_won], axis=1).fillna(0).astype(int)
+    chall_stats = chall_stats.reindex(sorted_players, fill_value=0)
+    chall_stats['win_pct'] = (chall_stats['won'] / chall_stats['called'].replace(0, pd.NA) * 100).fillna(0).round(1)
+
+    spot = df_rounds[df_rounds['action_type'] == 'spot_on']
+    spot_attempts = spot.groupby('action_caller').size().rename('attempts')
+    spot_wins = spot[spot['challenge_succeeded']].groupby('action_caller').size().rename('wins')
+    spot_stats = pd.concat([spot_attempts, spot_wins], axis=1).fillna(0).astype(int)
+    spot_stats = spot_stats.reindex(sorted_players, fill_value=0)
+
+    num_players_val = int(df['num_players'].iloc[0])
+    pos_counts = (df_eliminations
+        .groupby(['player_name', 'finishing_position'])
+        .size()
+        .unstack(fill_value=0))
+    pos_pct = (pos_counts.div(pos_counts.sum(axis=1), axis=0) * 100).round(1)
+    pos_pct = pos_pct.reindex(sorted_players, fill_value=0.0)
+    pos_pct = pos_pct.reindex(columns=range(1, num_players_val + 1), fill_value=0.0)
+
+    escalation = (df_rounds[df_rounds['action_type'].isin(['challenge', 'spot_on'])]
+        .groupby('bid_count')['bid_count_claimed']
+        .mean()
+        .reset_index())
 
     # --- Assemble subplots ---
     fig = make_subplots(
@@ -438,4 +466,4 @@ if __name__ == '__main__':
     print(df['winner_risk_appetite'].value_counts().sort_index())
     print("\nWinner peer pressure distribution (0=independent, 1=follows crowd):")
     print(df['winner_peer_pressure'].value_counts().sort_index())
-    show_tournament_stats(df)
+    show_tournament_stats(df, df_rounds, df_eliminations)

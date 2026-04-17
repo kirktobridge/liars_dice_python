@@ -101,6 +101,12 @@ class GameStatsCollector:
     def _flush_round(self) -> None:
         if self._cur_round == 0:
             return
+        if self._action_type == 'challenge':
+            action_caller = self._challenger_name
+        elif self._action_type == 'spot_on':
+            action_caller = self._caller_name
+        else:
+            action_caller = None
         self.round_rows.append({
             'seed': self.seed,
             'round_num': self._cur_round,
@@ -111,4 +117,5 @@ class GameStatsCollector:
             'effective_actual_count': self._effective_actual_count,
             'challenge_succeeded': self._challenge_succeeded,
             'round_loser': self._round_loser,
+            'action_caller': action_caller,
         })
