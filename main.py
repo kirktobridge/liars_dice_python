@@ -179,7 +179,7 @@ def main():
               f'<i> {num_players} players selected. Initalizing...')
         break
 
-    game = LiarsDiceGame(num_players, on_event=pirate_renderer)
+    game = LiarsDiceGame(num_players, on_event=pirate_renderer, log=True)
     player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
     while True and not Constants.MULTIPLAYER_ON:
         try:

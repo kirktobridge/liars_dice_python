@@ -13,7 +13,7 @@ from models import Action, Bid, TurnResult
 
 class LiarsDiceGame:
 
-    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None, rng: random.Random | None = None):
+    def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None, rng: random.Random | None = None, log: bool = False):
         self._on_event = on_event or (lambda e: None)
         self._rng = rng if rng is not None else random.Random()
         if Constants.DEBUG:
@@ -25,7 +25,7 @@ class LiarsDiceGame:
         self.prev_action = ''
         self.game_status = True
         self.round_rolls = []
-        self._logging = on_event is not None
+        self._logging = log
         if self._logging:
             self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt'
             self.game_log_file = open(self._log_path, 'w+')
@@ -154,7 +154,8 @@ class LiarsDiceGame:
                                challenger_name=self.players[p].name,
                                bidder_name=prev_player_nm,
                                bid_count=prev_bid_cnt,
-                               bid_face=prev_bid_face)
+                               bid_face=prev_bid_face,
+                               tot_num_dice=self.tot_num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
                         for pl in self.players])
@@ -183,7 +184,8 @@ class LiarsDiceGame:
                                caller_name=self.players[p].name,
                                bidder_name=prev_player_nm,
                                bid_count=prev_bid_cnt,
-                               bid_face=prev_bid_face)
+                               bid_face=prev_bid_face,
+                               tot_num_dice=self.tot_num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
                         for pl in self.players])

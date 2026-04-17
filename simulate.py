@@ -6,6 +6,7 @@ from tqdm import tqdm
 import pandas as pd
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
+from stats_collector import GameStatsCollector
 import Constants
 
 # Personality snapshot type: name -> (risk_appetite, peer_pressure_score)
@@ -21,7 +22,8 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
         for p in players.values():
             p.reset()
             p._rng = rng  # rebind so dice rolls use this game's RNG
-    with LiarsDiceGame(num_players, rng=rng) as game:  # no on_event renderer = silent
+    collector = GameStatsCollector(seed, num_players)
+    with LiarsDiceGame(num_players, rng=rng, on_event=collector.on_event) as game:
         for name in names:
             game.add_player(players[name])
         while game.process_round():
@@ -42,6 +44,8 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
         **player_data,
+        '_round_rows': collector.round_rows,
+        '_elim_rows': collector.elimination_rows,
     }
 
 
@@ -57,7 +61,8 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
         p.risk_appetite, p.peer_pressure_score = personalities[name]
         p._rng = game_rng  # bind game RNG so dice rolls are deterministic per seed
         players[name] = p
-    with LiarsDiceGame(num_players, rng=game_rng) as game:
+    collector = GameStatsCollector(seed, num_players)
+    with LiarsDiceGame(num_players, rng=game_rng, on_event=collector.on_event) as game:
         for name in names:
             game.add_player(players[name])
         while game.process_round():
@@ -78,10 +83,15 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
         **player_data,
+        '_round_rows': collector.round_rows,
+        '_elim_rows': collector.elimination_rows,
     }
 
 
-def run_tournament(n: int, num_players: int = 4, workers: int | None = None) -> pd.DataFrame:
+def run_tournament(
+    n: int, num_players: int = 4, workers: int | None = None
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Run n games and return (df_games, df_rounds, df_eliminations)."""
     if not (2 <= num_players <= Constants.MAX_PLAYERS):
         raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
     # Create players once so personalities are consistent across all games
@@ -108,28 +118,29 @@ def run_tournament(n: int, num_players: int = 4, workers: int | None = None) -> 
                 result = run_game(seed=i, num_players=num_players, players=persistent_players)
                 results.append(result)
                 pbar.set_postfix(last_winner=result['winner'], rounds=result['rounds'])
-        return pd.DataFrame(results)
+    else:
+        # Parallel path — snapshot personalities so workers can reconstruct players safely
+        personalities: _Personalities = {
+            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score)
+            for name in names
+        }
+        chunk = max(1, n // (num_workers * 4))
+        args_iter = ((i, num_players, personalities) for i in range(n))
 
-    # Parallel path — snapshot personalities so workers can reconstruct players safely
-    personalities: _Personalities = {
-        name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score)
-        for name in names
-    }
-    chunk = max(1, n // (num_workers * 4))
-    args_iter = ((i, num_players, personalities) for i in range(n))
+        with ProcessPoolExecutor(max_workers=num_workers) as executor:
+            results = list(tqdm(
+                executor.map(_run_game_worker, args_iter, chunksize=chunk),
+                total=n,
+                desc=f"Simulating games ({num_workers} workers)",
+                unit="game",
+                miniters=update_interval,
+                dynamic_ncols=True,
+                colour="green",
+            ))
 
-    with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        results = list(tqdm(
-            executor.map(_run_game_worker, args_iter, chunksize=chunk),
-            total=n,
-            desc=f"Simulating games ({num_workers} workers)",
-            unit="game",
-            miniters=update_interval,
-            dynamic_ncols=True,
-            colour="green",
-        ))
-
-    return pd.DataFrame(results)
+    round_rows = [row for r in results for row in r.pop('_round_rows', [])]
+    elim_rows  = [row for r in results for row in r.pop('_elim_rows', [])]
+    return pd.DataFrame(results), pd.DataFrame(round_rows), pd.DataFrame(elim_rows)
 
 def show_tournament_stats(df: pd.DataFrame) -> None:
     """Render a end stats dashboard and save html + png."""
@@ -417,7 +428,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        df = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers)
+        df, df_rounds, df_eliminations = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)

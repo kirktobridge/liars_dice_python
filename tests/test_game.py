@@ -270,7 +270,8 @@ class TestFullRoundIntegration(unittest.TestCase):
 class TestRunGame(unittest.TestCase):
     def test_returns_expected_keys(self):
         result = run_game(seed=0, num_players=3)
-        base_keys = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure'}
+        base_keys = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure',
+                     '_round_rows', '_elim_rows'}
         player_keys = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer')}
         self.assertSetEqual(set(result.keys()), base_keys | player_keys)
 
@@ -304,22 +305,24 @@ class TestRunGame(unittest.TestCase):
 class TestRunTournament(unittest.TestCase):
     def test_returns_dataframe(self):
         import pandas as pd
-        df = run_tournament(n=5, num_players=3)
+        df, df_rounds, df_eliminations = run_tournament(n=5, num_players=3)
         self.assertIsInstance(df, pd.DataFrame)
+        self.assertIsInstance(df_rounds, pd.DataFrame)
+        self.assertIsInstance(df_eliminations, pd.DataFrame)
 
     def test_row_count_matches_n(self):
-        df = run_tournament(n=10, num_players=3)
+        df, _, _ = run_tournament(n=10, num_players=3)
         self.assertEqual(len(df), 10)
 
     def test_columns_present(self):
-        df = run_tournament(n=5, num_players=3)
+        df, _, _ = run_tournament(n=5, num_players=3)
         base_cols = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure'}
         player_cols = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer')}
         self.assertSetEqual(set(df.columns), base_cols | player_cols)
 
     def test_seeds_are_range_n(self):
         n = 8
-        df = run_tournament(n=n, num_players=3)
+        df, _, _ = run_tournament(n=n, num_players=3)
         self.assertListEqual(sorted(df['seed'].tolist()), list(range(n)))
 
 
