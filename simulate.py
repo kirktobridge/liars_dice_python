@@ -1,5 +1,6 @@
 import os
 import random
+import sys
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import pandas as pd
@@ -81,6 +82,8 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
 
 
 def run_tournament(n: int, num_players: int = 4, workers: int | None = None) -> pd.DataFrame:
+    if not (2 <= num_players <= Constants.MAX_PLAYERS):
+        raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
     # Create players once so personalities are consistent across all games
     personality_rng = random.Random(0)
     names = Constants.PLAYER_NAMES[:num_players]
@@ -403,7 +406,7 @@ if __name__ == '__main__':
         '-p', '--num-players',
         type=int,
         default=4,
-        help='Number of players per game (default: 4)'
+        help=f'Number of players per game, 2–{Constants.MAX_PLAYERS} (default: 4)'
     )
     parser.add_argument(
         '-w', '--workers',
@@ -413,7 +416,11 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
 
-    df = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers)
+    try:
+        df = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
     print(df['winner'].value_counts())
     print(f"Avg rounds: {df['rounds'].mean():.1f}")
     print("\nWinner risk appetite distribution (0=conservative, 1=moderate, 2=aggressive):")

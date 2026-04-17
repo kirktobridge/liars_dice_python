@@ -3,7 +3,11 @@
     "allow": [
       "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -v)",
       "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -q)",
-      "Bash(.venv/bin/python -m pytest tests/ -v)"
+      "Bash(.venv/bin/python -m pytest tests/ -v)",
+      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -v)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -v --tb=short)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"
