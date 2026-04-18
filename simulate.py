@@ -573,10 +573,4 @@ if __name__ == '__main__':
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-    print(df['winner'].value_counts())
-    print(f"Avg rounds: {df['rounds'].mean():.1f}")
-    print("\nWinner risk appetite distribution (0=conservative, 1=moderate, 2=aggressive):")
-    print(df['winner_risk_appetite'].value_counts().sort_index())
-    print("\nWinner peer pressure distribution (0=independent, 1=follows crowd):")
-    print(df['winner_peer_pressure'].value_counts().sort_index())
-    show_tournament_stats(df, df_rounds, df_eliminations)
+        show_tournament_stats(df, df_rounds, df_eliminations)
