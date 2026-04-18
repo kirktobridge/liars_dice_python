@@ -326,5 +326,139 @@ class TestRunTournament(unittest.TestCase):
         self.assertListEqual(sorted(df['seed'].tolist()), list(range(n)))
 
 
+class TestSpotOnResolution(unittest.TestCase):
+    def _setup(self, actual_dice, bid_cnt, bid_face):
+        game = make_game(2)
+        caller = make_player("Caller", num_dice=3)
+        other  = make_player("Other",  num_dice=3)
+        game.add_player(caller)
+        game.add_player(other)
+        game.round_rolls = actual_dice
+        return game, caller, other
+
+    def test_spot_on_success_others_lose(self):
+        # 2 sixes + 1 one = 3 effective, bid 3 sixes → exact match
+        game, caller, other = self._setup([6, 6, 1, 2, 3, 4], 3, 6)
+        succeeded, losers = game._resolve_spot_on(Bid(3, 6), caller)
+        self.assertTrue(succeeded)
+        self.assertNotIn(caller, losers)
+        self.assertIn(other, losers)
+
+    def test_spot_on_failure_caller_loses(self):
+        # 2 sixes, bid 3 sixes → 2 ≠ 3 → failure
+        game, caller, other = self._setup([6, 6, 2, 3, 4, 5], 3, 6)
+        succeeded, losers = game._resolve_spot_on(Bid(3, 6), caller)
+        self.assertFalse(succeeded)
+        self.assertEqual(losers, [caller])
+
+    def test_spot_on_ones_bid_no_wild_bonus(self):
+        # bid 2 ones; actual ones=2 → exact (ones don't get wild bonus)
+        game, caller, _ = self._setup([1, 1, 2, 3, 4, 5], 2, 1)
+        succeeded, _ = game._resolve_spot_on(Bid(2, 1), caller)
+        self.assertTrue(succeeded)
+
+
+class TestFullRoundSpotOn(unittest.TestCase):
+    def _make_two_player_game(self, p1_dice, p2_dice):
+        events = []
+        game = make_game(2)
+        game._on_event = events.append
+        p1 = make_player("P1", num_dice=5, dice=p1_dice)
+        p2 = make_player("P2", num_dice=5, dice=p2_dice)
+        game.add_player(p1)
+        game.add_player(p2)
+        return game, p1, p2, events
+
+    def test_spot_on_success_fires_events_and_others_lose_die(self):
+        # round_rolls = [3]*10, bid (10, 3) → exact → P1 (other) loses die
+        game, p1, p2, events = self._make_two_player_game([3] * 5, [3] * 5)
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(10, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.SPOT_ON, 'P2')):
+            game.process_round()
+        event_types = [e['type'] for e in events]
+        self.assertIn('spot_on_called', event_types)
+        self.assertIn('spot_on_resolved', event_types)
+        self.assertEqual(p1.num_dice, 4)
+        self.assertEqual(p2.num_dice, 5)
+
+    def test_spot_on_failure_caller_loses_die(self):
+        # round_rolls = [3]*10, bid (5, 3) → 10 ≠ 5 → caller P2 loses die
+        game, p1, p2, events = self._make_two_player_game([3] * 5, [3] * 5)
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(5, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.SPOT_ON, 'P2')):
+            game.process_round()
+        self.assertEqual(p2.num_dice, 4)
+        self.assertEqual(p1.num_dice, 5)
+
+
+class TestGameWon(unittest.TestCase):
+    def test_game_won_emitted_and_status_false(self):
+        events = []
+        game = make_game(2)
+        game._on_event = events.append
+        p1 = make_player("P1", num_dice=1, dice=[3])
+        p2 = make_player("P2", num_dice=5, dice=[6, 6, 6, 6, 6])
+        game.add_player(p1)
+        game.add_player(p2)
+        # round_rolls=[3,6,6,6,6,6]; bid(2,3): count(3)=1 < 2 → challenge succeeds → P1 loses die → eliminated
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(2, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P2')):
+            status = game.process_round()
+        self.assertFalse(status)
+        self.assertEqual(game.num_players, 1)
+        self.assertTrue(p1.eliminated)
+        event_types = [e['type'] for e in events]
+        self.assertIn('player_eliminated', event_types)
+        self.assertIn('game_won', event_types)
+
+
+class TestLogEvents(unittest.TestCase):
+    def test_processes_all_events(self):
+        game = make_game(2)
+        evts = deque([
+            TurnResult(Bid(1, 2), Action.BID,  'Alice'),
+            TurnResult(Bid(2, 3), Action.RAISE, 'Bob'),
+        ])
+        game.log_events(evts)
+        self.assertEqual(game.event_counter, 2)
+        self.assertEqual(len(game.round_events), 2)
+
+    def test_empty_deque_does_not_raise(self):
+        game = make_game(2)
+        game.log_events(deque())  # triggers print_error internally — must not propagate
+
+
+class TestCloseAndContextManager(unittest.TestCase):
+    def test_close_with_logging_closes_file(self):
+        with patch('builtins.open', mock_open()):
+            game = LiarsDiceGame(2, log=True)
+        mock_file = game.game_log_file
+        game.close()
+        mock_file.close.assert_called_once()
+        self.assertIsNone(game.game_log_file)
+
+    def test_close_without_logging_is_noop(self):
+        game = make_game(2)
+        game.close()  # must not raise
+
+    def test_context_manager_closes_file_on_exit(self):
+        with patch('builtins.open', mock_open()):
+            with LiarsDiceGame(2, log=True) as game:
+                mock_file = game.game_log_file
+        mock_file.close.assert_called_once()
+
+
+class TestPrintError(unittest.TestCase):
+    def test_emits_error_event(self):
+        events = []
+        game = make_game(2)
+        game._on_event = events.append
+        game.print_error('test_func', Exception('boom'))
+        self.assertIn('error', [e['type'] for e in events])
+
+
 if __name__ == '__main__':
     unittest.main()

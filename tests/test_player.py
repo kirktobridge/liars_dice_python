@@ -269,6 +269,34 @@ class TestTakeTurnHuman(unittest.TestCase):
         self.assertEqual(result.action, Action.RAISE)
 
 
+class TestPlayerReset(unittest.TestCase):
+    def test_restores_dice_count(self):
+        p = Player("Test")
+        p.num_dice = 2
+        p.reset()
+        self.assertEqual(p.num_dice, Constants.MAX_NUM_DICE)
+
+    def test_clears_dice_to_sentinels(self):
+        p = Player("Test")
+        p.dice = [3] * Constants.MAX_NUM_DICE
+        p.reset()
+        self.assertTrue(all(d == -1 for d in p.dice))
+
+    def test_clears_state_fields(self):
+        p = Player("Test")
+        p.rolls_mode, p.wild_count, p.mode_count, p.eliminated = 5, 3, 4, True
+        p.reset()
+        self.assertEqual((p.rolls_mode, p.wild_count, p.mode_count), (0, 0, 0))
+        self.assertFalse(p.eliminated)
+
+    def test_preserves_personality(self):
+        p = Player("Test")
+        ra, pp = p.risk_appetite, p.peer_pressure_score
+        p.reset()
+        self.assertEqual(p.risk_appetite, ra)
+        self.assertEqual(p.peer_pressure_score, pp)
+
+
 import random as _random
 
 
