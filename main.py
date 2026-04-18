@@ -46,24 +46,22 @@ def pirate_renderer(event: dict) -> None:
     elif etype == 'rolls_revealed':
         print(Fore.CYAN + '<i> Lifting cups:\n')
         _pause(Constants.PAUSE_DRAMATIC)
+        faces = [1, 2, 3, 4, 5, 6]
+        col_w = 4
+        name_w = max(len(p['name']) for p in event['player_rolls']) + 2
+        header = f"{'Player':<{name_w}}" + ''.join(f"  {f}  " for f in faces)
+        divider = '-' * name_w + '+' + '+'.join('-' * col_w for _ in faces)
+        print(Fore.CYAN + header)
+        print(Fore.CYAN + divider)
         for p_data in event['player_rolls']:
-            output = Fore.CYAN + f'<i> {p_data["name"]}\'s rolls: '
-            player_roll_freq = Counter(p_data['dice'])
-            loop_cnt = 0
-            num_dice = len(p_data['dice'])
-            for d in sorted(player_roll_freq, key=player_roll_freq.get):
-                output += str(player_roll_freq[d]) + ' ' + str(d)
-                if player_roll_freq[d] > 1:
-                    output += '\'s'
-                loop_cnt += 1
-                if loop_cnt == len(player_roll_freq):
-                    output += '.'
-                elif loop_cnt == num_dice - 1:
-                    output += ', and '
-                else:
-                    output += ', '
-            print(output)
+            freq = Counter(p_data['dice'])
+            row = f"{p_data['name']:<{name_w}}"
+            for f in faces:
+                cell = str(freq[f]) if freq[f] else ' '
+                row += f" {cell:^{col_w-1}} "
+            print(Fore.CYAN + row)
             _pause(Constants.PAUSE_MICRO)
+        print()
     elif etype == 'challenge_resolved':
         if event['succeeded']:
             output = f'{event["challenger_name"]}\'s challenge succeeds- there are only {event["actual_count"]} {event["bid_face"]}\'s'
