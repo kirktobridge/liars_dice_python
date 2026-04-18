@@ -28,6 +28,8 @@ class TestPlayerInit(unittest.TestCase):
     def test_risk_appetite_in_distribution(self):
         p = Player("Test")
         self.assertIn(p.risk_appetite, Constants.RISK_APPETITE_DISTRIBUTION)
+        self.assertGreaterEqual(p.risk_appetite, 1)
+        self.assertLessEqual(p.risk_appetite, 100)
 
     def test_peer_pressure_score_in_distribution(self):
         p = Player("Test")

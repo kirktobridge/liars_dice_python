@@ -212,11 +212,12 @@ class Player:
         if prev_action == Action.START:
             if Constants.DEBUG == True:
                 print('START RECIEVED BY ' + self.name)
-            # if we have a safe bid (mode)
+            risk_factor = self.risk_appetite / Constants.MAX_RISK_SCORE
+            extra = sum(1 for _ in range(2) if self._rng.random() < risk_factor)
             if self.mode_count >= Constants.MINIMUM_BID:
-                output = Bid(Constants.MINIMUM_BID + self.risk_appetite, self.rolls_mode)
-            else:  # we have no mode assuming constant is 2
-                output = Bid(Constants.MINIMUM_BID + self.risk_appetite,
+                output = Bid(Constants.MINIMUM_BID + extra, self.rolls_mode)
+            else:
+                output = Bid(Constants.MINIMUM_BID + extra,
                              self.dice[self._rng.randint(0, self.num_dice-1)])
             new_action = Action.BID
 
@@ -351,7 +352,7 @@ class Player:
                         output = None
                         new_action = Action.SPOT_ON
                     # if it's only 1/3 likely, but we like risk anyway, then call spot on
-                    elif spot_on_probability > self.spot_on_threshold and self.risk_appetite == Constants.MAX_RISK_SCORE:
+                    elif spot_on_probability > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
                         output = None
                         new_action = Action.SPOT_ON
                     elif challenge_success_probability == best_probability:
@@ -363,21 +364,13 @@ class Player:
                             new_action = Action.RAISE
                         else:
                             new_action = Action.BID
-                else:  # if no items are possible
-                    if self.risk_appetite == Constants.MAX_RISK_SCORE-1:
-                        # if personality is kinda risky, challenge
+                else:  # all probabilities are zero — never spot on (pure gamble)
+                    if best_bid is not None:
+                        output = best_bid
+                        new_action = Action.RAISE if best_bid.count > prev_bid_cnt else Action.BID
+                    else:
                         output = None
                         new_action = Action.CHALLENGE
-                    elif self.risk_appetite == Constants.MAX_RISK_SCORE:
-                        # if even more risky, spot on
-                        output = None
-                        new_action = Action.SPOT_ON
-                    else:
-                        output = best_bid
-                        if best_bid is not None and best_bid.count > prev_bid_cnt:
-                            new_action = Action.RAISE
-                        else:
-                            new_action = Action.BID
         else:
             output = None
             new_action = Action.NONE

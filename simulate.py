@@ -308,7 +308,13 @@ def show_tournament_stats(
     ]
 
     # --- 7. Player Profiles Table ---
-    risk_labels = {0: 'Conservative', 1: 'Moderate', 2: 'Aggressive'}
+    def _risk_label(v: int) -> str:
+        if v <= 33:
+            return f'{v} (Conservative)'
+        elif v <= 66:
+            return f'{v} (Moderate)'
+        else:
+            return f'{v} (Aggressive)'
     def _peer_label(v: int) -> str:
         return f'{v} ({v}% crowd bias)'
     all_players = Constants.PLAYER_NAMES[:df['num_players'].iloc[0]]
@@ -324,7 +330,7 @@ def show_tournament_stats(
         profile_cols['Player'].append(player)
         profile_cols['Wins'].append(str(wins))
         profile_cols['Win %'].append(f"{wins / n_games * 100:.1f}%")
-        profile_cols['Risk Appetite'].append(risk_labels[risk_val])
+        profile_cols['Risk Appetite'].append(_risk_label(risk_val))
         profile_cols['Peer Pressure'].append(_peer_label(peer_val))
 
     row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(len(all_players))]
