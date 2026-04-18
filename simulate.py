@@ -9,8 +9,8 @@ from Player import Player
 from stats_collector import GameStatsCollector
 import Constants
 
-# Personality snapshot type: name -> (risk_appetite, peer_pressure_score)
-_Personalities = dict[str, tuple[int, int]]
+# Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score)
+_Personalities = dict[str, tuple[int, int, int]]
 
 
 def run_game(seed: int, num_players: int, players: dict[str, Player] | None = None) -> dict:
@@ -36,6 +36,7 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
         safe = name.replace(' ', '_')
         player_data[f'p_{safe}_risk'] = p.risk_appetite
         player_data[f'p_{safe}_peer'] = p.peer_pressure_score
+        player_data[f'p_{safe}_att'] = p.attentiveness_score
     return {
         'seed': seed,
         'winner': winner_name,
@@ -43,6 +44,7 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
         'num_players': num_players,
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
+        'winner_attentiveness': winner.attentiveness_score,
         **player_data,
         '_round_rows': collector.round_rows,
         '_elim_rows': collector.elimination_rows,
@@ -58,7 +60,7 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
     players = {}
     for name in names:
         p = Player(name, rng=dummy_rng)
-        p.risk_appetite, p.peer_pressure_score = personalities[name]
+        p.risk_appetite, p.peer_pressure_score, p.attentiveness_score = personalities[name]
         p._rng = game_rng  # bind game RNG so dice rolls are deterministic per seed
         players[name] = p
     collector = GameStatsCollector(seed, num_players)
@@ -75,6 +77,7 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
         safe = name.replace(' ', '_')
         player_data[f'p_{safe}_risk'] = p.risk_appetite
         player_data[f'p_{safe}_peer'] = p.peer_pressure_score
+        player_data[f'p_{safe}_att'] = p.attentiveness_score
     return {
         'seed': seed,
         'winner': winner_name,
@@ -82,6 +85,7 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
         'num_players': num_players,
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
+        'winner_attentiveness': winner.attentiveness_score,
         **player_data,
         '_round_rows': collector.round_rows,
         '_elim_rows': collector.elimination_rows,
@@ -121,7 +125,7 @@ def run_tournament(
     else:
         # Parallel path — snapshot personalities so workers can reconstruct players safely
         personalities: _Personalities = {
-            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score)
+            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score, persistent_players[name].attentiveness_score)
             for name in names
         }
         chunk = max(1, n // (num_workers * 4))
@@ -317,21 +321,31 @@ def show_tournament_stats(
             return f'{v} (Aggressive)'
     def _peer_label(v: int) -> str:
         return f'{v} ({v}% crowd bias)'
+    def _att_label(v: int) -> str:
+        if v <= 33:
+            return f'{v} (Oblivious)'
+        elif v <= 66:
+            return f'{v} (Observant)'
+        else:
+            return f'{v} (Eagle-eyed)'
     all_players = Constants.PLAYER_NAMES[:df['num_players'].iloc[0]]
-    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure']
+    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness']
     profile_cols = {col: [] for col in profile_header}
     for player in all_players:
         safe = player.replace(' ', '_')
         risk_col = f'p_{safe}_risk'
         peer_col = f'p_{safe}_peer'
+        att_col  = f'p_{safe}_att'
         wins = int((df['winner'] == player).sum())
         risk_val = int(df[risk_col].iloc[0])
         peer_val = int(df[peer_col].iloc[0])
+        att_val  = int(df[att_col].iloc[0])
         profile_cols['Player'].append(player)
         profile_cols['Wins'].append(str(wins))
         profile_cols['Win %'].append(f"{wins / n_games * 100:.1f}%")
         profile_cols['Risk Appetite'].append(_risk_label(risk_val))
         profile_cols['Peer Pressure'].append(_peer_label(peer_val))
+        profile_cols['Attentiveness'].append(_att_label(att_val))
 
     row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(len(all_players))]
     profile_table = go.Table(
