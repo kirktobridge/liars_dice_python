@@ -355,7 +355,7 @@ def show_tournament_stats(
         texttemplate='%{text}',
         colorscale='RdYlGn',
         zmin=0, zmax=1,
-        colorbar=dict(title='Success<br>Rate', len=0.2, y=0.08),
+        colorbar=dict(title='Challenge<br>Success<br>Rate', len=0.2, y=0.08),
         showscale=True,
     )
 
