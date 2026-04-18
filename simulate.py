@@ -574,4 +574,4 @@ if __name__ == '__main__':
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
-        show_tournament_stats(df, df_rounds, df_eliminations)
+    show_tournament_stats(df, df_rounds, df_eliminations)
