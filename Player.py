@@ -2,7 +2,6 @@
 # move to Constants file
 from statistics import mode
 from collections import deque
-import time
 import random
 import Constants
 from colorama import Fore, Style
@@ -72,7 +71,6 @@ class Player:
                   f'{self.name} now has {self.num_dice} dice')
         if Constants.DEBUG:
             print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
-            time.sleep(Constants.PAUSE/2)
 
     def add_die(self):
         '''Adds virtual die to Player's dice inventory.'''

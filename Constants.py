@@ -25,7 +25,9 @@ MAX_ATTENTIVENESS_SCORE = max(ATTENTIVENESS_DISTRIBUTION)
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 DEBUG = False  # used to activate behaviors for the developer
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
-PAUSE = 0 if DEBUG else 1
+PAUSE_MICRO    = 0 if DEBUG else 0.25
+PAUSE_ROUTINE  = 0 if DEBUG else 0.6
+PAUSE_DRAMATIC = 0 if DEBUG else 1.2
 INSULTS = ['\'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!',
            'Did yer mother drop ye\' on yer\' head as a child?',
            'The problem is not the problem. The problem is your attitude about the problem.'
