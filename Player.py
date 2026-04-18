@@ -135,7 +135,7 @@ class Player:
         else:
             raise Exception('CPUs should not be using bid() function')
 
-    def take_turn(self, prev_events: deque, tot_other_dice: int) -> TurnResult:
+    def take_turn(self, prev_events: deque, tot_other_dice: int, bidder_num_dice: int = 0) -> TurnResult:
         '''Process turn for a player by analyzing previous moves in the round and probabilities of success on various actions.
         Returns a TurnResult with bid, action, and player name.'''
         # TODO form and react to impressions of other players (trust score, expected bids, expected count of ones based on bids)
@@ -263,10 +263,23 @@ class Player:
                 # (1) GET PROBABILITY OF PREVIOUS BID - CHALLENGE
                 #   Lower score means we may consider challenge.
                 if prev_bid_needed_cnt == 0:
-                    challenge_success_probability = 0
+                    challenge_success_probability = 0.0
                 else:
-                    challenge_success_probability = model.cdf(
-                        prev_bid_needed_cnt-1)
+                    remaining_dice = tot_other_dice - bidder_num_dice
+                    for n in (bidder_num_dice, remaining_dice, tot_other_dice):
+                        if n not in _binom_cache:
+                            _binom_cache[n] = binom(n=n, p=2/6)
+                    bidder_model    = _binom_cache[bidder_num_dice]
+                    remaining_model = _binom_cache[remaining_dice]
+                    bayesian_prob = 0.0
+                    for j in range(bidder_num_dice + 1):
+                        needed_from_remaining = prev_bid_needed_cnt - j
+                        if needed_from_remaining <= 0:
+                            continue
+                        bayesian_prob += bidder_model.pmf(j) * remaining_model.cdf(needed_from_remaining - 1)
+                    flat_prob = _binom_cache[tot_other_dice].cdf(prev_bid_needed_cnt - 1)
+                    blend = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
+                    challenge_success_probability = blend * bayesian_prob + (1 - blend) * flat_prob
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
                 spot_on_probability = model.pmf(prev_bid_needed_cnt)
@@ -312,7 +325,7 @@ class Player:
                         prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
                     if len(best_bids) > 1:
                         # if we are peer pressure sensitive, pick most common
-                        if self.peer_pressure_score == 1:
+                        if self.peer_pressure_score > Constants.MAX_PEER_PRESSURE_SCORE // 2:
                             all_prev_bids_faces = [b.face for b in all_prev_bids]
                             prev_bids_face_mode = mode(all_prev_bids_faces)
                             for bid0 in best_bids:

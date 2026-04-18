@@ -124,8 +124,9 @@ class LiarsDiceGame:
                     if Constants.DEBUG and self._logging:
                         self.game_log_file.write(
                             f'Passing prev_event {self.round_events[0]} and action {self.round_events[0].action} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
+                    bidder_num_dice = self.players[p - 1].num_dice
                     cur_event = self.players[p].take_turn(
-                        self.round_events, tot_dice-self.players[p].num_dice)
+                        self.round_events, tot_dice-self.players[p].num_dice, bidder_num_dice)
                     self.log_event(cur_event)
                     if cur_event.action == Action.NONE:
                         raise Exception("Blank new_action")
