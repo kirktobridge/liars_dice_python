@@ -35,6 +35,10 @@ class TestPlayerInit(unittest.TestCase):
         p = Player("Test")
         self.assertIn(p.peer_pressure_score, Constants.PEER_PRESSURE_DISTRIBUTION)
 
+    def test_attentiveness_score_in_distribution(self):
+        p = Player("Test")
+        self.assertIn(p.attentiveness_score, Constants.ATTENTIVENESS_DISTRIBUTION)
+
 
 class TestDiceOperations(unittest.TestCase):
     def setUp(self):
@@ -293,10 +297,11 @@ class TestPlayerReset(unittest.TestCase):
 
     def test_preserves_personality(self):
         p = Player("Test")
-        ra, pp = p.risk_appetite, p.peer_pressure_score
+        ra, pp, att = p.risk_appetite, p.peer_pressure_score, p.attentiveness_score
         p.reset()
         self.assertEqual(p.risk_appetite, ra)
         self.assertEqual(p.peer_pressure_score, pp)
+        self.assertEqual(p.attentiveness_score, att)
 
 
 class TestChallengeThreshold(unittest.TestCase):
@@ -476,6 +481,7 @@ class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
         p = Player("Watcher", rng=_r.Random(0))
         p.risk_appetite = 50
         p.challenge_threshold = 0.50
+        p.attentiveness_score = Constants.MAX_ATTENTIVENESS_SCORE  # full attention for test clarity
         p.num_dice = 5
         p.dice = [2, 2, 2, 2, 2]
         # Build profile: 4 challenges, bluff_rate_approx of them succeeded

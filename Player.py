@@ -45,10 +45,12 @@ class Player:
         self.challenge_threshold = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
         self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
+        self.attentiveness_score = self._rng.choice(
+            Constants.ATTENTIVENESS_DISTRIBUTION)
         self.opponent_profiles: dict[str, OpponentProfile] = {}
 
     def reset(self) -> None:
-        """Reset per-game state; personality traits (risk_appetite, spot_on_threshold, challenge_threshold, peer_pressure_score) are preserved."""
+        """Reset per-game state; personality traits (risk_appetite, spot_on_threshold, challenge_threshold, peer_pressure_score, attentiveness_score) are preserved."""
         self.num_dice = Constants.MAX_NUM_DICE
         self.dice = [-1] * self.num_dice
         self.rolls_mode = 0
@@ -307,12 +309,13 @@ class Player:
                 _MIN_SAMPLES = 2
                 _bidder_name = prev_event.player_name
                 _profile = self.opponent_profiles.get(_bidder_name)
+                _attention = self.attentiveness_score / Constants.MAX_ATTENTIVENESS_SCORE
                 if _profile and _profile.bids_observed >= _MIN_SAMPLES:
-                    aggression_boost = 1.0 + (_profile.avg_aggression - 0.5) * 0.3
+                    aggression_boost = 1.0 + (_profile.avg_aggression - 0.5) * 0.3 * _attention
                     challenge_success_probability = min(1.0, challenge_success_probability * aggression_boost)
                 effective_threshold = self.challenge_threshold
                 if _profile and _profile.bids_challenged >= _MIN_SAMPLES:
-                    bluff_adjustment = (_profile.bluff_rate - 0.5) * 0.4
+                    bluff_adjustment = (_profile.bluff_rate - 0.5) * 0.4 * _attention
                     effective_threshold = max(0.10, self.challenge_threshold - bluff_adjustment)
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
