@@ -155,7 +155,8 @@ class LiarsDiceGame:
                                bidder_name=prev_player_nm,
                                bid_count=prev_bid_cnt,
                                bid_face=prev_bid_face,
-                               tot_num_dice=self.tot_num_dice)
+                               tot_num_dice=self.tot_num_dice,
+                               bidder_num_dice=self.players[p-1].num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
                         for pl in self.players])

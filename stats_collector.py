@@ -22,6 +22,7 @@ class GameStatsCollector:
         self._challenger_name: str | None = None
         self._bidder_name: str | None = None
         self._caller_name: str | None = None
+        self._bidder_num_dice: int | None = None
 
         self._elim_counter = 0
 
@@ -42,6 +43,7 @@ class GameStatsCollector:
             self._challenger_name = None
             self._bidder_name = None
             self._caller_name = None
+            self._bidder_num_dice = None
 
         elif t in ('bid_made', 'raise_made'):
             self._bid_count += 1
@@ -53,6 +55,7 @@ class GameStatsCollector:
             self._bid_face = event.get('bid_face')
             self._challenger_name = event.get('challenger_name')
             self._bidder_name = event.get('bidder_name')
+            self._bidder_num_dice = event.get('bidder_num_dice')
 
         elif t == 'spot_on_called':
             self._action_type = 'spot_on'
@@ -118,4 +121,5 @@ class GameStatsCollector:
             'challenge_succeeded': self._challenge_succeeded,
             'round_loser': self._round_loser,
             'action_caller': action_caller,
+            'bidder_num_dice': self._bidder_num_dice,
         })

@@ -227,6 +227,24 @@ def show_tournament_stats(
         .mean()
         .reset_index())
 
+    # --- Bid-ratio analysis (panels 9 & 10) ---
+    chall_br = df_rounds[df_rounds['action_type'] == 'challenge'].copy()
+    chall_br = chall_br.dropna(subset=['bidder_num_dice', 'bid_count_claimed', 'challenge_succeeded'])
+    chall_br['bidder_num_dice'] = chall_br['bidder_num_dice'].astype(int)
+
+    heat_agg = (chall_br.groupby(['bidder_num_dice', 'bid_count_claimed'])['challenge_succeeded']
+                .agg(['mean', 'count']).reset_index())
+    heat_pivot = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='mean')
+    heat_text = heat_pivot.map(lambda v: f'{v:.0%}' if pd.notna(v) else '')
+
+    ratio_bins   = [0, 0.5, 1.0, 1.5, 2.0, float('inf')]
+    ratio_labels = ['<0.5', '0.5–1.0', '1.0–1.5', '1.5–2.0', '>2.0']
+    chall_br['bid_ratio'] = chall_br['bid_count_claimed'] / chall_br['bidder_num_dice']
+    chall_br['ratio_bucket'] = pd.cut(chall_br['bid_ratio'], bins=ratio_bins, labels=ratio_labels)
+    bucket_stats = (chall_br.groupby('ratio_bucket', observed=True)['challenge_succeeded']
+                    .agg(['mean', 'count']).reset_index())
+    bucket_stats['fail_rate'] = 1 - bucket_stats['mean']
+
     # --- 4. Dice Count at Challenge (Violin) ---
     violin_traces = []
     for player in sorted_players:
@@ -328,6 +346,42 @@ def show_tournament_stats(
         ),
     )
 
+    # --- 9. Challenge Success Heatmap (bidder dice × bid amount) ---
+    heatmap_trace = go.Heatmap(
+        x=heat_pivot.columns.tolist(),
+        y=heat_pivot.index.tolist(),
+        z=heat_pivot.values,
+        text=heat_text.values,
+        texttemplate='%{text}',
+        colorscale='RdYlGn',
+        zmin=0, zmax=1,
+        colorbar=dict(title='Success<br>Rate', len=0.2, y=0.08),
+        showscale=True,
+    )
+
+    # --- 10. Challenge Accuracy by Bid Ratio (manually stacked bars) ---
+    ratio_x = bucket_stats['ratio_bucket'].astype(str).tolist()
+    ratio_success = bucket_stats['mean'].tolist()
+    ratio_fail = bucket_stats['fail_rate'].tolist()
+    ratio_bar_correct = go.Bar(
+        x=ratio_x, y=ratio_success,
+        base=0,
+        name='Correct call',
+        marker_color='#00CC00',
+        showlegend=False,
+        text=[f'{v:.0%}' for v in ratio_success],
+        textposition='inside',
+    )
+    ratio_bar_wrong = go.Bar(
+        x=ratio_x, y=ratio_fail,
+        base=ratio_success,
+        name='Wrong call',
+        marker_color='#FF4444',
+        showlegend=False,
+        text=[f'{v:.0%}' for v in ratio_fail],
+        textposition='inside',
+    )
+
     # --- 8. Bid Escalation Curve ---
     avg_bids_per_round = df_rounds['bid_count'].mean()
     escalation_line = go.Scatter(
@@ -341,7 +395,7 @@ def show_tournament_stats(
 
     # --- Assemble subplots ---
     fig = make_subplots(
-        rows=4, cols=3,
+        rows=5, cols=3,
         subplot_titles=(
             'Win Rate',
             'Game Length Distribution',
@@ -353,16 +407,20 @@ def show_tournament_stats(
             '', '',
             'Bid Escalation Curve',
             '', '',
+            'Challenge Success Rate: Bidder Dice × Bid Amount',
+            '',
+            'Challenge Accuracy by Bid Ratio',
         ),
         specs=[
             [{'type': 'bar'},    {'type': 'histogram'}, {'type': 'scatter'}],
             [{'type': 'violin'}, {'type': 'bar'},        {'type': 'scatter'}],
             [{'type': 'table', 'colspan': 3}, None, None],
             [{'type': 'scatter', 'colspan': 3}, None, None],
+            [{'type': 'heatmap', 'colspan': 2}, None, {'type': 'bar'}],
         ],
         column_widths=[0.28, 0.36, 0.36],
-        row_heights=[0.27, 0.27, 0.22, 0.24],
-        vertical_spacing=0.10,
+        row_heights=[0.27, 0.27, 0.22, 0.24, 0.30],
+        vertical_spacing=0.08,
         horizontal_spacing=0.08,
     )
 
@@ -384,6 +442,11 @@ def show_tournament_stats(
 
     # Row 4
     fig.add_trace(escalation_line, row=4, col=1)
+
+    # Row 5
+    fig.add_trace(heatmap_trace, row=5, col=1)
+    fig.add_trace(ratio_bar_correct, row=5, col=3)
+    fig.add_trace(ratio_bar_wrong, row=5, col=3)
 
     # Mean line annotation on histogram
     # (add_vline can't be used here because go.Table in row 3 has no xaxis)
@@ -432,7 +495,7 @@ def show_tournament_stats(
             x=0.5,
             xanchor='center',
         ),
-        height=1700,
+        height=2100,
         width=1600,
         legend=dict(
             title='Player',
@@ -457,6 +520,11 @@ def show_tournament_stats(
     # Row 4
     fig.update_xaxes(title_text='Bids in Round', row=4, col=1)
     fig.update_yaxes(title_text='Avg Claimed Count', row=4, col=1)
+    # Row 5
+    fig.update_xaxes(title_text='Bid Count Claimed', row=5, col=1)
+    fig.update_yaxes(title_text='Bidder Dice Count', row=5, col=1)
+    fig.update_xaxes(title_text='Bid / Bidder Dice', row=5, col=3)
+    fig.update_yaxes(title_text='Rate', row=5, col=3, tickformat='.0%')
 
     fig.add_annotation(
         x=0.5, y=1.04,
