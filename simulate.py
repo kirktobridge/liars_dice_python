@@ -237,8 +237,8 @@ def show_tournament_stats(
     heat_pivot = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='mean')
     heat_text = heat_pivot.map(lambda v: f'{v:.0%}' if pd.notna(v) else '')
 
-    ratio_bins   = [0, 0.5, 1.0, 1.5, 2.0, float('inf')]
-    ratio_labels = ['<0.5', '0.5–1.0', '1.0–1.5', '1.5–2.0', '>2.0']
+    ratio_bins   = [0, 1, 2, 3, float('inf')]
+    ratio_labels = ['≤1×', '1–2×', '2–3×', '>3×']
     chall_br['bid_ratio'] = chall_br['bid_count_claimed'] / chall_br['bidder_num_dice']
     chall_br['ratio_bucket'] = pd.cut(chall_br['bid_ratio'], bins=ratio_bins, labels=ratio_labels)
     bucket_stats = (chall_br.groupby('ratio_bucket', observed=True)['challenge_succeeded']
