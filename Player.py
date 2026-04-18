@@ -324,23 +324,18 @@ class Player:
                     best_bids: list[Bid] = [
                         prob[1] for prob in risk_ranking if prob[0] == best_bid_probability]
                     if len(best_bids) > 1:
-                        # if we are peer pressure sensitive, pick most common
-                        if self.peer_pressure_score > Constants.MAX_PEER_PRESSURE_SCORE // 2:
+                        follow_crowd_prob = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
+                        if all_prev_bids and self._rng.random() < follow_crowd_prob:
                             all_prev_bids_faces = [b.face for b in all_prev_bids]
                             prev_bids_face_mode = mode(all_prev_bids_faces)
                             for bid0 in best_bids:
                                 if bid0.face == prev_bids_face_mode:
                                     best_bid = bid0
                                     break
-                                else:
-                                    continue
-                            # but if we don't find a mode, then just use the top bid
                             if best_bid is None:
                                 best_bid = best_bids[0]
-                        # otherwise just take the top bid
                         else:
                             best_bid = best_bids[0]
-                    # if there is only one best bid, use it
                     else:
                         best_bid = best_bids[0]
                 # if there are no permissible bids, don't bid
