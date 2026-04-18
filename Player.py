@@ -40,11 +40,14 @@ class Player:
         jitter = self._rng.uniform(-0.03, 0.03)
         risk_shift = (self.risk_appetite / Constants.MAX_RISK_SCORE) * 0.06
         self.spot_on_threshold = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_shift + jitter)
+        risk_fraction = self.risk_appetite / Constants.MAX_RISK_SCORE
+        challenge_jitter = self._rng.uniform(-0.03, 0.03)
+        self.challenge_threshold = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
         self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
 
     def reset(self) -> None:
-        """Reset per-game state; personality traits (risk_appetite, peer_pressure_score) are preserved."""
+        """Reset per-game state; personality traits (risk_appetite, spot_on_threshold, challenge_threshold, peer_pressure_score) are preserved."""
         self.num_dice = Constants.MAX_NUM_DICE
         self.dice = [-1] * self.num_dice
         self.rolls_mode = 0
@@ -344,8 +347,13 @@ class Player:
                     best_bid_probability = 0
                     best_bid = None  # no permissible bids — should never be used as a bid output
 
+                effective_challenge_prob = (
+                    challenge_success_probability
+                    if challenge_success_probability >= self.challenge_threshold
+                    else 0.0
+                )
                 best_probability = max(
-                    [challenge_success_probability, spot_on_probability, best_bid_probability])
+                    [effective_challenge_prob, spot_on_probability, best_bid_probability])
                 if best_probability > 0:
                     # if calling spot on is our best bet
                     if spot_on_probability == best_probability:
@@ -355,7 +363,7 @@ class Player:
                     elif spot_on_probability > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
                         output = None
                         new_action = Action.SPOT_ON
-                    elif challenge_success_probability == best_probability:
+                    elif effective_challenge_prob == best_probability and effective_challenge_prob > 0:
                         output = None
                         new_action = Action.CHALLENGE
                     elif best_bid_probability == best_probability:

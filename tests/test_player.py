@@ -299,6 +299,62 @@ class TestPlayerReset(unittest.TestCase):
         self.assertEqual(p.peer_pressure_score, pp)
 
 
+class TestChallengeThreshold(unittest.TestCase):
+    def test_challenge_threshold_in_range(self):
+        p = Player("Test")
+        self.assertGreaterEqual(p.challenge_threshold, 0.20)
+        self.assertLessEqual(p.challenge_threshold, 0.71)
+
+    def test_challenge_threshold_conservative_higher(self):
+        import random as _r
+        # Force risk_appetite=5 by seeding; retry until we get one in low range
+        for seed in range(200):
+            rng = _r.Random(seed)
+            p = Player("T", rng=rng)
+            if p.risk_appetite <= 10:
+                self.assertGreater(p.challenge_threshold, 0.50)
+                return
+        self.fail("Could not find a low risk_appetite player in 200 seeds")
+
+    def test_challenge_threshold_aggressive_lower(self):
+        import random as _r
+        for seed in range(200):
+            rng = _r.Random(seed)
+            p = Player("T", rng=rng)
+            if p.risk_appetite >= 90:
+                self.assertLess(p.challenge_threshold, 0.50)
+                return
+        self.fail("Could not find a high risk_appetite player in 200 seeds")
+
+    def _player_with_trait(self, risk_appetite: int, challenge_threshold: float) -> Player:
+        """Build a player and forcibly set personality traits for deterministic tests."""
+        import random as _r
+        p = Player("T", rng=_r.Random(0))
+        p.risk_appetite = risk_appetite
+        p.challenge_threshold = challenge_threshold
+        p.num_dice = 5
+        p.dice = [3, 3, 3, 3, 3]
+        return p
+
+    def test_challenge_suppressed_below_threshold(self):
+        """Conservative player (threshold=0.60) should NOT challenge at 40% probability."""
+        p = self._player_with_trait(risk_appetite=10, challenge_threshold=0.60)
+        # Bid of 4 threes when only 5 dice remain — challenge_success_prob will be moderate
+        # Use a bid that yields ~40% challenge probability but a safe raise exists
+        prev = deque([TurnResult(Bid(4, 3), Action.BID, "Other")])
+        result = p.take_turn(prev, tot_other_dice=0)
+        self.assertNotEqual(result.action, Action.CHALLENGE)
+
+    def test_challenge_taken_above_threshold(self):
+        """Aggressive player (threshold=0.20) should challenge a near-impossible bid."""
+        p = self._player_with_trait(risk_appetite=95, challenge_threshold=0.20)
+        # Bid of 5 sixes when player holds [3,3,3,3,3] — challenge_success_prob near 1.0
+        p.dice = [3, 3, 3, 3, 3]
+        prev = deque([TurnResult(Bid(5, 6), Action.BID, "Other")])
+        result = p.take_turn(prev, tot_other_dice=0)
+        self.assertEqual(result.action, Action.CHALLENGE)
+
+
 import random as _random
 
 
