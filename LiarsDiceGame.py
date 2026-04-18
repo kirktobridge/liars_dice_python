@@ -128,6 +128,9 @@ class LiarsDiceGame:
                     cur_event = self.players[p].take_turn(
                         self.round_events, tot_dice-self.players[p].num_dice, bidder_num_dice)
                     self.log_event(cur_event)
+                    for observer in self.players:
+                        if observer is not self.players[p]:
+                            observer.observe_action(cur_event.player_name, cur_event.action, cur_event.bid, tot_dice)
                     if cur_event.action == Action.NONE:
                         raise Exception("Blank new_action")
                 except Exception as e:
@@ -173,6 +176,8 @@ class LiarsDiceGame:
                                bid_face=prev_bid_face,
                                actual_count=prev_bid_actual_cnt,
                                ones_count=actual_ones_cnt)
+                    for observer in self.players:
+                        observer.observe_outcome(prev_player_nm, succeeded)
                     inner_event = ['SUCCESS' if succeeded else 'FAILURE', Action.CHALLENGE, self.players[p].name]
                     self.log_event(inner_event)
                     self.round_loser = loser

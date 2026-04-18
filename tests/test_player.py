@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import Constants
 from Player import Player
-from models import Action, Bid, TurnResult
+from models import Action, Bid, TurnResult, OpponentProfile
 
 
 class TestPlayerInit(unittest.TestCase):
@@ -382,6 +382,130 @@ class TestTakeTurnDeterministic(unittest.TestCase):
                 deque([TurnResult(None, Action.START, 'SYS')]), 15)
             results.add((r.action, r.bid))
         self.assertGreater(len(results), 1)
+
+
+class TestOpponentProfile(unittest.TestCase):
+    def test_bluff_rate_defaults_neutral(self):
+        p = OpponentProfile()
+        self.assertEqual(p.bluff_rate, 0.5)
+
+    def test_bluff_rate_computed(self):
+        p = OpponentProfile(bids_challenged=4, challenge_successes=3)
+        self.assertAlmostEqual(p.bluff_rate, 0.75)
+
+    def test_avg_aggression_defaults_neutral(self):
+        p = OpponentProfile()
+        self.assertEqual(p.avg_aggression, 0.5)
+
+    def test_avg_aggression_computed(self):
+        p = OpponentProfile(bids_observed=2, total_aggression=1.0)
+        self.assertAlmostEqual(p.avg_aggression, 0.5)
+
+
+class TestObserveAction(unittest.TestCase):
+    def _make_cpu(self):
+        p = Player("Watcher")
+        p.num_dice = 5
+        p.dice = [3, 3, 3, 4, 5] + [-1]
+        return p
+
+    def test_observe_bid_creates_profile(self):
+        p = self._make_cpu()
+        p.observe_action("Alice", Action.BID, Bid(3, 4), 10)
+        self.assertIn("Alice", p.opponent_profiles)
+
+    def test_observe_bid_increments_count(self):
+        p = self._make_cpu()
+        p.observe_action("Alice", Action.BID, Bid(3, 4), 10)
+        p.observe_action("Alice", Action.RAISE, Bid(4, 4), 10)
+        self.assertEqual(p.opponent_profiles["Alice"].bids_observed, 2)
+
+    def test_observe_bid_accumulates_aggression(self):
+        p = self._make_cpu()
+        p.observe_action("Alice", Action.BID, Bid(5, 4), 10)  # aggression = 0.5
+        self.assertAlmostEqual(p.opponent_profiles["Alice"].total_aggression, 0.5)
+
+    def test_observe_challenge_ignored(self):
+        p = self._make_cpu()
+        p.observe_action("Alice", Action.CHALLENGE, None, 10)
+        self.assertNotIn("Alice", p.opponent_profiles)
+
+    def test_observe_zero_total_dice_ignored(self):
+        p = self._make_cpu()
+        p.observe_action("Alice", Action.BID, Bid(3, 4), 0)
+        self.assertNotIn("Alice", p.opponent_profiles)
+
+
+class TestObserveOutcome(unittest.TestCase):
+    def _make_cpu(self):
+        p = Player("Watcher")
+        p.num_dice = 5
+        p.dice = [3, 3, 3, 4, 5] + [-1]
+        return p
+
+    def test_observe_outcome_creates_profile(self):
+        p = self._make_cpu()
+        p.observe_outcome("Bob", challenge_succeeded=True)
+        self.assertIn("Bob", p.opponent_profiles)
+
+    def test_observe_outcome_increments_challenged(self):
+        p = self._make_cpu()
+        p.observe_outcome("Bob", challenge_succeeded=False)
+        p.observe_outcome("Bob", challenge_succeeded=True)
+        self.assertEqual(p.opponent_profiles["Bob"].bids_challenged, 2)
+        self.assertEqual(p.opponent_profiles["Bob"].challenge_successes, 1)
+
+    def test_observe_outcome_no_success_on_failed_challenge(self):
+        p = self._make_cpu()
+        p.observe_outcome("Bob", challenge_succeeded=False)
+        self.assertEqual(p.opponent_profiles["Bob"].challenge_successes, 0)
+
+
+class TestResetClearsProfiles(unittest.TestCase):
+    def test_reset_clears_opponent_profiles(self):
+        p = Player("Test")
+        p.observe_action("Alice", Action.BID, Bid(3, 4), 10)
+        self.assertIn("Alice", p.opponent_profiles)
+        p.reset()
+        self.assertEqual(p.opponent_profiles, {})
+
+
+class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
+    def _player_with_bluff_profile(self, bidder: str, bluff_rate_approx: float) -> Player:
+        import random as _r
+        p = Player("Watcher", rng=_r.Random(0))
+        p.risk_appetite = 50
+        p.challenge_threshold = 0.50
+        p.num_dice = 5
+        p.dice = [2, 2, 2, 2, 2]
+        # Build profile: 4 challenges, bluff_rate_approx of them succeeded
+        successes = round(bluff_rate_approx * 4)
+        profile = OpponentProfile(
+            bids_observed=10,
+            total_aggression=5.0,
+            bids_challenged=4,
+            challenge_successes=successes,
+        )
+        p.opponent_profiles[bidder] = profile
+        return p
+
+    def test_known_bluffer_lowers_effective_threshold(self):
+        bidder = "BigLiar"
+        p = self._player_with_bluff_profile(bidder, bluff_rate_approx=1.0)
+        # Bid that sits just below raw challenge_threshold should still trigger challenge
+        prev = deque([TurnResult(Bid(5, 6), Action.BID, bidder)])
+        result = p.take_turn(prev, tot_other_dice=0)
+        self.assertEqual(result.action, Action.CHALLENGE)
+
+    def test_honest_bidder_raises_effective_threshold(self):
+        bidder = "HonestHank"
+        p = self._player_with_bluff_profile(bidder, bluff_rate_approx=0.0)
+        p.challenge_threshold = 0.30
+        profile = p.opponent_profiles[bidder]
+        # bluff_adjustment = (0.0 - 0.5) * 0.4 = -0.2 → threshold goes up
+        bluff_adjustment = (profile.bluff_rate - 0.5) * 0.4
+        effective = max(0.10, p.challenge_threshold - bluff_adjustment)
+        self.assertGreater(effective, p.challenge_threshold)
 
 
 if __name__ == '__main__':

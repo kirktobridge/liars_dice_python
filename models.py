@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 
@@ -15,6 +15,22 @@ class Action(str, Enum):
 class Bid:
     count: int
     face: int
+
+
+@dataclass
+class OpponentProfile:
+    bids_observed: int = 0
+    total_aggression: float = 0.0
+    bids_challenged: int = 0
+    challenge_successes: int = 0
+
+    @property
+    def bluff_rate(self) -> float:
+        return self.challenge_successes / self.bids_challenged if self.bids_challenged else 0.5
+
+    @property
+    def avg_aggression(self) -> float:
+        return self.total_aggression / self.bids_observed if self.bids_observed else 0.5
 
 
 @dataclass(frozen=True)

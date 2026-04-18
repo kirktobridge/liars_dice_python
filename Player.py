@@ -7,7 +7,7 @@ import random
 import Constants
 from colorama import Fore, Style
 from scipy.stats import binom
-from models import Action, Bid, TurnResult
+from models import Action, Bid, TurnResult, OpponentProfile
 
 _binom_cache: dict[int, binom] = {}
 
@@ -45,6 +45,7 @@ class Player:
         self.challenge_threshold = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
         self.peer_pressure_score = self._rng.choice(
             Constants.PEER_PRESSURE_DISTRIBUTION)
+        self.opponent_profiles: dict[str, OpponentProfile] = {}
 
     def reset(self) -> None:
         """Reset per-game state; personality traits (risk_appetite, spot_on_threshold, challenge_threshold, peer_pressure_score) are preserved."""
@@ -54,6 +55,7 @@ class Player:
         self.wild_count = 0
         self.mode_count = 0
         self.eliminated = False
+        self.opponent_profiles = {}
 
     def lose_die(self):
         '''Removes virtual die from the Player object, and updates Player's dice
@@ -137,6 +139,23 @@ class Player:
                     continue
         else:
             raise Exception('CPUs should not be using bid() function')
+
+    def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
+        if action not in (Action.BID, Action.RAISE) or bid is None or total_dice == 0:
+            return
+        if player_name not in self.opponent_profiles:
+            self.opponent_profiles[player_name] = OpponentProfile()
+        profile = self.opponent_profiles[player_name]
+        profile.bids_observed += 1
+        profile.total_aggression += bid.count / total_dice
+
+    def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
+        if bidder_name not in self.opponent_profiles:
+            self.opponent_profiles[bidder_name] = OpponentProfile()
+        profile = self.opponent_profiles[bidder_name]
+        profile.bids_challenged += 1
+        if challenge_succeeded:
+            profile.challenge_successes += 1
 
     def take_turn(self, prev_events: deque, tot_other_dice: int, bidder_num_dice: int = 0) -> TurnResult:
         '''Process turn for a player by analyzing previous moves in the round and probabilities of success on various actions.
@@ -284,6 +303,17 @@ class Player:
                     flat_prob = _binom_cache[tot_other_dice].cdf(prev_bid_needed_cnt - 1)
                     blend = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
                     challenge_success_probability = blend * bayesian_prob + (1 - blend) * flat_prob
+
+                _MIN_SAMPLES = 2
+                _bidder_name = prev_event.player_name
+                _profile = self.opponent_profiles.get(_bidder_name)
+                if _profile and _profile.bids_observed >= _MIN_SAMPLES:
+                    aggression_boost = 1.0 + (_profile.avg_aggression - 0.5) * 0.3
+                    challenge_success_probability = min(1.0, challenge_success_probability * aggression_boost)
+                effective_threshold = self.challenge_threshold
+                if _profile and _profile.bids_challenged >= _MIN_SAMPLES:
+                    bluff_adjustment = (_profile.bluff_rate - 0.5) * 0.4
+                    effective_threshold = max(0.10, self.challenge_threshold - bluff_adjustment)
                 # (2) GET PROBABILITY OF PREVIOUS BID - SPOT ON
                 #   Higher score means we may consider calling 'spot on.'
                 spot_on_probability = model.pmf(prev_bid_needed_cnt)
@@ -349,7 +379,7 @@ class Player:
 
                 effective_challenge_prob = (
                     challenge_success_probability
-                    if challenge_success_probability >= self.challenge_threshold
+                    if challenge_success_probability >= effective_threshold
                     else 0.0
                 )
                 best_probability = max(
