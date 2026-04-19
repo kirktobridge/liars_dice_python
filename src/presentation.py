@@ -8,7 +8,7 @@ PAUSE_DRAMATIC = 0 if DEBUG else 1.2
 
 INSULTS = ['\'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!',
            'Did yer mother drop ye\' on yer\' head as a child?',
-           'The problem is not the problem. The problem is your attitude about the problem.'
+           'The problem is not the problem. The problem is your attitude about the problem.',
            'I\'ll eat yer parrot an\' drink yer rum, ye scabrous, foul-smellin\' rogue! ... Ahoy!',
            'I\'d hang ye from a yardarm, but ye\'d break the mast, ye slimy, slack-jawed landlubber!'
            'I\'ll strap a cannon to yer bootstraps an\' send ye to Davy Jones, ye mangy, daft codfish!',
