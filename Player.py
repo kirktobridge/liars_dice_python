@@ -17,7 +17,7 @@ _binom_cache: dict[int, binom] = {}
 
 class Player:
 
-    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None):
+    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler=None):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
         if Constants.DEBUG:
@@ -47,6 +47,7 @@ class Player:
         self.attentiveness_score = self._rng.choice(
             Constants.ATTENTIVENESS_DISTRIBUTION)
         self.opponent_profiles: dict[str, OpponentProfile] = {}
+        self._input_handler = input_handler
 
     def reset(self) -> None:
         """Reset per-game state; personality traits (risk_appetite, spot_on_threshold, challenge_threshold, peer_pressure_score, attentiveness_score) are preserved."""
@@ -97,49 +98,6 @@ class Player:
         # ie each Player will have slightly different risk tolerance levels
         return grade
 
-    def bid(self, tot_other_dice: int) -> Bid:
-        '''Allows human user to bid.'''
-        bid_count = None
-        bid_face = None
-        if self.spot == 'HUMAN':  # TODO Human-controlled behavior
-            while True:
-                try:
-                    bid_count = int(input(
-                        Fore.BLUE + f'<?> {self.name}, please enter bid size: '))
-                    if bid_count < 0:
-                        raise Exception('<!> Ye\' cannot do that, matey.')
-                    if bid_count > (tot_other_dice + self.num_dice):
-                        raise Exception(
-                            '<!> Are ye\' daft? Yer\' bettin\' more dice than are possible.')
-                    # TODO prevent from betting count higher than possible
-                    break
-
-                except ValueError:
-                    print(Fore.RED + Style.DIM +
-                          '<!> Arrrgh, ye must provide an integer, matey!')
-                    continue
-                except Exception as e:
-                    print(Fore.RED + Style.DIM + str(e))
-                    continue
-
-            while True:
-                try:
-                    bid_face = int(input(
-                        Fore.BLUE + f'<?> {self.name}, please enter the number of the face you are bidding on: '))
-                    if bid_face < 1 or bid_face > 6:
-                        raise Exception('<!> Ye\' cannot do that, matey.')
-                    return Bid(bid_count, bid_face)
-
-                except ValueError:
-                    print(Fore.RED + Style.DIM +
-                          '<!> Arrrgh, ye must provide an integer, matey!')
-                    continue
-                except Exception as e:
-                    print(Fore.RED + Style.DIM + str(e))
-                    continue
-        else:
-            raise Exception('CPUs should not be using bid() function')
-
     def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
         if action not in (Action.BID, Action.RAISE) or bid is None or total_dice == 0:
             return
@@ -184,42 +142,23 @@ class Player:
         new_action = Action.NONE
         output: 'Bid | None' = None
 
-        # Human player decision
+        # Human player decision — delegated to input_handler callback (set by main.py)
         if self.spot == 'HUMAN':
-            print(Fore.BLUE + f'<i> Your dice: {self.dice[:self.num_dice]}')
-            if prev_action == Action.START:  # START - must bid
-                print(Fore.BLUE + '<i> You go first — make the opening bid.')
-                output = self.bid(tot_other_dice)
-                new_action = Action.BID
-            elif prev_action in (Action.BID, Action.RAISE):
-                prev_bid = prev_event.bid
-                prev_bid_cnt, prev_bid_face = prev_bid.count, prev_bid.face
-                prev_player = prev_event.player_name
-                print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid_cnt} {prev_bid_face}\'s.')
-                while True:
-                    try:
-                        choice = input(Fore.BLUE + '<?> Your action — [B]id/Raise, [C]hallenge, [S]pot On: ').strip().upper()
-                        if choice not in ('B', 'BID', 'R', 'RAISE', 'C', 'CHALLENGE', 'S', 'SPOT'):
-                            raise ValueError('<!> Say B, C, or S, matey!')
-                        break
-                    except ValueError as e:
-                        print(Fore.RED + Style.DIM + str(e))
-                if choice in ('B', 'BID', 'R', 'RAISE'):
-                    while True:
-                        output = self.bid(tot_other_dice)
-                        if output.count < prev_bid_cnt or (output.count == prev_bid_cnt and output.face == prev_bid_face):
-                            print(Fore.RED + Style.DIM +
-                                  f'<!> Yarrr, that\'s not allowed, matey, yer bid must raise th\' count above {prev_bid_cnt}, or bid a diff\'rent face at count {prev_bid_cnt}.')
-                            continue
-                        break
-                    new_action = Action.RAISE if output.count > prev_bid_cnt else Action.BID
-                elif choice in ('C', 'CHALLENGE'):
-                    output = None
-                    new_action = Action.CHALLENGE
-                else:  # SPOT
-                    output = None
-                    new_action = Action.SPOT_ON
-            return TurnResult(output, new_action, self.name)
+            if prev_action == Action.START:
+                resp = self._input_handler({
+                    'type': 'opening_bid',
+                    'dice': self.dice[:self.num_dice],
+                    'tot_other_dice': tot_other_dice,
+                })
+            else:
+                resp = self._input_handler({
+                    'type': 'decision',
+                    'dice': self.dice[:self.num_dice],
+                    'tot_other_dice': tot_other_dice,
+                    'prev_bid': prev_event.bid,
+                    'prev_player': prev_event.player_name,
+                })
+            return TurnResult(resp.get('bid'), resp['action'], self.name)
 
         # what is our most common roll?
         if self.num_dice > 1:

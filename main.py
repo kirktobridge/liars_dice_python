@@ -1,5 +1,6 @@
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
+from models import Action, Bid
 import colorama
 from colorama import Fore, Back, Style
 import time
@@ -119,6 +120,73 @@ def pirate_renderer(event: dict) -> None:
         print(Fore.MAGENTA + Style.DIM + f'<d> {event["msg"]}')
 
 
+def human_input_handler(request: dict) -> dict:
+    """Handle all human player I/O. Returns {'action': Action, 'bid': Bid | None}."""
+    dice = request['dice']
+    tot_other_dice = request['tot_other_dice']
+    print(Fore.BLUE + f'<i> Your dice: {dice}')
+
+    if request['type'] == 'opening_bid':
+        print(Fore.BLUE + '<i> You go first — make the opening bid.')
+        bid_count = _prompt_bid_count(tot_other_dice + len(dice))
+        bid_face = _prompt_bid_face()
+        return {'action': Action.BID, 'bid': Bid(bid_count, bid_face)}
+
+    # 'decision' — respond to a previous bid
+    prev_bid: Bid = request['prev_bid']
+    prev_player: str = request['prev_player']
+    print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid.count} {prev_bid.face}\'s.')
+    while True:
+        try:
+            choice = input(Fore.BLUE + '<?> Your action — [B]id/Raise, [C]hallenge, [S]pot On: ').strip().upper()
+            if choice not in ('B', 'BID', 'R', 'RAISE', 'C', 'CHALLENGE', 'S', 'SPOT'):
+                raise ValueError('<!> Say B, C, or S, matey!')
+            break
+        except ValueError as e:
+            print(Fore.RED + Style.DIM + str(e))
+
+    if choice in ('B', 'BID', 'R', 'RAISE'):
+        max_count = tot_other_dice + len(dice)
+        while True:
+            bid_count = _prompt_bid_count(max_count)
+            bid_face = _prompt_bid_face()
+            if bid_count < prev_bid.count or (bid_count == prev_bid.count and bid_face == prev_bid.face):
+                print(Fore.RED + Style.DIM +
+                      f'<!> Yarrr, that\'s not allowed, matey, yer bid must raise th\' count above {prev_bid.count}, or bid a diff\'rent face at count {prev_bid.count}.')
+                continue
+            break
+        action = Action.RAISE if bid_count > prev_bid.count else Action.BID
+        return {'action': action, 'bid': Bid(bid_count, bid_face)}
+    elif choice in ('C', 'CHALLENGE'):
+        return {'action': Action.CHALLENGE, 'bid': None}
+    else:  # SPOT
+        return {'action': Action.SPOT_ON, 'bid': None}
+
+
+def _prompt_bid_count(max_count: int) -> int:
+    while True:
+        try:
+            val = int(input(Fore.BLUE + '<?> Enter bid size: '))
+            if val < 0:
+                raise ValueError('<!> Ye\' cannot do that, matey.')
+            if val > max_count:
+                raise ValueError('<!> Are ye\' daft? Yer\' bettin\' more dice than are possible.')
+            return val
+        except ValueError as e:
+            print(Fore.RED + Style.DIM + (str(e) if str(e).startswith('<!>') else '<!> Arrrgh, ye must provide an integer, matey!'))
+
+
+def _prompt_bid_face() -> int:
+    while True:
+        try:
+            val = int(input(Fore.BLUE + '<?> Enter face value (1–6): '))
+            if val < 1 or val > 6:
+                raise ValueError('<!> Ye\' cannot do that, matey.')
+            return val
+        except ValueError as e:
+            print(Fore.RED + Style.DIM + (str(e) if str(e).startswith('<!>') else '<!> Arrrgh, ye must provide an integer, matey!'))
+
+
 def main():
     '''Handles user inputs to set up a LiarsDiceGame object.
     Provides the rules of the game if reqeuested.
@@ -213,7 +281,7 @@ def main():
                 raise AttributeError(
                     Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
             else:
-                game.add_player(Player(player_name, spot='HUMAN'))
+                game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
                 break
         except Exception as e:
             print(e)

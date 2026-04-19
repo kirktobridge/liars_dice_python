@@ -1,5 +1,4 @@
 import unittest
-from unittest.mock import patch
 from collections import deque
 import sys
 import os
@@ -213,66 +212,69 @@ class TestTakeTurnHuman(unittest.TestCase):
     def _bid_events(self, cnt, face, name="OtherPlayer"):
         return deque([TurnResult(Bid(cnt, face), Action.BID, name)])
 
-    def _make_human(self):
-        p = Player("Human_Test", spot="HUMAN")
+    def _make_human(self, input_handler=None):
+        p = Player("Human_Test", spot="HUMAN", input_handler=input_handler or (lambda _: {}))
         p.num_dice = 5
         p.dice = [3, 3, 3, 4, 5, -1]
         return p
 
-    @patch('builtins.input', side_effect=['3', '4'])
-    def test_human_opening_bid(self, mock_input):
-        p = self._make_human()
+    def test_human_opening_bid(self):
+        handler = lambda req: {'action': Action.BID, 'bid': Bid(3, 4)}
+        p = self._make_human(handler)
         result = p.take_turn(self._start_events(), 5)
         self.assertEqual(result.action, Action.BID)
         self.assertEqual(result.bid, Bid(3, 4))
         self.assertEqual(result.player_name, "Human_Test")
 
-    @patch('builtins.input', side_effect=['C'])
-    def test_human_challenge(self, mock_input):
-        p = self._make_human()
+    def test_human_opening_bid_passes_correct_request(self):
+        received = {}
+        def handler(req):
+            received.update(req)
+            return {'action': Action.BID, 'bid': Bid(2, 3)}
+        p = self._make_human(handler)
+        p.take_turn(self._start_events(), 10)
+        self.assertEqual(received['type'], 'opening_bid')
+        self.assertEqual(received['dice'], [3, 3, 3, 4, 5])
+        self.assertEqual(received['tot_other_dice'], 10)
+
+    def test_human_challenge(self):
+        handler = lambda req: {'action': Action.CHALLENGE, 'bid': None}
+        p = self._make_human(handler)
         result = p.take_turn(self._bid_events(2, 3), 5)
         self.assertEqual(result.action, Action.CHALLENGE)
         self.assertIsNone(result.bid)
 
-    @patch('builtins.input', side_effect=['S'])
-    def test_human_spot_on(self, mock_input):
-        p = self._make_human()
+    def test_human_spot_on(self):
+        handler = lambda req: {'action': Action.SPOT_ON, 'bid': None}
+        p = self._make_human(handler)
         result = p.take_turn(self._bid_events(2, 3), 5)
         self.assertEqual(result.action, Action.SPOT_ON)
         self.assertIsNone(result.bid)
 
-    @patch('builtins.input', side_effect=['B', '3', '5'])
-    def test_human_raise(self, mock_input):
-        p = self._make_human()
+    def test_human_raise(self):
+        handler = lambda req: {'action': Action.RAISE, 'bid': Bid(3, 5)}
+        p = self._make_human(handler)
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result.action, Action.RAISE)  # RAISE (count went up)
+        self.assertEqual(result.action, Action.RAISE)
         self.assertEqual(result.bid, Bid(3, 5))
 
-    @patch('builtins.input', side_effect=['INVALID', 'bad input', 'C'])
-    def test_human_invalid_then_valid_choice(self, mock_input):
-        """Bad action input retries until a valid choice is given."""
-        p = self._make_human()
+    def test_human_decision_passes_correct_request(self):
+        received = {}
+        def handler(req):
+            received.update(req)
+            return {'action': Action.CHALLENGE, 'bid': None}
+        p = self._make_human(handler)
+        p.take_turn(self._bid_events(2, 3), 10)
+        self.assertEqual(received['type'], 'decision')
+        self.assertEqual(received['prev_bid'], Bid(2, 3))
+        self.assertEqual(received['prev_player'], 'OtherPlayer')
+        self.assertEqual(received['tot_other_dice'], 10)
+
+    def test_human_player_name_in_result(self):
+        handler = lambda req: {'action': Action.CHALLENGE, 'bid': None}
+        p = self._make_human(handler)
         result = p.take_turn(self._bid_events(2, 3), 5)
-        self.assertEqual(result.action, Action.CHALLENGE)
-
-    @patch('builtins.input', side_effect=['B', 'notanumber', '2', '3'])
-    def test_human_bid_invalid_count_retries(self, mock_input):
-        """Non-numeric bid count retries instead of crashing."""
-        p = self._make_human()
-        # Previous bid was 1, 3 — bidding 2, 3 is a valid raise
-        result = p.take_turn(self._bid_events(1, 3), 5)
-        self.assertEqual(result.bid, Bid(2, 3))
-
-    @patch('builtins.input', side_effect=['B', '2', '3'])
-    def test_human_bid_same_face_same_count_invalid(self, mock_input):
-        """Human cannot re-bid the same count and same face."""
-        # prev_bid is [2, 3]; bidding [2, 3] again should be rejected
-        # But we only have one valid bid in side_effect after 'B'...
-        # This test just verifies that bidding a higher face at same count is accepted
-        p = self._make_human()
-        result = p.take_turn(self._bid_events(1, 2), 5)
-        # [2, 3] with prev [1, 2]: count went up (2 > 1), so this is a RAISE
-        self.assertEqual(result.action, Action.RAISE)
+        self.assertEqual(result.player_name, "Human_Test")
 
 
 class TestPlayerReset(unittest.TestCase):
