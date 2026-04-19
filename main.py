@@ -5,7 +5,8 @@ import colorama
 from colorama import Fore, Back, Style
 import time
 import sys
-import Constants
+import constants as Constants
+import presentation
 import random
 from collections import Counter
 
@@ -22,10 +23,10 @@ def pirate_renderer(event: dict) -> None:
     etype = event['type']
     if etype == 'round_started':
         print(Fore.WHITE + f'<!> Round {event["round_num"]} Begin')
-        _pause(Constants.PAUSE_MICRO)
+        _pause(presentation.PAUSE_MICRO)
     elif etype == 'dice_rolling':
         print(Fore.CYAN + '<i> Rolling Dice...')
-        _pause(Constants.PAUSE_MICRO)
+        _pause(presentation.PAUSE_MICRO)
     elif etype == 'dice_rolled':
         print(Fore.CYAN + '<i> Dice Rolled')
     elif etype == 'turn_started':
@@ -34,16 +35,16 @@ def pirate_renderer(event: dict) -> None:
             round_msg = str(event['num_dice']) + 'dice '
         round_msg += f'<*> Round {event["round_num"]}: {event["player_name"]}\'s Turn'
         print(round_msg)
-        _pause(Constants.PAUSE_MICRO)
+        _pause(presentation.PAUSE_MICRO)
     elif etype == 'bid_made':
         print(Fore.WHITE + f'<!> {event["player_name"]} bids {event["count"]} {event["face"]}\'s.')
-        _pause(Constants.PAUSE_ROUTINE)
+        _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'raise_made':
         print(Fore.WHITE + f'<!> {event["player_name"]} raises the bid to {event["count"]} {event["face"]}\'s.')
-        _pause(Constants.PAUSE_ROUTINE)
+        _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'challenge_called':
         print(Fore.WHITE + f'<!> {event["challenger_name"]} has challenged the previous bid of {event["bid_count"]} {event["bid_face"]}s made by {event["bidder_name"]}!')
-        _pause(Constants.PAUSE_DRAMATIC)
+        _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'human_turn_start':
         players = event['player_dice']
         current_player = event.get('current_player')
@@ -60,7 +61,7 @@ def pirate_renderer(event: dict) -> None:
         print()
     elif etype == 'rolls_revealed':
         print(Fore.CYAN + '<i> Lifting cups:\n')
-        _pause(Constants.PAUSE_DRAMATIC)
+        _pause(presentation.PAUSE_DRAMATIC)
         faces = [1, 2, 3, 4, 5, 6]
         col_w = 4
         bid_face = event.get('bid_face')
@@ -88,7 +89,7 @@ def pirate_renderer(event: dict) -> None:
                 else:
                     row += f" {cell:^{col_w-1}} "
             print(row)
-            _pause(Constants.PAUSE_MICRO)
+            _pause(presentation.PAUSE_MICRO)
         print()
     elif etype == 'challenge_resolved':
         if event['succeeded']:
@@ -105,10 +106,10 @@ def pirate_renderer(event: dict) -> None:
             else:
                 output += '!'
             print(Fore.WHITE + output)
-        _pause(Constants.PAUSE_ROUTINE)
+        _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'spot_on_called':
         print(Fore.WHITE + f'<!> {event["caller_name"]} has called \'SPOT ON\' on the previous bid of {event["bid_count"]} {event["bid_face"]}s made by Player {event["bidder_name"]}!')
-        _pause(Constants.PAUSE_DRAMATIC)
+        _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'spot_on_resolved':
         if event['succeeded']:
             print(Fore.CYAN + '<!> SPOT ON! Everyone else loses a die!')
@@ -117,19 +118,19 @@ def pirate_renderer(event: dict) -> None:
                 print(Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
             else:
                 print(Fore.CYAN + f'<!> {event["caller_name"]} lost their spot on call!')
-        _pause(Constants.PAUSE_ROUTINE)
+        _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'player_eliminated':
         if event['spot'] == 'HUMAN':
             print(Fore.BLUE + Style.BRIGHT + f'<X> {event["player_name"]}, you have been eliminated from the game!')
         else:
             print(Fore.WHITE + f'<X> {event["player_name"]} has been eliminated from the game!')
-        _pause(Constants.PAUSE_DRAMATIC)
+        _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'game_won':
         print(f'<!> There is only one player remaining. {event["winner_name"]} has won the game!')
-        _pause(Constants.PAUSE_DRAMATIC)
+        _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'round_summary':
         print(f'<!> There are {event["num_players"]} players and a total of {event["tot_num_dice"]} dice remaining.')
-        _pause(Constants.PAUSE_ROUTINE)
+        _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'error':
         print(Fore.MAGENTA + Style.DIM + event['message'])
     elif etype == 'debug':
@@ -213,7 +214,7 @@ def main():
     _fast = '--fast' in sys.argv
 
     colorama.init(autoreset=True)
-    for line0 in Constants.TITLE_CARD:
+    for line0 in presentation.TITLE_CARD:
         print(Fore.GREEN + Style.BRIGHT + line0)
     print(Fore.CYAN + Style.BRIGHT +
           '<i> Arrrrrgh, matey! Let\'s play some Liar\'s Dice!')
@@ -228,7 +229,7 @@ def main():
             if rules == 'N' or rules == 'NO':
                 print(Back.WHITE + Fore.WHITE +
                       '___________________________________________________________________________________________')
-                for line1 in Constants.GAME_RULES:
+                for line1 in presentation.GAME_RULES:
                     print(line1)
                 print(Back.WHITE + Fore.WHITE +
                       '___________________________________________________________________________________________')
@@ -240,7 +241,7 @@ def main():
 
         except Exception as e:
             print(e)
-            _pause(Constants.PAUSE_ROUTINE)
+            _pause(presentation.PAUSE_ROUTINE)
             continue
         break
 
@@ -259,7 +260,7 @@ def main():
                         Fore.RED + Style.DIM + '<!> Matey... yer\' not makin\' any sense.')
                 elif num_players < 0:
                     raise AttributeError(
-                        Fore.RED + Style.DIM + random.choice(Constants.INSULTS))
+                        Fore.RED + Style.DIM + random.choice(presentation.INSULTS))
                 elif num_players > Constants.MAX_PLAYERS:
                     input_fails += 1
                     raise AttributeError(
@@ -270,20 +271,20 @@ def main():
             print(Fore.RED + Style.DIM +
                   '<!> That won\'t do matey, ye\'ve got to provide a number.')
             if input_fails > 2:
-                _pause(Constants.PAUSE_ROUTINE)
+                _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(Constants.INSULTS))
+                      random.choice(presentation.INSULTS))
                 # TODO randomize insults
-            _pause(Constants.PAUSE_ROUTINE)
+            _pause(presentation.PAUSE_ROUTINE)
             continue
         except AttributeError as e:
             print(e)
             if input_fails > 2:
-                _pause(Constants.PAUSE_ROUTINE)
+                _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(Constants.INSULTS))
+                      random.choice(presentation.INSULTS))
                 # TODO randomize insults
-            _pause(Constants.PAUSE_ROUTINE)
+            _pause(presentation.PAUSE_ROUTINE)
             continue
         print(Fore.CYAN +
               f'<i> {num_players} players selected. Initalizing...')
@@ -304,11 +305,11 @@ def main():
         except Exception as e:
             print(e)
             if input_fails > 2:
-                _pause(Constants.PAUSE_ROUTINE)
+                _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(Constants.INSULTS))
+                      random.choice(presentation.INSULTS))
                 # TODO randomize insults
-            _pause(Constants.PAUSE_ROUTINE)
+            _pause(presentation.PAUSE_ROUTINE)
             continue
 
     rand_int = -1

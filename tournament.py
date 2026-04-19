@@ -7,7 +7,7 @@ import pandas as pd
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 from stats_collector import GameStatsCollector
-import Constants
+import constants as Constants
 
 # Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score)
 _Personalities = dict[str, tuple[int, int, int]]

@@ -2,7 +2,7 @@ import os
 import sys
 import random
 from datetime import datetime
-import Constants
+import constants as Constants
 from Player import Player
 from collections import deque
 from models import Action, Bid, TurnResult

@@ -3,7 +3,7 @@
 from statistics import mode
 from collections import deque
 import random
-import Constants
+import constants as Constants
 from colorama import Fore, Style
 from scipy.stats import binom
 from models import Action, Bid, TurnResult, OpponentProfile

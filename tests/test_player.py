@@ -5,7 +5,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import Constants
+import constants as Constants
 from Player import Player
 from models import Action, Bid, TurnResult, OpponentProfile
 

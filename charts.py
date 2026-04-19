@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import Constants
+import constants as Constants
 
 
 def show_tournament_stats(
