@@ -87,11 +87,7 @@ class LiarsDiceGame:
         for p0 in self.players:
             p0.roll()
             self.round_rolls.extend(p0.dice[:p0.num_dice])
-        # DICE ROLL is intentionally kept as a raw list sentinel (not a TurnResult) because
-        # it has no Action enum equivalent and is only ever compared here before being
-        # replaced by TurnResult(Action.START). Phase 2/3 should convert this if DICE ROLL
-        # needs to become a first-class event type.
-        self.log_event([[-1, -1], 'DICE ROLL', 'SYS'])
+        self.log_event(TurnResult(None, Action.DICE_ROLL, 'SYS'))
         self._emit('dice_rolled')
         round_cont = True
         tot_dice = self.count_dice()
@@ -107,7 +103,7 @@ class LiarsDiceGame:
                 prev_event = self.round_events[0]
                 prev_player_nm = None
                 try:
-                    if isinstance(prev_event, list) and prev_event[1] == 'DICE ROLL':
+                    if prev_event.action == Action.DICE_ROLL:
                         self.log_event(TurnResult(None, Action.START, 'SYS'))
                     else:
                         prev_player_nm = prev_event.player_name

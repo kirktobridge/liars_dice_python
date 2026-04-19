@@ -4,6 +4,7 @@ from enum import Enum
 
 class Action(str, Enum):
     START     = 'START'
+    DICE_ROLL = 'DICE ROLL'
     BID       = 'BID'
     RAISE     = 'RAISE'
     CHALLENGE = 'CHALLENGE'
