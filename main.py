@@ -46,14 +46,14 @@ def pirate_renderer(event: dict) -> None:
         _pause(Constants.PAUSE_DRAMATIC)
     elif etype == 'human_turn_start':
         players = event['player_dice']
-        prev_bidder = event.get('prev_bidder')
+        current_player = event.get('current_player')
         name_w = max(len(p['name']) for p in players) + 2
         header = f"\n  {'Player':<{name_w}} Dice"
         print(Fore.CYAN + header)
         print(Fore.CYAN + '  ' + '-' * (name_w + 5))
         for p in players:
-            marker = '* ' if p['name'] == prev_bidder else '  '
-            if p['name'] == prev_bidder:
+            marker = '* ' if p['name'] == current_player else '  '
+            if p['name'] == current_player:
                 print(Fore.YELLOW + Style.BRIGHT + marker + f"{p['name']:<{name_w}} {p['num_dice']}" + Style.RESET_ALL)
             else:
                 print(Fore.CYAN + marker + f"{p['name']:<{name_w}} {p['num_dice']}")

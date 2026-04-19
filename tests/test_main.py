@@ -58,11 +58,11 @@ class TestPirateRenderer(unittest.TestCase):
 
     def test_human_turn_start_no_prev_bidder(self):
         players = [{'name': 'You', 'num_dice': 5}, {'name': 'Bob', 'num_dice': 3}]
-        self._render('human_turn_start', player_dice=players, prev_bidder=None)
+        self._render('human_turn_start', player_dice=players, current_player='You', prev_bidder=None)
 
     def test_human_turn_start_with_prev_bidder(self):
         players = [{'name': 'You', 'num_dice': 5}, {'name': 'Bob', 'num_dice': 3}]
-        self._render('human_turn_start', player_dice=players, prev_bidder='Bob')
+        self._render('human_turn_start', player_dice=players, current_player='You', prev_bidder='Bob')
 
     def test_rolls_revealed(self):
         rolls = [
