@@ -289,7 +289,7 @@ def main():
 
     game = LiarsDiceGame(num_players, on_event=pirate_renderer, log=True)
     player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
-    while True and not Constants.MULTIPLAYER_ON:
+    while True:
         try:
             player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
             if player_names_upper.count(str.upper(player_name)) > 0:
