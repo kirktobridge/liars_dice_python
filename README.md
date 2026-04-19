@@ -2,14 +2,9 @@
 Working on this game with Claude Code now. Forked from the main branch so I can keep the original for posterity.
 
 # liars_dice_python
-Python simulation of Liar's Dice (includes the 'Spot On' variation). One human player only.
-The game is modeled using three classes:
+A Python-based Liar's Dice game engine with:
 
-# LiarsDiceGame
-Manages players, runs rounds by signaling Players to roll dice and triggering their decision-making. Handles tasks like eliminating players, and arbitrating challenges and spot on calls.
-
-# Player
-Represents a player that can be placed in a LiarsDiceGame object's inventory. Maintains personal inventory of dice, makes play decisions (bid, challenge, call spot on).
-
-# Main Class
-Initializes a LiarsDiceGame object, collects setup inputs (number of players, name) from human and sets up game for 1 human player. Talks like a pirate.
+AI players using a Bayesian binomial probability model, personality traits (risk appetite, peer pressure), and opponent profiling
+CLI game mode with pirate-themed flavor text
+Tournament/simulation mode with multiprocessing and a Plotly analytics dashboard
+Event-driven architecture — the game emits events; a renderer, stats collector, and logger subscribe independently
