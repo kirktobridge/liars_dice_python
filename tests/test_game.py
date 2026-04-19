@@ -10,7 +10,7 @@ import Constants
 from Player import Player
 from LiarsDiceGame import LiarsDiceGame
 from models import Action, Bid, TurnResult
-from simulate import run_game, run_tournament
+from tournament import run_game, run_tournament
 
 
 def make_game(num_players=3):
