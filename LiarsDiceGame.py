@@ -169,7 +169,7 @@ class LiarsDiceGame:
                                bidder_num_dice=self.players[p-1].num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
-                        for pl in self.players])
+                        for pl in self.players], bid_face=prev_bid_face)
                     round_cont = False
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, loser = self._resolve_challenge(prev_bid_obj, self.players[p], self.players[p-1])
@@ -201,7 +201,7 @@ class LiarsDiceGame:
                                tot_num_dice=self.tot_num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
-                        for pl in self.players])
+                        for pl in self.players], bid_face=prev_bid_face)
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, losers = self._resolve_spot_on(prev_bid_obj, self.players[p])
                     self._emit('spot_on_resolved',

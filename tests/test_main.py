@@ -69,6 +69,13 @@ class TestPirateRenderer(unittest.TestCase):
             {'name': 'Alice', 'dice': [1, 2, 3, 4, 5]},
             {'name': 'Bob',   'dice': [6, 6, 1, 2, 3]},
         ]
+        self._render('rolls_revealed', player_rolls=rolls, bid_face=5)
+
+    def test_rolls_revealed_no_bid_face(self):
+        rolls = [
+            {'name': 'Alice', 'dice': [1, 2, 3, 4, 5]},
+            {'name': 'Bob',   'dice': [6, 6, 1, 2, 3]},
+        ]
         self._render('rolls_revealed', player_rolls=rolls)
 
     def test_challenge_resolved_success_with_ones(self):

@@ -60,18 +60,31 @@ def pirate_renderer(event: dict) -> None:
         _pause(Constants.PAUSE_DRAMATIC)
         faces = [1, 2, 3, 4, 5, 6]
         col_w = 4
+        bid_face = event.get('bid_face')
+        highlight_faces = set()
+        if bid_face is not None:
+            highlight_faces.add(bid_face)
+            if bid_face != 1:
+                highlight_faces.add(1)
         name_w = max(len(p['name']) for p in event['player_rolls']) + 2
-        header = f"{'Player':<{name_w}}" + ''.join(f"  {f}  " for f in faces)
+        header = f"{'Player':<{name_w}}"
+        for f in faces:
+            label = f"  {f}  "
+            header += Fore.YELLOW + Style.BRIGHT + label + Fore.CYAN if f in highlight_faces else label
         divider = '-' * name_w + '+' + '+'.join('-' * col_w for _ in faces)
         print(Fore.CYAN + header)
         print(Fore.CYAN + divider)
         for p_data in event['player_rolls']:
             freq = Counter(p_data['dice'])
-            row = f"{p_data['name']:<{name_w}}"
+            row = Fore.CYAN + f"{p_data['name']:<{name_w}}"
             for f in faces:
-                cell = str(freq[f]) if freq[f] else ' '
-                row += f" {cell:^{col_w-1}} "
-            print(Fore.CYAN + row)
+                count = freq[f]
+                cell = str(count) if count else ' '
+                if f in highlight_faces and count:
+                    row += Fore.YELLOW + Style.BRIGHT + f" {cell:^{col_w-1}} " + Fore.CYAN
+                else:
+                    row += f" {cell:^{col_w-1}} "
+            print(row)
             _pause(Constants.PAUSE_MICRO)
         print()
     elif etype == 'challenge_resolved':
