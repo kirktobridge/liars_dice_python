@@ -44,20 +44,6 @@ def show_tournament_stats(
         showlegend=False,
     )
 
-    # --- 3. Cumulative Win Rate Over Time ---
-    cum_lines = []
-    for player in sorted_players:
-        wins_series = (df['winner'] == player).astype(int)
-        cum_pct = (wins_series.expanding().mean() * 100).round(2)
-        cum_lines.append(go.Scatter(
-            x=list(range(n_games)),
-            y=cum_pct,
-            mode='lines',
-            name=player,
-            line=dict(width=2),
-            showlegend=True,
-        ))
-
     # --- Derived stats (used by panels 4, 5, 6, 8) ---
     chall = df_rounds[df_rounds['action_type'] == 'challenge']
     chall_called = chall.groupby('action_caller').size().rename('called')
@@ -94,6 +80,7 @@ def show_tournament_stats(
     heat_agg = (chall_br.groupby(['bidder_num_dice', 'bid_count_claimed'])['challenge_succeeded']
                 .agg(['mean', 'count']).reset_index())
     heat_pivot = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='mean')
+    heat_count = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='count').fillna(0).astype(int)
     heat_text = heat_pivot.map(lambda v: f'{v:.0%}' if pd.notna(v) else '')
 
     ratio_bins   = [0, 1, 2, 3, float('inf')]
@@ -175,7 +162,7 @@ def show_tournament_stats(
         else:
             return f'{v} (Aggressive)'
     def _peer_label(v: int) -> str:
-        return f'{v} ({v}% crowd bias)'
+        return str(v)
     def _att_label(v: int) -> str:
         if v <= 33:
             return f'{v} (Oblivious)'
@@ -229,6 +216,8 @@ def show_tournament_stats(
         z=heat_pivot.values,
         text=heat_text.values,
         texttemplate='%{text}',
+        customdata=heat_count.reindex(index=heat_pivot.index, columns=heat_pivot.columns).values,
+        hovertemplate='Bid: %{x}<br>Bidder dice: %{y}<br>Success: %{text}<br>n=%{customdata}<extra></extra>',
         colorscale='RdYlGn',
         zmin=0, zmax=1,
         colorbar=dict(title='Challenge<br>Success<br>Rate', len=0.2, y=0.08),
@@ -275,7 +264,7 @@ def show_tournament_stats(
         subplot_titles=(
             'Win Rate',
             'Game Length Distribution',
-            'Cumulative Win Rate Over Time',
+            '',
             'Dice Count at Challenge',
             'Challenge Accuracy by Player',
             'Bid vs. Actual Count at Challenge',
@@ -303,8 +292,6 @@ def show_tournament_stats(
     # Row 1
     fig.add_trace(bar_chart, row=1, col=1)
     fig.add_trace(hist, row=1, col=2)
-    for line in cum_lines:
-        fig.add_trace(line, row=1, col=3)
 
     # Row 2
     for vt in violin_traces:
@@ -386,8 +373,6 @@ def show_tournament_stats(
     # Axis labels — Row 1
     fig.update_xaxes(title_text='Wins', row=1, col=1)
     fig.update_xaxes(title_text='Rounds', row=1, col=2)
-    fig.update_xaxes(title_text='Game #', row=1, col=3)
-    fig.update_yaxes(title_text='Win %', row=1, col=3)
     # Row 2
     fig.update_yaxes(title_text='Total Dice on Table', row=2, col=1)
     fig.update_xaxes(title_text='Challenge Win %', row=2, col=2)
