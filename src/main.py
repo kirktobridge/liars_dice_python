@@ -310,7 +310,7 @@ def main():
 
     sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
     for idx in sampled_indices:
-    game.add_player(Player(Constants.PLAYER_NAMES[idx]))
+        game.add_player(Player(Constants.PLAYER_NAMES[idx]))
 
     run_game = True
 
