@@ -24,12 +24,8 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self._logging = log
-        if self._logging:
-            self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt'
-            self.game_log_file = open(self._log_path, 'w+')
-        else:
-            self._log_path = None
-            self.game_log_file = None
+        self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt' if log else None
+        self.game_log_file = None
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
@@ -273,6 +269,8 @@ class LiarsDiceGame:
             self.game_log_file = None
 
     def __enter__(self) -> 'LiarsDiceGame':
+        if self._logging:
+            self.game_log_file = open(self._log_path, 'w+')
         return self
 
     def __exit__(self, *_) -> None:

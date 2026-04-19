@@ -433,11 +433,10 @@ class TestLogEvents(unittest.TestCase):
 class TestCloseAndContextManager(unittest.TestCase):
     def test_close_with_logging_closes_file(self):
         with patch('builtins.open', mock_open()):
-            game = LiarsDiceGame(2, log=True)
-        mock_file = game.game_log_file
-        game.close()
-        mock_file.close.assert_called_once()
-        self.assertIsNone(game.game_log_file)
+            with LiarsDiceGame(2, log=True) as game:
+                mock_file = game.game_log_file
+            mock_file.close.assert_called_once()
+            self.assertIsNone(game.game_log_file)
 
     def test_close_without_logging_is_noop(self):
         game = make_game(2)

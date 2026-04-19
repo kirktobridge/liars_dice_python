@@ -287,41 +287,40 @@ def main():
               f'<i> {num_players} players selected. Initalizing...')
         break
 
-    game = LiarsDiceGame(num_players, on_event=pirate_renderer, log=True)
-    player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
-    while True:
-        try:
-            player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
-            if player_names_upper.count(str.upper(player_name)) > 0:
-                input_fails += 1
-                raise AttributeError(
-                    Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
-            else:
-                game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
-                break
-        except Exception as e:
-            print(e)
-            if input_fails > 2:
+    with LiarsDiceGame(num_players, on_event=pirate_renderer, log=True) as game:
+        player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
+        while True:
+            try:
+                player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
+                if player_names_upper.count(str.upper(player_name)) > 0:
+                    input_fails += 1
+                    raise AttributeError(
+                        Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
+                else:
+                    game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
+                    break
+            except Exception as e:
+                print(e)
+                if input_fails > 2:
+                    _pause(presentation.PAUSE_ROUTINE)
+                    print(Fore.YELLOW + Style.NORMAL +
+                          random.choice(presentation.INSULTS))
                 _pause(presentation.PAUSE_ROUTINE)
-                print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(presentation.INSULTS))
-            _pause(presentation.PAUSE_ROUTINE)
-            continue
+                continue
 
-    sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
-    for idx in sampled_indices:
-        game.add_player(Player(Constants.PLAYER_NAMES[idx]))
+        sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
+        for idx in sampled_indices:
+            game.add_player(Player(Constants.PLAYER_NAMES[idx]))
 
-    run_game = True
+        run_game = True
 
-    while run_game:
-        run_game = game.process_round()
+        while run_game:
+            run_game = game.process_round()
 
-    print(Fore.BLUE + Style.BRIGHT +
-          '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
-    if Constants.DEBUG == True and game._log_path:
-        print(Fore.MAGENTA + f'----- GAME LOG: {game._log_path} -----')
-    game.close()
+        print(Fore.BLUE + Style.BRIGHT +
+              '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
+        if Constants.DEBUG == True and game._log_path:
+            print(Fore.MAGENTA + f'----- GAME LOG: {game._log_path} -----')
 
 
 if __name__ == '__main__':
