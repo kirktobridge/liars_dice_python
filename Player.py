@@ -296,12 +296,6 @@ class Player:
         needed_cnt = bid_cnt - face_self_match_cnt
         return needed_cnt
 
-    def challenge(self):
-        if self.spot == 'CPU':
-            pass  # TODO AI behavior
-        elif self.spot == 'HUMAN':
-            pass  # TODO Human behavior
-
     def count_ones(self):
         self.wild_count = self.dice.count(1)
         return self.wild_count
