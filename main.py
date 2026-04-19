@@ -151,7 +151,6 @@ def human_input_handler(request: dict) -> dict:
         bid_face = _prompt_bid_face()
         return {'action': Action.BID, 'bid': Bid(bid_count, bid_face)}
 
-    # 'decision' — respond to a previous bid
     prev_bid: Bid = request['prev_bid']
     prev_player: str = request['prev_player']
     print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid.count} {prev_bid.face}\'s.')
@@ -274,7 +273,6 @@ def main():
                 _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
                       random.choice(presentation.INSULTS))
-                # TODO randomize insults
             _pause(presentation.PAUSE_ROUTINE)
             continue
         except AttributeError as e:
@@ -283,7 +281,6 @@ def main():
                 _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
                       random.choice(presentation.INSULTS))
-                # TODO randomize insults
             _pause(presentation.PAUSE_ROUTINE)
             continue
         print(Fore.CYAN +
@@ -308,7 +305,6 @@ def main():
                 _pause(presentation.PAUSE_ROUTINE)
                 print(Fore.YELLOW + Style.NORMAL +
                       random.choice(presentation.INSULTS))
-                # TODO randomize insults
             _pause(presentation.PAUSE_ROUTINE)
             continue
 

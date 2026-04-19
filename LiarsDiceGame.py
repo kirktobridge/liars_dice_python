@@ -7,10 +7,6 @@ from Player import Player
 from collections import deque
 from models import Action, Bid, TurnResult
 
-# class for the game object
-# 5 dice to start
-
-
 class LiarsDiceGame:
 
     def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None, rng: random.Random | None = None, log: bool = False):
@@ -61,29 +57,21 @@ class LiarsDiceGame:
 
     def count_dice(self):
         try:
-            self.tot_num_dice = 0  # reset count
+            self.tot_num_dice = 0
             for p in self.players:
                 self.tot_num_dice += p.num_dice
-                # TODO map()?
             return self.tot_num_dice
         except Exception as e:
             self.print_error('count_dice')
             return -1
 
     def process_round(self):
-        '''PRE-ROUND TASKS
-        - Increment Round Counter
-        - Notify User
-        - Log events
-        - Roll dice'''
-        # Increment round counter
         self.round_num += 1
         self._emit('round_started', round_num=self.round_num)
         self.round_events.clear()
         self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
         self._emit('dice_rolling')
         self.round_rolls.clear()
-        # Roll and record players' dice
         for p0 in self.players:
             p0.roll()
             self.round_rolls.extend(p0.dice[:p0.num_dice])
@@ -99,7 +87,6 @@ class LiarsDiceGame:
                            player_name=self.players[p].name,
                            num_dice=self.players[p].num_dice,
                            round_num=self.round_num)
-                # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
                 prev_player_nm = None
                 prev_bid_cnt = None
@@ -117,7 +104,6 @@ class LiarsDiceGame:
                     self.print_error(
                         'process_round: prev_event assignment', e)
                     continue
-                # player takes turn, output (bid, if any) and action are recorded
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
                     if Constants.DEBUG and self._logging:
@@ -148,19 +134,16 @@ class LiarsDiceGame:
                     self.log_events(self.round_events)
                     continue
 
-                # Process BID action
                 if cur_event.action == Action.BID:
                     self._emit('bid_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
-                # Process RAISE action
                 elif cur_event.action == Action.RAISE:
                     self._emit('raise_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
-                # Process CHALLENGE action
                 elif cur_event.action == Action.CHALLENGE:
                     self._emit('challenge_called',
                                challenger_name=self.players[p].name,
@@ -191,9 +174,7 @@ class LiarsDiceGame:
                     self.round_loser = loser
                     loser.lose_die()
                     break
-                # TODO appears players are not being eliminated
 
-                # Process SPOT ON action
                 if cur_event.action == Action.SPOT_ON:
                     self._emit('spot_on_called',
                                caller_name=self.players[p].name,
@@ -224,19 +205,11 @@ class LiarsDiceGame:
                         self.round_loser = losers[0]
                         round_cont = False
                         break
-            ''' END OF FOR-PLAYER LOOP'''
             if Constants.DEBUG and self._logging:
                 self.game_log_file.write('End of for loop\n')
 
         if self._logging:
             self.game_log_file.write('Broke out of while round_cont loop\n')
-        ''' END OF WHILE ROUND_CONT LOOP'''
-        ''' POST-ROUND TASKS
-        - Process eliminations
-        - Rearrange player array
-        - Cap rounds if debugging '''
-
-        # Eliminate players who now have zero dice remaining
         if Constants.DEBUG:
             for player in self.players:
                 self._emit('debug', msg=f'{player.name} has {player.num_dice} dice')
@@ -246,19 +219,16 @@ class LiarsDiceGame:
 
         self.count_dice()
 
-        # Report state of game or end it
         if self.num_players < 2:
             self._emit('game_won', winner_name=self.players[0].name)
             self.game_status = False
         else:
             self._emit('round_summary', num_players=self.num_players, tot_num_dice=self.tot_num_dice)
 
-        # Impose max rounds
         if Constants.DEBUG and self.round_num > self.max_rounds:
             self._emit('debug', msg='Max rounds reached. Ending game...')
             self.game_status = False
 
-        # Rearrange Player array so loser goes first next round
         self._reorder_for_next_round()
 
         return self.game_status

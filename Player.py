@@ -1,5 +1,3 @@
-# class for Player object
-# move to Constants file
 from statistics import mode
 from collections import deque
 import random
@@ -9,9 +7,6 @@ from scipy.stats import binom
 from models import Action, Bid, TurnResult, OpponentProfile
 
 _binom_cache: dict[int, binom] = {}
-
-# TODO behavior for human bidding/raising/challenging
-# TODO add behavior for raising by more than 1
 
 
 def _get_binom(n: int) -> binom:
@@ -34,7 +29,7 @@ class Player:
         self.num_dice = num_dice
         self.eliminated = eliminated
         self.dice = [-1] * self.num_dice
-        self.rolls_mode = 0  # most common roll
+        self.rolls_mode = 0
         self.wild_count = 0
         self.mode_count = 0
         self.spot = spot
@@ -155,10 +150,6 @@ class Player:
 
         raise Exception(
             Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
-
-    # ----------------------------------------------------------------
-    # Private helpers for take_turn
-    # ----------------------------------------------------------------
 
     def _handle_human_turn(self, prev_event: TurnResult, tot_other_dice: int) -> TurnResult:
         if prev_event.action == Action.START:
@@ -281,8 +272,6 @@ class Player:
             action = Action.RAISE if best_bid.count > prev_bid_cnt else Action.BID
             return TurnResult(best_bid, action, self.name)
         return TurnResult(None, Action.CHALLENGE, self.name)
-
-    # ----------------------------------------------------------------
 
     def get_needed_cnt(self, bid: Bid) -> int:
         '''Produces the number of rolled faces needed for a bid to be true,
