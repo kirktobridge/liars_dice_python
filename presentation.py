@@ -59,4 +59,4 @@ TITLE_CARD = [
     "| |         | |   | (   ) || (\ (            ) |  | |   ) |   | |   | |      | (      ",
     "| (____/\___) (___| )   ( || ) \ \__   /\____) |  | (__/  )___) (___| (____/\| (____/\\",
     "(_______/\_______/|/     \||/   \__/   \_______)  (______/ \_______/(_______/(_______/",
-    "singleplayer edition\nBY @KIRKTOBRIDGE - GITHUB.COM/KIRKTOBRIDGE"]
+    "first edition\nBY @KIRKTOBRIDGE - GITHUB.COM/KIRKTOBRIDGE"]
