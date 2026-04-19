@@ -58,9 +58,8 @@ class TestCountDice(unittest.TestCase):
         self.assertEqual(game.count_dice(), 0)
 
     def test_count_single_player(self):
-        game = make_game(1)
-        p = make_player("Alice", num_dice=4)
-        game.add_player(p)
+        game = make_game(2)
+        game.add_player(make_player("Alice", num_dice=4))
         self.assertEqual(game.count_dice(), 4)
 
     def test_count_multiple_players(self):
