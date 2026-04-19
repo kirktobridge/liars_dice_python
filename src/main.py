@@ -308,15 +308,9 @@ def main():
             _pause(presentation.PAUSE_ROUTINE)
             continue
 
-    rand_int = -1
-    rand_ints_used = [-1]
-    for p in range(1, num_players):
-
-        while rand_ints_used.count(rand_int) > 0:
-            rand_int = random.randint(
-                0, len(Constants.PLAYER_NAMES)-1)
-        rand_ints_used.append(rand_int)
-        game.add_player(Player(Constants.PLAYER_NAMES[rand_int]))
+    sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
+    for idx in sampled_indices:
+    game.add_player(Player(Constants.PLAYER_NAMES[idx]))
 
     run_game = True
 
