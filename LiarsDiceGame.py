@@ -105,6 +105,7 @@ class LiarsDiceGame:
                            round_num=self.round_num)
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
+                prev_player_nm = None
                 try:
                     if isinstance(prev_event, list) and prev_event[1] == 'DICE ROLL':
                         self.log_event(TurnResult(None, Action.START, 'SYS'))
@@ -125,6 +126,11 @@ class LiarsDiceGame:
                         self.game_log_file.write(
                             f'Passing prev_event {self.round_events[0]} and action {self.round_events[0].action} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
                     bidder_num_dice = self.players[p - 1].num_dice
+                    if self.players[p].spot == 'HUMAN':
+                        self._emit('human_turn_start',
+                                   player_dice=[{'name': pl.name, 'num_dice': pl.num_dice}
+                                                for pl in self.players if pl.num_dice > 0],
+                                   prev_bidder=prev_player_nm if prev_player_nm else None)
                     cur_event = self.players[p].take_turn(
                         self.round_events, tot_dice-self.players[p].num_dice, bidder_num_dice)
                     self.log_event(cur_event)
