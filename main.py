@@ -157,7 +157,7 @@ def human_input_handler(request: dict) -> dict:
     print(Fore.BLUE + f'<i> {prev_player} bid {prev_bid.count} {prev_bid.face}\'s.')
     while True:
         try:
-            choice = input(Fore.BLUE + '<?> Your action — [B]id/Raise, [C]hallenge, [S]pot On: ').strip().upper()
+            choice = input(Fore.BLUE + f'<?> Your action — [{Fore.YELLOW + Style.BRIGHT}B{Fore.BLUE + Style.NORMAL}]id/Raise, [{Fore.YELLOW + Style.BRIGHT}C{Fore.BLUE + Style.NORMAL}]hallenge, [{Fore.YELLOW + Style.BRIGHT}S{Fore.BLUE + Style.NORMAL}]pot On: ').strip().upper()
             if choice not in ('B', 'BID', 'R', 'RAISE', 'C', 'CHALLENGE', 'S', 'SPOT'):
                 raise ValueError('<!> Say B, C, or S, matey!')
             break

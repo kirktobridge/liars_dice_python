@@ -102,6 +102,8 @@ class LiarsDiceGame:
                 # create references to previous event in the round (previous turn actions)
                 prev_event = self.round_events[0]
                 prev_player_nm = None
+                prev_bid_cnt = None
+                prev_bid_face = None
                 try:
                     if prev_event.action == Action.DICE_ROLL:
                         self.log_event(TurnResult(None, Action.START, 'SYS'))
