@@ -53,7 +53,10 @@ def pirate_renderer(event: dict) -> None:
         print(Fore.CYAN + '  ' + '-' * (name_w + 5))
         for p in players:
             marker = '* ' if p['name'] == prev_bidder else '  '
-            print(Fore.CYAN + marker + f"{p['name']:<{name_w}} {p['num_dice']}")
+            if p['name'] == prev_bidder:
+                print(Fore.YELLOW + Style.BRIGHT + marker + f"{p['name']:<{name_w}} {p['num_dice']}" + Style.RESET_ALL)
+            else:
+                print(Fore.CYAN + marker + f"{p['name']:<{name_w}} {p['num_dice']}")
         print()
     elif etype == 'rolls_revealed':
         print(Fore.CYAN + '<i> Lifting cups:\n')
@@ -137,7 +140,9 @@ def human_input_handler(request: dict) -> dict:
     """Handle all human player I/O. Returns {'action': Action, 'bid': Bid | None}."""
     dice = request['dice']
     tot_other_dice = request['tot_other_dice']
-    print(Fore.BLUE + f'<i> Your dice: {dice}')
+    sep = Fore.BLUE + ', '
+    dice_str = sep.join(Fore.YELLOW + Style.BRIGHT + str(d) + Style.NORMAL for d in dice)
+    print(Fore.BLUE + '<i> Your dice: [' + dice_str + Fore.BLUE + ']')
 
     if request['type'] == 'opening_bid':
         print(Fore.BLUE + '<i> You go first — make the opening bid.')
