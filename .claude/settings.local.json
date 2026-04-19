@@ -9,7 +9,8 @@
       "Bash(git commit -m ' *)",
       "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -v --tb=short)",
       "Bash(.venv/bin/python simulate.py -n 200 -p 4 -w 1)",
-      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -q)"
+      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -q)",
+      "Bash(.venv/bin/pytest tests/ -v)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"

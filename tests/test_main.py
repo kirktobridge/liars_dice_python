@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
 from main import pirate_renderer, human_input_handler, _prompt_bid_count, _prompt_bid_face
 from models import Action, Bid
-import Constants
+import constants as Constants
 
 
 def _renderer_event(etype, **kwargs):
