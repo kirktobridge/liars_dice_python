@@ -12,6 +12,8 @@ class LiarsDiceGame:
     def __init__(self, num_players, max_rounds=Constants.MAX_ROUNDS, on_event=None, rng: random.Random | None = None, log: bool = False):
         self._on_event = on_event or (lambda e: None)
         self._rng = rng if rng is not None else random.Random()
+        if num_players < 2:
+            raise ValueError(f"LiarsDiceGame requires at least 2 players, got {num_players}.")
         if Constants.DEBUG:
             self._emit('debug', msg='Game Object Initialized')
         self.num_players = num_players
