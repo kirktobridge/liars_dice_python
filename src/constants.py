@@ -21,5 +21,53 @@ ATTENTIVENESS_DISTRIBUTION = list(range(1, 101))
 MAX_ATTENTIVENESS_SCORE = max(ATTENTIVENESS_DISTRIBUTION)
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
-PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
-                'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']
+PLAYER_NAMES = [
+    # Core Crew / Main Characters
+    'Captain Jack Sparrow',
+    'Captain Hector Barbossa',
+    'First Mate Joshamee Gibbs',
+    'Pirate King Elizabeth Swann',
+    'Will Turner',
+    'Jack the Monkey',
+
+    # Villains & Antagonists
+    'Captain Davy Jones',
+    'Captain Blackbeard',
+    'Calypso',
+    'Lord Cutler Beckett',
+    'Davy Jones\' Kraken',
+
+    # Flying Dutchman Crew
+    'Bootstrap Bill Turner',
+    'Maccus',
+    'Hadras',
+    'Koleniko',
+
+    'Pintel',
+    'Ragetti',
+    'Cotton',
+    'Cotton\'s Parrot',
+    'Marty',
+    'Leech',
+
+    # Pirate Lords (Brethren Court)
+    'Sao Feng',
+    'Ammand the Corsair',
+    'Mistress Ching',
+    'Eduardo Villanueva',
+    'Capitaine Chevalle',
+    'Gentleman Jocard',
+
+    # Supporting / Royal Navy
+    'Commodore James Norrington',
+    'Governor Weatherby Swann',
+    'Captain Salazar',
+    'Henry Turner',
+    'Carina Smyth',
+
+    # On Stranger Tides
+    'Angelica',
+    'Philip Swift',
+    'Syrena',
+    'Scrum',
+]
