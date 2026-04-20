@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import constants as Constants
 from Player import Player
 from LiarsDiceGame import LiarsDiceGame
-from models import Action, Bid, TurnResult
+from models import Action, Bid, GameState, PlayerState, TurnResult
 from tournament import run_game, run_tournament
 
 
@@ -469,6 +469,110 @@ class TestCloseAndContextManager(unittest.TestCase):
                 pass
         mock_handler.close.assert_called_once()
 
+
+
+class TestSnapshot(unittest.TestCase):
+    def _make_two_player_game(self):
+        game = make_game(2)
+        game.add_player(make_player("Alice", num_dice=4))
+        game.add_player(make_player("Bob", num_dice=3))
+        return game
+
+    def test_snapshot_initial_state(self):
+        game = self._make_two_player_game()
+        snap = game.snapshot()
+        self.assertEqual(snap.round_num, 0)
+        self.assertIsNone(snap.prev_bid)
+        self.assertIsNone(snap.prev_bidder)
+        self.assertIsNone(snap.current_player)
+        self.assertFalse(snap.game_over)
+        self.assertIsNone(snap.winner)
+        self.assertEqual(len(snap.active_players), 2)
+
+    def test_snapshot_active_players_fields(self):
+        game = self._make_two_player_game()
+        snap = game.snapshot()
+        alice = next(p for p in snap.active_players if p.name == "Alice")
+        self.assertEqual(alice.num_dice, 4)
+        self.assertEqual(alice.player_type, "CPU")
+        self.assertFalse(alice.is_eliminated)
+
+    def test_snapshot_mid_round_prev_bid(self):
+        game = self._make_two_player_game()
+        game.round_num = 1
+        game.log_event(TurnResult(Bid(3, 5), Action.BID, "Alice"))
+        snap = game.snapshot()
+        self.assertEqual(snap.prev_bid, Bid(3, 5))
+        self.assertEqual(snap.prev_bidder, "Alice")
+        self.assertEqual(snap.current_player, "Alice")
+        self.assertFalse(snap.game_over)
+
+    def test_snapshot_mid_round_raise_overwrites_bid(self):
+        game = self._make_two_player_game()
+        game.round_num = 1
+        game.log_event(TurnResult(Bid(3, 5), Action.BID, "Alice"))
+        game.log_event(TurnResult(Bid(4, 5), Action.RAISE, "Bob"))
+        snap = game.snapshot()
+        self.assertEqual(snap.prev_bid, Bid(4, 5))
+        self.assertEqual(snap.prev_bidder, "Bob")
+        self.assertEqual(snap.current_player, "Bob")
+
+    def test_snapshot_post_game(self):
+        game = make_game(2)
+        game.add_player(make_player("Winner", num_dice=3))
+        game.game_status = False
+        snap = game.snapshot()
+        self.assertTrue(snap.game_over)
+        self.assertEqual(snap.winner, "Winner")
+
+    def test_snapshot_game_not_over_no_winner(self):
+        game = self._make_two_player_game()
+        snap = game.snapshot()
+        self.assertFalse(snap.game_over)
+        self.assertIsNone(snap.winner)
+
+    def test_snapshot_to_dict_json_serializable(self):
+        import json
+        game = self._make_two_player_game()
+        game.round_num = 2
+        game.log_event(TurnResult(Bid(2, 4), Action.BID, "Alice"))
+        snap = game.snapshot()
+        d = snap.to_dict()
+        self.assertIsInstance(d, dict)
+        json_str = json.dumps(d)
+        restored = json.loads(json_str)
+        self.assertEqual(restored['round_num'], 2)
+        self.assertEqual(restored['prev_bid'], {'count': 2, 'face': 4})
+        self.assertEqual(len(restored['active_players']), 2)
+
+    def test_snapshot_to_dict_no_bid_json_serializable(self):
+        import json
+        game = self._make_two_player_game()
+        snap = game.snapshot()
+        json_str = json.dumps(snap.to_dict())
+        restored = json.loads(json_str)
+        self.assertIsNone(restored['prev_bid'])
+        self.assertIsNone(restored['winner'])
+
+    def test_snapshot_integration_after_process_round(self):
+        events = []
+        game = make_game(2)
+        game._on_event = events.append
+        p1 = make_player("P1", num_dice=5, dice=[3, 3, 3, 3, 3])
+        p2 = make_player("P2", num_dice=5, dice=[6, 6, 6, 6, 6])
+        game.add_player(p1)
+        game.add_player(p2)
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(2, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P2')):
+            game.process_round()
+        snap = game.snapshot()
+        self.assertEqual(snap.round_num, 1)
+        self.assertFalse(snap.game_over)
+        self.assertEqual(len(snap.active_players), 2)
+        names = [p.name for p in snap.active_players]
+        self.assertIn('P1', names)
+        self.assertIn('P2', names)
 
 
 if __name__ == '__main__':

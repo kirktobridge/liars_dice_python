@@ -1,6 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 from enum import Enum
-from typing import Literal, Protocol, TypedDict
+from typing import Any, Literal, Protocol, TypedDict
 
 
 class Action(str, Enum):
@@ -66,6 +66,28 @@ class InputResponse(TypedDict):
 
 class InputHandler(Protocol):
     def __call__(self, request: InputRequest) -> InputResponse: ...
+
+
+@dataclass(frozen=True)
+class PlayerState:
+    name: str
+    player_type: str
+    num_dice: int
+    is_eliminated: bool
+
+
+@dataclass
+class GameState:
+    round_num: int
+    active_players: list[PlayerState]
+    prev_bid: 'Bid | None'
+    prev_bidder: 'str | None'
+    current_player: 'str | None'
+    game_over: bool
+    winner: 'str | None'
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass(frozen=True)

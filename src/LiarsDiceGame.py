@@ -4,7 +4,7 @@ from datetime import datetime
 import constants as Constants
 from Player import Player
 from collections import deque
-from models import Action, Bid, TurnResult
+from models import Action, Bid, GameState, PlayerState, TurnResult
 
 logger = logging.getLogger(__name__)
 
@@ -305,6 +305,44 @@ class LiarsDiceGame:
             self.players.remove(player)
         self.num_players = len(self.players)
         return to_remove
+
+    def snapshot(self) -> GameState:
+        """Return a serializable snapshot of current game state."""
+        prev_bid: Bid | None = None
+        prev_bidder: str | None = None
+        current_player: str | None = None
+        _system_actions = (Action.DICE_ROLL, Action.START, Action.NONE)
+
+        for event in self.round_events:
+            if isinstance(event, TurnResult):
+                if current_player is None and event.action not in _system_actions:
+                    current_player = event.player_name
+                if prev_bid is None and event.action in (Action.BID, Action.RAISE):
+                    prev_bid = event.bid
+                    prev_bidder = event.player_name
+            if current_player is not None and prev_bid is not None:
+                break
+
+        game_over = not self.game_status
+        winner = self.players[0].name if game_over and len(self.players) == 1 else None
+
+        return GameState(
+            round_num=self.round_num,
+            active_players=[
+                PlayerState(
+                    name=p.name,
+                    player_type=p.player_type,
+                    num_dice=p.num_dice,
+                    is_eliminated=p.eliminated,
+                )
+                for p in self.players
+            ],
+            prev_bid=prev_bid,
+            prev_bidder=prev_bidder,
+            current_player=current_player,
+            game_over=game_over,
+            winner=winner,
+        )
 
     def _reorder_for_next_round(self) -> None:
         """Moves self.round_loser to front of self.players if they are still in the game."""
