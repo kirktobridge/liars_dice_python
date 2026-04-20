@@ -4,7 +4,7 @@ import random
 import constants as Constants
 from colorama import Fore, Style
 from scipy.stats import binom
-from models import Action, Bid, TurnResult, OpponentProfile
+from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext
 
 _binom_cache: dict[int, binom] = {}
 
@@ -127,9 +127,7 @@ class Player:
 
         if prev_action == Action.BID or prev_action == Action.RAISE:
             prev_bid = prev_event.bid
-            needed = self.get_needed_cnt(prev_bid)
-
-            if needed < 0:
+            if self.get_needed_cnt(prev_bid) < 0:
                 return TurnResult(Bid(prev_bid.count + 1, prev_bid.face), Action.RAISE, self.name)
 
             all_prev_bids: set[Bid] = {
@@ -137,16 +135,8 @@ class Player:
                 for event in prev_events
                 if isinstance(event, TurnResult) and event.action in (Action.BID, Action.RAISE)
             }
-            model = _get_binom(tot_other_dice)
-            challenge_prob = self._compute_challenge_probability(
-                prev_event.player_name, tot_other_dice, bidder_num_dice, needed)
-            effective_threshold = self._effective_challenge_threshold(prev_event.player_name)
-            spot_on_prob = model.pmf(needed)
-            permissible = self._get_permissible_bids(prev_bid.count, tot_other_dice, all_prev_bids)
-            best_bid, best_bid_prob = self._rank_and_select_bid(permissible, model, all_prev_bids)
-
-            return self._decide_action(
-                challenge_prob, effective_threshold, spot_on_prob, best_bid, best_bid_prob, prev_bid.count)
+            ctx = self._build_response_context(prev_event, tot_other_dice, bidder_num_dice, all_prev_bids)
+            return self._decide_action(ctx)
 
         raise Exception(
             Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
@@ -187,6 +177,24 @@ class Player:
             output = Bid(Constants.MINIMUM_BID + extra,
                          self.dice[self._rng.randint(0, self.num_dice - 1)])
         return TurnResult(output, Action.BID, self.name)
+
+    def _build_response_context(
+            self, prev_event: TurnResult, tot_other_dice: int,
+            bidder_num_dice: int, all_prev_bids: set[Bid]) -> ResponseContext:
+        prev_bid = prev_event.bid
+        needed = self.get_needed_cnt(prev_bid)
+        model = _get_binom(tot_other_dice)
+        permissible = self._get_permissible_bids(prev_bid.count, tot_other_dice, all_prev_bids)
+        best_bid, best_bid_prob = self._rank_and_select_bid(permissible, model, all_prev_bids)
+        return ResponseContext(
+            prev_bid=prev_bid,
+            challenge_prob=self._compute_challenge_probability(
+                prev_event.player_name, tot_other_dice, bidder_num_dice, needed),
+            effective_threshold=self._effective_challenge_threshold(prev_event.player_name),
+            spot_on_prob=float(model.pmf(needed)),
+            best_bid=best_bid,
+            best_bid_prob=best_bid_prob,
+        )
 
     def _compute_challenge_probability(
             self, bidder_name: str, tot_other_dice: int, bidder_num_dice: int, needed: int) -> float:
@@ -242,36 +250,48 @@ class Player:
         risk_ranking.sort(key=lambda x: x[0], reverse=True)
         best_bid_probability = risk_ranking[0][0]
         best_bids: list[Bid] = [row[1] for row in risk_ranking if row[0] == best_bid_probability]
-        if len(best_bids) > 1:
-            follow_crowd_prob = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
-            if all_prev_bids and self._rng.random() < follow_crowd_prob:
-                prev_bids_face_mode = mode([b.face for b in all_prev_bids])
-                for bid0 in best_bids:
-                    if bid0.face == prev_bids_face_mode:
-                        return bid0, best_bid_probability
+        crowd_pick = self._apply_crowd_preference(best_bids, all_prev_bids)
+        if crowd_pick is not None:
+            return crowd_pick, best_bid_probability
         return best_bids[0], best_bid_probability
 
-    def _decide_action(
-            self, challenge_prob: float, effective_threshold: float,
-            spot_on_prob: float, best_bid: 'Bid | None', best_bid_prob: float,
-            prev_bid_cnt: int) -> TurnResult:
-        effective_challenge_prob = challenge_prob if challenge_prob >= effective_threshold else 0.0
-        best_probability = max(effective_challenge_prob, spot_on_prob, best_bid_prob)
-        if best_probability > 0:
-            if spot_on_prob == best_probability:
-                return TurnResult(None, Action.SPOT_ON, self.name)
-            if spot_on_prob > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
-                return TurnResult(None, Action.SPOT_ON, self.name)
-            if effective_challenge_prob == best_probability and effective_challenge_prob > 0:
-                return TurnResult(None, Action.CHALLENGE, self.name)
-            if best_bid_prob == best_probability and best_bid is not None:
-                action = Action.RAISE if best_bid.count > prev_bid_cnt else Action.BID
-                return TurnResult(best_bid, action, self.name)
-        # all probabilities zero or no dominant option — fall back
-        if best_bid is not None:
-            action = Action.RAISE if best_bid.count > prev_bid_cnt else Action.BID
-            return TurnResult(best_bid, action, self.name)
-        return TurnResult(None, Action.CHALLENGE, self.name)
+    def _apply_crowd_preference(self, best_bids: list[Bid], all_prev_bids: set[Bid]) -> 'Bid | None':
+        if len(best_bids) <= 1 or not all_prev_bids:
+            return None
+        follow_crowd_prob = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
+        if self._rng.random() >= follow_crowd_prob:
+            return None
+        prev_bids_face_mode = mode([b.face for b in all_prev_bids])
+        for bid in best_bids:
+            if bid.face == prev_bids_face_mode:
+                return bid
+        return None
+
+    def _decide_action(self, ctx: ResponseContext) -> TurnResult:
+        effective_challenge_prob = ctx.challenge_prob if ctx.challenge_prob >= ctx.effective_threshold else 0.0
+        best_probability = max(effective_challenge_prob, ctx.spot_on_prob, ctx.best_bid_prob)
+
+        if best_probability == 0:
+            if ctx.best_bid is not None:
+                action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
+                return TurnResult(ctx.best_bid, action, self.name)
+            return TurnResult(None, Action.CHALLENGE, self.name)
+
+        # Priority 1: SPOT_ON if dominant
+        if ctx.spot_on_prob == best_probability:
+            return TurnResult(None, Action.SPOT_ON, self.name)
+
+        # Priority 2: Stochastic SPOT_ON override — risk appetite can override the dominant play
+        if ctx.spot_on_prob > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
+            return TurnResult(None, Action.SPOT_ON, self.name)
+
+        # Priority 3: CHALLENGE if dominant
+        if effective_challenge_prob == best_probability:
+            return TurnResult(None, Action.CHALLENGE, self.name)
+
+        # Priority 4: BID or RAISE
+        action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
+        return TurnResult(ctx.best_bid, action, self.name)
 
     def get_needed_cnt(self, bid: Bid) -> int:
         '''Produces the number of rolled faces needed for a bid to be true,

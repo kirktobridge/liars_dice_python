@@ -39,3 +39,13 @@ class TurnResult:
     bid: 'Bid | None'
     action: Action
     player_name: str
+
+
+@dataclass(frozen=True)
+class ResponseContext:
+    prev_bid: Bid
+    challenge_prob: float
+    effective_threshold: float
+    spot_on_prob: float
+    best_bid: 'Bid | None'
+    best_bid_prob: float

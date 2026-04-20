@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import constants as Constants
 from Player import Player
-from models import Action, Bid, TurnResult, OpponentProfile
+from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext
 
 
 class TestPlayerInit(unittest.TestCase):
@@ -756,74 +756,80 @@ class TestDecideAction(unittest.TestCase):
         p.challenge_threshold = 0.50
         return p
 
+    def _ctx(self, challenge_prob=0.0, effective_threshold=0.50, spot_on_prob=0.0,
+              best_bid=None, best_bid_prob=0.0, prev_bid=Bid(2, 3)):
+        return ResponseContext(
+            prev_bid=prev_bid,
+            challenge_prob=challenge_prob,
+            effective_threshold=effective_threshold,
+            spot_on_prob=spot_on_prob,
+            best_bid=best_bid,
+            best_bid_prob=best_bid_prob,
+        )
+
     def test_challenge_when_challenge_prob_is_best(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.90, effective_threshold=0.50,
-            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40,
-            prev_bid_cnt=2)
+            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.action, Action.CHALLENGE)
         self.assertIsNone(result.bid)
 
     def test_spot_on_when_spot_on_is_best(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.30, effective_threshold=0.50,
-            spot_on_prob=0.80, best_bid=Bid(3, 4), best_bid_prob=0.40,
-            prev_bid_cnt=2)
+            spot_on_prob=0.80, best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.action, Action.SPOT_ON)
         self.assertIsNone(result.bid)
 
     def test_bid_action_when_count_equals_prev(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.10, effective_threshold=0.50,
             spot_on_prob=0.01, best_bid=Bid(2, 5), best_bid_prob=0.80,
-            prev_bid_cnt=2)
+            prev_bid=Bid(2, 3)))
         self.assertEqual(result.action, Action.BID)
         self.assertEqual(result.bid, Bid(2, 5))
 
     def test_raise_action_when_count_exceeds_prev(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.10, effective_threshold=0.50,
             spot_on_prob=0.01, best_bid=Bid(3, 5), best_bid_prob=0.80,
-            prev_bid_cnt=2)
+            prev_bid=Bid(2, 3)))
         self.assertEqual(result.action, Action.RAISE)
         self.assertEqual(result.bid, Bid(3, 5))
 
     def test_challenge_below_threshold_not_taken(self):
         p = self._make()
         # challenge_prob=0.40 < threshold=0.50 → effectively 0
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.40, effective_threshold=0.50,
-            spot_on_prob=0.01, best_bid=Bid(2, 4), best_bid_prob=0.70,
-            prev_bid_cnt=2)
+            spot_on_prob=0.01, best_bid=Bid(2, 4), best_bid_prob=0.70))
         self.assertNotEqual(result.action, Action.CHALLENGE)
 
     def test_fallback_to_challenge_when_all_zero_no_bid(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.0, effective_threshold=0.50,
-            spot_on_prob=0.0, best_bid=None, best_bid_prob=0.0,
-            prev_bid_cnt=2)
+            spot_on_prob=0.0, best_bid=None, best_bid_prob=0.0))
         self.assertEqual(result.action, Action.CHALLENGE)
 
     def test_fallback_to_bid_when_all_zero_but_have_bid(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.0, effective_threshold=0.50,
             spot_on_prob=0.0, best_bid=Bid(3, 2), best_bid_prob=0.0,
-            prev_bid_cnt=2)
+            prev_bid=Bid(2, 3)))
         self.assertIn(result.action, (Action.BID, Action.RAISE))
         self.assertEqual(result.bid, Bid(3, 2))
 
     def test_player_name_always_in_result(self):
         p = self._make()
-        result = p._decide_action(
+        result = p._decide_action(self._ctx(
             challenge_prob=0.90, effective_threshold=0.50,
-            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40,
-            prev_bid_cnt=2)
+            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.player_name, "T")
 
 
