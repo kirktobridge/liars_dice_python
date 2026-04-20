@@ -1,11 +1,197 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <title>Liar's Dice</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liar's Dice</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cinzel', 'serif'],
+            decorative: ['"Cinzel Decorative"', 'serif'],
+            body: ['"Crimson Text"', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-    <h1>Liar's Dice</h1>
-    <p>Frontend coming in Session B.</p>
+<body class="h-full text-stone-100 overflow-hidden">
+
+  <!-- ── LOBBY VIEW ─────────────────────────────────────────── -->
+  <div id="lobby-view" class="lobby-view-layout">
+
+    <div class="lobby-bg"></div>
+
+    <div class="wood-panel rounded-2xl p-10 max-w-md w-full mx-4 text-center relative z-10 shadow-2xl">
+
+      <div class="text-5xl mb-3">⚓</div>
+      <h1 class="font-decorative text-4xl text-amber-400 mb-1 tracking-wider" style="text-shadow: 0 0 20px rgba(201,168,76,0.4)">
+        LIAR'S DICE
+      </h1>
+      <p class="text-stone-400 font-body italic mb-8 text-lg">Fortune favors the bold and the deceitful</p>
+
+      <div class="space-y-4 text-left">
+
+        <div>
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">YOUR NAME</label>
+          <input id="player-name" type="text" placeholder="Enter your name, captain…"
+            autocomplete="off" maxlength="30"
+            class="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100
+                   focus:outline-none focus:border-amber-500 transition-colors placeholder-stone-600">
+        </div>
+
+        <div>
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">OPPONENTS</label>
+          <select id="num-players"
+            class="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100
+                   focus:outline-none focus:border-amber-500 transition-colors cursor-pointer">
+          </select>
+        </div>
+
+        <button id="start-btn"
+          class="w-full bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-stone-900 font-display
+                 font-bold py-3 px-6 rounded-lg text-lg tracking-widest transition-colors mt-2 shadow-lg">
+          SET SAIL
+        </button>
+
+        <p id="lobby-error" class="text-red-400 text-sm font-body italic text-center hidden">
+          A captain needs a name.
+        </p>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── GAME VIEW ──────────────────────────────────────────── -->
+  <div id="game-view" class="game-view-layout">
+
+    <!-- Status bar -->
+    <div id="status-bar"
+      class="flex items-center gap-3 px-6 py-2 bg-stone-950 border-b border-stone-800 text-sm font-display shrink-0">
+    </div>
+
+    <!-- Three-column main layout -->
+    <div class="flex flex-1 overflow-hidden">
+
+      <!-- LEFT: Player roster -->
+      <div class="w-56 shrink-0 wood-panel border-r border-stone-800 flex flex-col overflow-hidden">
+        <div class="px-4 pt-4 pb-2 shrink-0">
+          <h2 class="text-xs font-display tracking-widest text-stone-500">CREW</h2>
+        </div>
+        <div id="player-roster" class="flex-1 overflow-y-auto px-3 pb-4 space-y-1">
+        </div>
+      </div>
+
+      <!-- CENTER: Bid + feed -->
+      <div class="flex-1 min-w-0 flex flex-col overflow-hidden">
+
+        <!-- Current bid panel -->
+        <div class="shrink-0 px-6 py-5 border-b border-stone-800 bg-stone-950">
+          <div class="text-xs font-display tracking-widest text-stone-600 mb-3 text-center">CURRENT BID</div>
+          <div id="bid-display" class="min-h-24 flex items-center justify-center">
+          </div>
+        </div>
+
+        <!-- Event feed -->
+        <div class="flex-1 overflow-y-auto p-5">
+          <div class="text-xs font-display tracking-widest text-stone-600 mb-3">SHIP'S LOG</div>
+          <div id="event-feed" class="space-y-1">
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: My dice + actions -->
+      <div class="w-72 shrink-0 wood-panel border-l border-stone-800 flex flex-col overflow-hidden">
+
+        <!-- My dice -->
+        <div class="px-4 pt-4 pb-3 border-b border-stone-800 shrink-0">
+          <div class="text-xs font-display tracking-widest text-stone-500 mb-3">YOUR HAND</div>
+          <div id="human-dice" class="flex flex-wrap gap-2 min-h-16 items-center">
+            <span class="text-stone-600 text-sm font-body italic">Awaiting the roll…</span>
+          </div>
+        </div>
+
+        <!-- Action panel -->
+        <div id="action-panel" class="flex-1 p-4 overflow-y-auto">
+
+          <!-- Bid / Raise -->
+          <div class="mb-4">
+            <div id="bid-action-label" class="text-xs font-display tracking-widest text-stone-500 mb-3">MAKE YOUR BID</div>
+
+            <div class="flex items-center gap-3 mb-3">
+              <label class="text-stone-400 text-sm shrink-0">Count</label>
+              <input id="bid-count" type="number" min="1" value="2"
+                class="bg-stone-900 border border-stone-700 rounded-lg px-3 py-1 text-stone-100 w-20
+                       focus:outline-none focus:border-amber-500 text-center">
+            </div>
+
+            <div class="text-stone-500 text-xs font-display tracking-wide mb-2">FACE VALUE</div>
+            <div id="face-selector" class="flex gap-1 flex-wrap mb-3">
+              <!-- Populated by JS -->
+            </div>
+
+            <button id="btn-confirm-bid"
+              class="action-btn w-full bg-amber-700 hover:bg-amber-600 text-stone-100 font-display
+                     font-bold py-2 rounded-lg tracking-wider transition-colors">
+              CONFIRM BID
+            </button>
+          </div>
+
+          <div class="border-t border-stone-800 mb-4"></div>
+
+          <div class="space-y-2">
+            <button id="btn-challenge"
+              class="action-btn w-full border border-red-800 hover:bg-red-900/40 text-red-400 font-display
+                     py-2 rounded-lg tracking-wider transition-colors">
+              ⚔ CHALLENGE
+            </button>
+            <button id="btn-spot-on"
+              class="action-btn w-full border border-teal-700 hover:bg-teal-900/40 text-teal-400 font-display
+                     py-2 rounded-lg tracking-wider transition-colors">
+              🎯 SPOT ON
+            </button>
+          </div>
+
+          <!-- Waiting indicator (shown when not human turn) -->
+          <div id="waiting-indicator" class="mt-4 text-center text-stone-600 text-sm font-body italic">
+            Waiting for other players…
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── ROLLS REVEAL OVERLAY ───────────────────────────────── -->
+  <div id="rolls-reveal-overlay" class="overlay-backdrop hidden">
+    <div class="wood-panel rounded-2xl p-8 max-w-2xl w-full mx-4 border border-amber-800 shadow-2xl">
+      <div id="rolls-reveal-content"></div>
+    </div>
+  </div>
+
+  <!-- ── GAME OVER OVERLAY ──────────────────────────────────── -->
+  <div id="gameover-overlay" class="overlay-backdrop hidden">
+    <div class="wood-panel rounded-2xl p-12 max-w-sm w-full mx-4 border border-amber-700 text-center shadow-2xl">
+      <div class="text-6xl mb-4">⚓</div>
+      <h2 class="font-decorative text-3xl text-amber-400 mb-1">VICTORY</h2>
+      <p class="text-stone-500 font-body italic mb-4">The last die stands</p>
+      <p id="winner-name" class="font-display text-xl text-stone-100 mb-8"></p>
+      <button id="play-again-btn"
+        class="bg-amber-600 hover:bg-amber-500 text-stone-900 font-display font-bold
+               py-3 px-8 rounded-lg tracking-widest transition-colors">
+        WEIGH ANCHOR
+      </button>
+    </div>
+  </div>
+
+  <script src="/static/game.js"></script>
 </body>
 </html>
