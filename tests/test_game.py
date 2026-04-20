@@ -424,7 +424,7 @@ class TestLogEvents(unittest.TestCase):
 
     def test_empty_deque_does_not_raise(self):
         game = make_game(2)
-        game.log_events(deque())  # triggers print_error internally — must not propagate
+        game.log_events(deque())  # empty deque raises internally — must not propagate
 
 
 class TestCloseAndContextManager(unittest.TestCase):
@@ -447,14 +447,6 @@ class TestCloseAndContextManager(unittest.TestCase):
                 pass
         mock_handler.close.assert_called_once()
 
-
-class TestPrintError(unittest.TestCase):
-    def test_emits_error_event(self):
-        events = []
-        game = make_game(2)
-        game._on_event = events.append
-        game.print_error('test_func', Exception('boom'))
-        self.assertIn('error', [e['type'] for e in events])
 
 
 if __name__ == '__main__':

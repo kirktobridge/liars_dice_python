@@ -1,4 +1,4 @@
-from statistics import mode
+from statistics import mode, StatisticsError
 from collections import deque
 import logging
 import random
@@ -250,7 +250,10 @@ class Player:
         follow_crowd_prob = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
         if self._rng.random() >= follow_crowd_prob:
             return None
-        prev_bids_face_mode = mode([b.face for b in all_prev_bids])
+        try:
+            prev_bids_face_mode = mode([b.face for b in all_prev_bids])
+        except StatisticsError:
+            return None
         for bid in best_bids:
             if bid.face == prev_bids_face_mode:
                 return bid

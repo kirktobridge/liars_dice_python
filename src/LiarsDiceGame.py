@@ -1,5 +1,3 @@
-import os
-import sys
 import logging
 import random
 from datetime import datetime
@@ -38,33 +36,13 @@ class LiarsDiceGame:
     def _emit(self, event_type: str, **data) -> None:
         self._on_event({'type': event_type, **data})
 
-    def print_error(self, func_name, e=None):
-        log_string = f'Exception caught in {func_name}! - {e}'
-        try:
-            fname = os.path.split(sys.exc_info()[2].tb_frame.f_code.co_filename)[1]
-            log_string2 = str(sys.exc_info()[1]) + str(fname) + str(sys.exc_info()[2].tb_lineno)
-            message = log_string + log_string2
-        except Exception:
-            message = log_string
-        self._emit('error', func_name=func_name, message=message)
-        logger.error('%s', message)
-
     def add_player(self, p):
-        try:
-            self.players.append(p)
-            logger.debug('Player %s appended to game player list', p.name)
-        except Exception as e:
-            self.print_error('add_player')
+        self.players.append(p)
+        logger.debug('Player %s appended to game player list', p.name)
 
     def count_dice(self):
-        try:
-            self.tot_num_dice = 0
-            for p in self.players:
-                self.tot_num_dice += p.num_dice
-            return self.tot_num_dice
-        except Exception as e:
-            self.print_error('count_dice')
-            return -1
+        self.tot_num_dice = sum(p.num_dice for p in self.players)
+        return self.tot_num_dice
 
     def process_round(self):
         self.round_num += 1
@@ -101,8 +79,8 @@ class LiarsDiceGame:
                             prev_bid_cnt = prev_bid.count
                             prev_bid_face = prev_bid.face
                 except Exception as e:
-                    self.print_error(
-                        'process_round: prev_event assignment', e)
+                    logger.exception('Exception in process_round: prev_event assignment')
+                    self._emit('error', func_name='process_round: prev_event assignment', message=str(e))
                     continue
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
@@ -112,7 +90,10 @@ class LiarsDiceGame:
                     bidder_num_dice = self.players[p - 1].num_dice
                     if self.players[p].spot == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
-                        idx = next(i for i, pl in enumerate(active) if pl is self.players[p])
+                        idx = next((i for i, pl in enumerate(active) if pl is self.players[p]), None)
+                        if idx is None:
+                            logger.error('Human player %s not found in active list', self.players[p].name)
+                            continue
                         ordered = active[idx:] + active[:idx]
                         self._emit('human_turn_start',
                                    player_dice=[{'name': pl.name, 'num_dice': pl.num_dice}
@@ -128,7 +109,8 @@ class LiarsDiceGame:
                     if cur_event.action == Action.NONE:
                         raise Exception("Blank new_action")
                 except Exception as e:
-                    self.print_error('process_round: take_turn call', e)
+                    logger.exception('Exception in process_round: take_turn call')
+                    self._emit('error', func_name='process_round: take_turn call', message=str(e))
                     cur_event = TurnResult(None, Action.NONE, self.players[p].name)
                     self.log_event(cur_event)
                     self.log_events(self.round_events)
@@ -240,7 +222,7 @@ class LiarsDiceGame:
             for event in range(0, log_stop):
                 self.log_event(events.popleft())
         except Exception as e:
-            self.print_error('log_events', e)
+            logger.exception('Exception in log_events')
 
     def log_event(self, event):
         '''Adds entry to game log for analysis by developer.'''
@@ -260,7 +242,7 @@ class LiarsDiceGame:
                 return
             self._game_event_logger.info(msg)
         except Exception as e:
-            self.print_error('log_event')
+            logger.exception('Exception in log_event')
 
     def close(self) -> None:
         """Remove the file handler and close the log file if one was opened."""
@@ -271,13 +253,18 @@ class LiarsDiceGame:
 
     def __enter__(self) -> 'LiarsDiceGame':
         if self._logging:
-            self._game_event_logger = logging.getLogger('liars_dice.game_events')
-            handler = logging.FileHandler(self._log_path, mode='w')
-            handler.setFormatter(logging.Formatter('%(message)s'))
-            self._game_event_logger.addHandler(handler)
-            self._game_event_logger.setLevel(logging.INFO)
-            self._game_event_logger.propagate = False
-            self._file_handler = handler
+            try:
+                self._game_event_logger = logging.getLogger('liars_dice.game_events')
+                handler = logging.FileHandler(self._log_path, mode='w')
+                handler.setFormatter(logging.Formatter('%(message)s'))
+                self._game_event_logger.addHandler(handler)
+                self._game_event_logger.setLevel(logging.INFO)
+                self._game_event_logger.propagate = False
+                self._file_handler = handler
+            except OSError as e:
+                logger.warning('Failed to open game log %s: %s — file logging disabled', self._log_path, e)
+                self._logging = False
+                self._game_event_logger = None
         return self
 
     def __exit__(self, *_) -> None:

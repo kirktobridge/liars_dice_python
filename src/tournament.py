@@ -4,6 +4,7 @@ import random
 import sys
 
 logging.getLogger('liars_dice').addHandler(logging.NullHandler())
+logger = logging.getLogger(__name__)
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import pandas as pd
@@ -69,6 +70,14 @@ def run_game(seed: int, num_players: int, players: dict[str, Player] | None = No
 def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
     """Top-level worker for ProcessPoolExecutor (must be picklable)."""
     seed, num_players, personalities = args
+    try:
+        return _run_game_worker_inner(seed, num_players, personalities)
+    except Exception:
+        logger.warning('Worker failed for seed=%d, num_players=%d', seed, num_players, exc_info=True)
+        raise
+
+
+def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personalities) -> dict:
     game_rng = random.Random(seed)
     dummy_rng = random.Random()  # throwaway — only used to satisfy Player.__init__
     names = Constants.PLAYER_NAMES[:num_players]

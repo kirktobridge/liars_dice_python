@@ -396,8 +396,11 @@ def show_tournament_stats(
         xanchor='center',
     )
 
-    fig.write_html('tournament_stats.html')
-    print('Saved tournament_stats.html')
+    try:
+        fig.write_html('tournament_stats.html')
+        print('Saved tournament_stats.html')
+    except Exception:
+        print('Skipped tournament_stats.html (write failed)')
     try:
         fig.write_image('tournament_stats.png', scale=2)
         print('Saved tournament_stats.png')

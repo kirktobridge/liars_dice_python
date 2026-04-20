@@ -13,6 +13,8 @@ from collections import Counter
 
 _fast = False
 
+logger = logging.getLogger(__name__)
+
 
 def configure_logging(debug: bool = False) -> None:
     level = logging.DEBUG if debug else logging.WARNING
@@ -223,91 +225,73 @@ def main():
 
     input_fails = 0
     while True:  # rules question loop
-        try:
-            rules = input(Fore.BLUE + Style.NORMAL +
-                          '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ').upper()
-            if rules == 'N' or rules == 'NO':
-                print(Back.WHITE + Fore.WHITE +
-                      '___________________________________________________________________________________________')
-                for line1 in presentation.GAME_RULES:
-                    print(line1)
-                print(Back.WHITE + Fore.WHITE +
-                      '___________________________________________________________________________________________')
-            elif rules == 'Y' or rules == 'YES':
-                print(Fore.BLUE + Style.NORMAL +
-                      '<i> Alright then, matey, let\'s get to it.')
-            else:
-                raise Exception(Fore.RED + Style.DIM + '<?> What did ye say?')
-
-        except Exception as e:
-            print(e)
+        rules = input(Fore.BLUE + Style.NORMAL +
+                      '<?> Do ye know the rules of the game- or are ye a filthy landlubber? [Y/N]: ').upper()
+        if rules in ('N', 'NO'):
+            print(Back.WHITE + Fore.WHITE +
+                  '___________________________________________________________________________________________')
+            for line1 in presentation.GAME_RULES:
+                print(line1)
+            print(Back.WHITE + Fore.WHITE +
+                  '___________________________________________________________________________________________')
+        elif rules in ('Y', 'YES'):
+            print(Fore.BLUE + Style.NORMAL +
+                  '<i> Alright then, matey, let\'s get to it.')
+        else:
+            print(Fore.RED + Style.DIM + '<?> What did ye say?')
             _pause(presentation.PAUSE_ROUTINE)
             continue
         break
 
-    while True:  # number of players typerror loop
+    while True:  # number of players loop
         try:
             num_players = int(
                 input(Fore.BLUE + '<?> How many scallywags would ye like t\' play with?: '))
-            if isinstance(num_players, int) == True:
-                if num_players == 1:
-                    input_fails += 1
-                    raise AttributeError(
-                        Fore.RED + Style.DIM + '<!> Are ye\' daft? This isn\'t a game fer one.\n<!> How can ye bet against yerself?')
-                elif num_players == 0:
-                    input_fails += 1
-                    raise AttributeError(
-                        Fore.RED + Style.DIM + '<!> Matey... yer\' not makin\' any sense.')
-                elif num_players < 0:
-                    raise AttributeError(
-                        Fore.RED + Style.DIM + random.choice(presentation.INSULTS))
-                elif num_players > Constants.MAX_PLAYERS:
-                    input_fails += 1
-                    raise AttributeError(
-                        Fore.RED + Style.DIM + f'<!> I decline to acquiesce to yer request. (Means \'no\'.)\n<i> T\' limit th\' computational workload, yer\'limited to takin\' yer\' chances against a total o\' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th\' code.')
-
-        except ValueError as e:
+        except ValueError:
             input_fails += 1
             print(Fore.RED + Style.DIM +
                   '<!> That won\'t do matey, ye\'ve got to provide a number.')
             if input_fails > 2:
                 _pause(presentation.PAUSE_ROUTINE)
-                print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(presentation.INSULTS))
+                print(Fore.YELLOW + Style.NORMAL + random.choice(presentation.INSULTS))
             _pause(presentation.PAUSE_ROUTINE)
             continue
-        except AttributeError as e:
-            print(e)
-            if input_fails > 2:
-                _pause(presentation.PAUSE_ROUTINE)
-                print(Fore.YELLOW + Style.NORMAL +
-                      random.choice(presentation.INSULTS))
+        if num_players == 1:
+            input_fails += 1
+            print(Fore.RED + Style.DIM +
+                  '<!> Are ye\' daft? This isn\'t a game fer one.\n<!> How can ye bet against yerself?')
+        elif num_players == 0:
+            input_fails += 1
+            print(Fore.RED + Style.DIM + '<!> Matey... yer\' not makin\' any sense.')
+        elif num_players < 0:
+            print(Fore.RED + Style.DIM + random.choice(presentation.INSULTS))
+        elif num_players > Constants.MAX_PLAYERS:
+            input_fails += 1
+            print(Fore.RED + Style.DIM +
+                  f'<!> I decline to acquiesce to yer request. (Means \'no\'.)\n<i> T\' limit th\' computational workload, yer\'limited to takin\' yer\' chances against a total o\' {Constants.MAX_PLAYERS} scallywags.\n<i> Keep to th\' code.')
+        else:
+            print(Fore.CYAN + f'<i> {num_players} players selected. Initalizing...')
+            break
+        if input_fails > 2:
             _pause(presentation.PAUSE_ROUTINE)
-            continue
-        print(Fore.CYAN +
-              f'<i> {num_players} players selected. Initalizing...')
-        break
+            print(Fore.YELLOW + Style.NORMAL + random.choice(presentation.INSULTS))
+        _pause(presentation.PAUSE_ROUTINE)
 
     with LiarsDiceGame(num_players, on_event=pirate_renderer, log=True) as game:
         player_names_upper = list(map(str.upper, Constants.PLAYER_NAMES))
         while True:
-            try:
-                player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
-                if player_names_upper.count(str.upper(player_name)) > 0:
-                    input_fails += 1
-                    raise AttributeError(
-                        Fore.RED + Style.DIM + '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
-                else:
-                    game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
-                    break
-            except Exception as e:
-                print(e)
+            player_name = input(Fore.BLUE + '<?> What be yer name, matey? ')
+            if player_names_upper.count(str.upper(player_name)) > 0:
+                input_fails += 1
+                print(Fore.RED + Style.DIM +
+                      '<!> Arrrgh! Identity theft be a serious crime! Shape up, or I\'ll have yer\' guts fer garters!')
                 if input_fails > 2:
                     _pause(presentation.PAUSE_ROUTINE)
-                    print(Fore.YELLOW + Style.NORMAL +
-                          random.choice(presentation.INSULTS))
+                    print(Fore.YELLOW + Style.NORMAL + random.choice(presentation.INSULTS))
                 _pause(presentation.PAUSE_ROUTINE)
                 continue
+            game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
+            break
 
         sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
         for idx in sampled_indices:
