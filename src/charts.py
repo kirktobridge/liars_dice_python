@@ -4,62 +4,51 @@ from plotly.subplots import make_subplots
 import constants as Constants
 
 
-def show_tournament_stats(
+def compute_tournament_stats(
     df: pd.DataFrame,
     df_rounds: pd.DataFrame,
     df_eliminations: pd.DataFrame,
-    derived_stats=None,
-) -> None:
-    """Render a end stats dashboard and save html + png."""
+) -> dict:
+    """
+    Aggregate all tournament DataFrames into plain Python dicts/lists.
+    No Plotly dependency — safe to call from a web route.
+    """
     df = df.sort_values('seed').reset_index(drop=True)
     n_games = len(df)
-    medal_colors = {0: '#FFD700', 1: '#C0C0C0', 2: '#CD7F32'}
+    num_players_val = int(df['num_players'].iloc[0])
 
-    # --- 1. Win Rate Bar Chart ---
+    # --- Win rate ---
     win_counts = df['winner'].value_counts()
-    win_pct = (win_counts / n_games * 100).round(1)
+    win_pct_series = (win_counts / n_games * 100).round(1)
     sorted_players = win_counts.index.tolist()
-    bar_colors = [medal_colors.get(i, '#5B8DB8') for i in range(len(sorted_players))]
 
-    bar_chart = go.Bar(
-        x=win_counts.values,
-        y=sorted_players,
-        orientation='h',
-        marker_color=bar_colors,
-        text=[f'{c} wins ({p}%)' for c, p in zip(win_counts.values, win_pct[sorted_players])],
-        textposition='auto',
-        name='Wins',
-    )
-
-    # --- 2. Game Length Histogram ---
-    mean_rounds = df['rounds'].mean()
+    # --- Game length ---
+    mean_rounds = float(df['rounds'].mean())
+    avg_bids_per_round = float(df_rounds['bid_count'].mean())
     fastest_row = df.loc[df['rounds'].idxmin()]
     longest_row = df.loc[df['rounds'].idxmax()]
 
-    hist = go.Histogram(
-        x=df['rounds'],
-        nbinsx=30,
-        marker_color='#5B8DB8',
-        name='Game Length',
-        showlegend=False,
-    )
-
-    # --- Derived stats (used by panels 4, 5, 6, 8) ---
+    # --- Challenge stats ---
     chall = df_rounds[df_rounds['action_type'] == 'challenge']
     chall_called = chall.groupby('action_caller').size().rename('called')
     chall_won = chall[chall['challenge_succeeded']].groupby('action_caller').size().rename('won')
     chall_stats = pd.concat([chall_called, chall_won], axis=1).fillna(0).astype(int)
     chall_stats = chall_stats.reindex(sorted_players, fill_value=0)
-    chall_stats['win_pct'] = (chall_stats['won'] / chall_stats['called'].replace(0, pd.NA) * 100).fillna(0).round(1)
+    chall_stats['win_pct'] = (
+        chall_stats['won'] / chall_stats['called'].replace(0, pd.NA) * 100
+    ).fillna(0).round(1)
 
+    # --- Spot-on stats ---
     spot = df_rounds[df_rounds['action_type'] == 'spot_on']
     spot_attempts = spot.groupby('action_caller').size().rename('attempts')
     spot_wins = spot[spot['challenge_succeeded']].groupby('action_caller').size().rename('wins')
     spot_stats = pd.concat([spot_attempts, spot_wins], axis=1).fillna(0).astype(int)
     spot_stats = spot_stats.reindex(sorted_players, fill_value=0)
-    spot_stats['win_pct'] = (spot_stats['wins'] / spot_stats['attempts'].replace(0, pd.NA) * 100).fillna(0).round(1)
+    spot_stats['win_pct'] = (
+        spot_stats['wins'] / spot_stats['attempts'].replace(0, pd.NA) * 100
+    ).fillna(0).round(1)
 
-    num_players_val = int(df['num_players'].iloc[0])
+    # --- Position finish percentages ---
     pos_counts = (df_eliminations
         .groupby(['player_name', 'finishing_position'])
         .size()
@@ -68,12 +57,13 @@ def show_tournament_stats(
     pos_pct = pos_pct.reindex(sorted_players, fill_value=0.0)
     pos_pct = pos_pct.reindex(columns=range(1, num_players_val + 1), fill_value=0.0)
 
+    # --- Escalation curve ---
     escalation = (df_rounds[df_rounds['action_type'].isin(['challenge', 'spot_on'])]
         .groupby('bid_count')['bid_count_claimed']
         .mean()
         .reset_index())
 
-    # --- Bid-ratio analysis (panels 9 & 10) ---
+    # --- Bid-ratio / heatmap analysis ---
     chall_br = df_rounds[df_rounds['action_type'] == 'challenge'].copy()
     chall_br = chall_br.dropna(subset=['bidder_num_dice', 'bid_count_claimed', 'challenge_succeeded'])
     chall_br['bidder_num_dice'] = chall_br['bidder_num_dice'].astype(int)
@@ -81,10 +71,12 @@ def show_tournament_stats(
     heat_agg = (chall_br.groupby(['bidder_num_dice', 'bid_count_claimed'])['challenge_succeeded']
                 .agg(['mean', 'count']).reset_index())
     heat_pivot = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='mean')
-    heat_count = heat_agg.pivot(index='bidder_num_dice', columns='bid_count_claimed', values='count').fillna(0).astype(int)
+    heat_count = heat_agg.pivot(
+        index='bidder_num_dice', columns='bid_count_claimed', values='count'
+    ).fillna(0).astype(int)
     heat_text = heat_pivot.map(lambda v: f'{v:.0%}' if pd.notna(v) else '')
 
-    ratio_bins   = [0, 1, 2, 3, float('inf')]
+    ratio_bins = [0, 1, 2, 3, float('inf')]
     ratio_labels = ['≤1×', '1–2×', '2–3×', '>3×']
     chall_br['bid_ratio'] = chall_br['bid_count_claimed'] / chall_br['bidder_num_dice']
     chall_br['ratio_bucket'] = pd.cut(chall_br['bid_ratio'], bins=ratio_bins, labels=ratio_labels)
@@ -92,70 +84,187 @@ def show_tournament_stats(
                     .agg(['mean', 'count']).reset_index())
     bucket_stats['fail_rate'] = 1 - bucket_stats['mean']
 
-    # --- 4. Dice Count at Challenge (Violin) ---
-    violin_traces = []
+    # --- Violin data (dice count at challenge per player) ---
+    violin_data: dict[str, list] = {}
     for player in sorted_players:
         y_vals = chall[chall['action_caller'] == player]['total_dice_on_table'].dropna()
-        violin_traces.append(go.Violin(
-            y=y_vals,
-            name=player,
-            box_visible=True,
-            meanline_visible=True,
-            showlegend=False,
-        ))
+        violin_data[player] = y_vals.tolist()
 
-    # --- 3. Spot On Accuracy by Player (horizontal bar) ---
+    # --- Bid scatter data ---
+    chall_sc = chall.dropna(subset=['bid_count_claimed', 'effective_actual_count'])
+    sc_succ = chall_sc[chall_sc['challenge_succeeded'] == True]
+    sc_fail = chall_sc[chall_sc['challenge_succeeded'] != True]
+    scatter_max_val = float(max(
+        chall_sc['bid_count_claimed'].max() if len(chall_sc) else 1,
+        chall_sc['effective_actual_count'].max() if len(chall_sc) else 1,
+    ))
+
+    # --- Player profiles ---
+    all_players = Constants.PLAYER_NAMES[:num_players_val]
+    profile_wins: list[int] = []
+    profile_win_pct: list[str] = []
+    profile_risk: list[int] = []
+    profile_peer: list[int] = []
+    profile_att: list[int] = []
+    for player in all_players:
+        safe = player.replace(' ', '_')
+        wins = int((df['winner'] == player).sum())
+        profile_wins.append(wins)
+        profile_win_pct.append(f"{wins / n_games * 100:.1f}%")
+        profile_risk.append(int(df[f'p_{safe}_risk'].iloc[0]))
+        profile_peer.append(int(df[f'p_{safe}_peer'].iloc[0]))
+        profile_att.append(int(df[f'p_{safe}_att'].iloc[0]))
+
+    return {
+        # Metadata
+        "n_games": n_games,
+        "num_players": num_players_val,
+        "sorted_players": sorted_players,
+        "mean_rounds": mean_rounds,
+        "avg_bids_per_round": avg_bids_per_round,
+        "fastest_seed": int(fastest_row['seed']),
+        "fastest_rounds": int(fastest_row['rounds']),
+        "longest_seed": int(longest_row['seed']),
+        "longest_rounds": int(longest_row['rounds']),
+        # Win rate (parallel to sorted_players)
+        "win_counts": win_counts.tolist(),
+        "win_pct": win_pct_series[sorted_players].tolist(),
+        # Game length series (for histogram)
+        "rounds_series": df['rounds'].tolist(),
+        # Challenge stats (parallel to sorted_players)
+        "chall_called": chall_stats['called'].tolist(),
+        "chall_won": chall_stats['won'].tolist(),
+        "chall_win_pct": chall_stats['win_pct'].tolist(),
+        # Spot-on stats (parallel to sorted_players)
+        "spot_attempts": spot_stats['attempts'].tolist(),
+        "spot_wins": spot_stats['wins'].tolist(),
+        "spot_win_pct": spot_stats['win_pct'].tolist(),
+        # Violin data: player -> list of dice counts at challenge
+        "violin_data": violin_data,
+        # Bid scatter
+        "scatter_success_claimed": sc_succ['bid_count_claimed'].tolist(),
+        "scatter_success_actual": sc_succ['effective_actual_count'].tolist(),
+        "scatter_fail_claimed": sc_fail['bid_count_claimed'].tolist(),
+        "scatter_fail_actual": sc_fail['effective_actual_count'].tolist(),
+        "scatter_max_val": scatter_max_val,
+        # Escalation curve
+        "escalation_bid_count": escalation['bid_count'].tolist(),
+        "escalation_avg_claimed": escalation['bid_count_claimed'].tolist(),
+        # Challenge heatmap (bidder dice × bid_count_claimed)
+        "heat_x": heat_pivot.columns.tolist(),
+        "heat_y": heat_pivot.index.tolist(),
+        "heat_z": [[None if pd.isna(v) else float(v) for v in row]
+                   for row in heat_pivot.values],
+        "heat_n": heat_count.reindex(
+            index=heat_pivot.index, columns=heat_pivot.columns
+        ).values.tolist(),
+        "heat_text": heat_text.values.tolist(),
+        # Bid ratio buckets
+        "bucket_labels": bucket_stats['ratio_bucket'].astype(str).tolist(),
+        "bucket_success": bucket_stats['mean'].tolist(),
+        "bucket_fail": bucket_stats['fail_rate'].tolist(),
+        # Position finish percentages
+        "pos_players": sorted_players,
+        "pos_positions": list(range(1, num_players_val + 1)),
+        "pos_matrix": pos_pct.values.tolist(),
+        # Player profiles
+        "profile_players": all_players,
+        "profile_wins": profile_wins,
+        "profile_win_pct": profile_win_pct,
+        "profile_risk": profile_risk,
+        "profile_peer": profile_peer,
+        "profile_att": profile_att,
+    }
+
+
+def show_tournament_stats(
+    df: pd.DataFrame,
+    df_rounds: pd.DataFrame,
+    df_eliminations: pd.DataFrame,
+    derived_stats=None,
+) -> None:
+    """Render a end stats dashboard and save html + png."""
+    s = compute_tournament_stats(df, df_rounds, df_eliminations)
+
+    sorted_players = s['sorted_players']
+    n_games = s['n_games']
+    medal_colors = {0: '#FFD700', 1: '#C0C0C0', 2: '#CD7F32'}
+
+    # --- 1. Win Rate Bar Chart ---
+    bar_colors = [medal_colors.get(i, '#5B8DB8') for i in range(len(sorted_players))]
+    bar_chart = go.Bar(
+        x=s['win_counts'],
+        y=sorted_players,
+        orientation='h',
+        marker_color=bar_colors,
+        text=[f'{c} wins ({p}%)' for c, p in zip(s['win_counts'], s['win_pct'])],
+        textposition='auto',
+        name='Wins',
+    )
+
+    # --- 2. Game Length Histogram ---
+    hist = go.Histogram(
+        x=s['rounds_series'],
+        nbinsx=30,
+        marker_color='#5B8DB8',
+        name='Game Length',
+        showlegend=False,
+    )
+
+    # --- 3. Spot On Accuracy by Player ---
     spot_acc_bar = go.Bar(
-        x=[float(spot_stats.loc[p, 'win_pct']) if p in spot_stats.index else 0.0
-           for p in sorted_players],
+        x=s['spot_win_pct'],
         y=sorted_players,
         orientation='h',
         marker_color=[medal_colors.get(i, '#5B8DB8') for i in range(len(sorted_players))],
         text=[
-            f"{int(spot_stats.loc[p, 'wins'])}/{int(spot_stats.loc[p, 'attempts'])} spot-ons"
-            if p in spot_stats.index else '0/0 spot-ons'
-            for p in sorted_players
+            f"{s['spot_wins'][i]}/{s['spot_attempts'][i]} spot-ons"
+            for i in range(len(sorted_players))
         ],
         textposition='auto',
         showlegend=False,
     )
 
-    # --- 5. Challenge Accuracy by Player (horizontal bar) ---
+    # --- 4. Dice Count at Challenge (Violin) ---
+    violin_traces = [
+        go.Violin(
+            y=s['violin_data'][player],
+            name=player,
+            box_visible=True,
+            meanline_visible=True,
+            showlegend=False,
+        )
+        for player in sorted_players
+    ]
+
+    # --- 5. Challenge Accuracy by Player ---
     chall_acc_bar = go.Bar(
-        x=[float(chall_stats.loc[p, 'win_pct']) if p in chall_stats.index else 0.0
-           for p in sorted_players],
+        x=s['chall_win_pct'],
         y=sorted_players,
         orientation='h',
         marker_color=[medal_colors.get(i, '#5B8DB8') for i in range(len(sorted_players))],
         text=[
-            f"{int(chall_stats.loc[p, 'won'])}/{int(chall_stats.loc[p, 'called'])} challenges"
-            if p in chall_stats.index else '0/0 challenges'
-            for p in sorted_players
+            f"{s['chall_won'][i]}/{s['chall_called'][i]} challenges"
+            for i in range(len(sorted_players))
         ],
         textposition='auto',
         showlegend=False,
     )
 
     # --- 6. Bid vs. Actual Count at Challenge (scatter) ---
-    chall_sc = chall.dropna(subset=['bid_count_claimed', 'effective_actual_count'])
-    max_val = max(
-        chall_sc['bid_count_claimed'].max() if len(chall_sc) else 1,
-        chall_sc['effective_actual_count'].max() if len(chall_sc) else 1,
-    )
-    sc_succ = chall_sc[chall_sc['challenge_succeeded'] == True]
-    sc_fail = chall_sc[chall_sc['challenge_succeeded'] != True]
+    max_val = s['scatter_max_val']
     bid_scatter = [
         go.Scatter(
-            x=sc_succ['bid_count_claimed'],
-            y=sc_succ['effective_actual_count'],
+            x=s['scatter_success_claimed'],
+            y=s['scatter_success_actual'],
             mode='markers',
             marker=dict(color='#00CC00', opacity=0.4, size=5),
             name='Correct call',
             showlegend=True,
         ),
         go.Scatter(
-            x=sc_fail['bid_count_claimed'],
-            y=sc_fail['effective_actual_count'],
+            x=s['scatter_fail_claimed'],
+            y=s['scatter_fail_actual'],
             mode='markers',
             marker=dict(color='#FF4444', opacity=0.4, size=5),
             name='Failed call',
@@ -178,8 +287,6 @@ def show_tournament_stats(
             return f'{v} (Moderate)'
         else:
             return f'{v} (Aggressive)'
-    def _peer_label(v: int) -> str:
-        return str(v)
     def _att_label(v: int) -> str:
         if v <= 33:
             return f'{v} (Oblivious)'
@@ -187,26 +294,17 @@ def show_tournament_stats(
             return f'{v} (Observant)'
         else:
             return f'{v} (Eagle-eyed)'
-    all_players = Constants.PLAYER_NAMES[:df['num_players'].iloc[0]]
-    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness']
-    profile_cols = {col: [] for col in profile_header}
-    for player in all_players:
-        safe = player.replace(' ', '_')
-        risk_col = f'p_{safe}_risk'
-        peer_col = f'p_{safe}_peer'
-        att_col  = f'p_{safe}_att'
-        wins = int((df['winner'] == player).sum())
-        risk_val = int(df[risk_col].iloc[0])
-        peer_val = int(df[peer_col].iloc[0])
-        att_val  = int(df[att_col].iloc[0])
-        profile_cols['Player'].append(player)
-        profile_cols['Wins'].append(str(wins))
-        profile_cols['Win %'].append(f"{wins / n_games * 100:.1f}%")
-        profile_cols['Risk Appetite'].append(_risk_label(risk_val))
-        profile_cols['Peer Pressure'].append(_peer_label(peer_val))
-        profile_cols['Attentiveness'].append(_att_label(att_val))
 
-    row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(len(all_players))]
+    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness']
+    profile_values = [
+        s['profile_players'],
+        [str(w) for w in s['profile_wins']],
+        s['profile_win_pct'],
+        [_risk_label(v) for v in s['profile_risk']],
+        [str(v) for v in s['profile_peer']],
+        [_att_label(v) for v in s['profile_att']],
+    ]
+    row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(s['num_players'])]
     profile_table = go.Table(
         header=dict(
             values=profile_header,
@@ -217,7 +315,7 @@ def show_tournament_stats(
             height=32,
         ),
         cells=dict(
-            values=[profile_cols[col] for col in profile_header],
+            values=profile_values,
             fill_color=[row_colors] * len(profile_header),
             font=dict(color='#e8e8e8', size=12),
             align=['left'] + ['center'] * (len(profile_header) - 1),
@@ -226,14 +324,24 @@ def show_tournament_stats(
         ),
     )
 
-    # --- 9. Challenge Success Heatmap (bidder dice × bid amount) ---
+    # --- 8. Bid Escalation Curve ---
+    escalation_line = go.Scatter(
+        x=s['escalation_bid_count'],
+        y=s['escalation_avg_claimed'],
+        mode='lines+markers',
+        line=dict(color='#FFD700', width=2),
+        marker=dict(size=6),
+        showlegend=False,
+    )
+
+    # --- 9. Challenge Success Heatmap ---
     heatmap_trace = go.Heatmap(
-        x=heat_pivot.columns.tolist(),
-        y=heat_pivot.index.tolist(),
-        z=heat_pivot.values,
-        text=heat_text.values,
+        x=s['heat_x'],
+        y=s['heat_y'],
+        z=s['heat_z'],
+        text=s['heat_text'],
         texttemplate='%{text}',
-        customdata=heat_count.reindex(index=heat_pivot.index, columns=heat_pivot.columns).values,
+        customdata=s['heat_n'],
         hovertemplate='Bid: %{x}<br>Bidder dice: %{y}<br>Success: %{text}<br>n=%{customdata}<extra></extra>',
         colorscale='RdYlGn',
         zmin=0, zmax=1,
@@ -241,38 +349,24 @@ def show_tournament_stats(
         showscale=True,
     )
 
-    # --- 10. Challenge Accuracy by Bid Ratio (manually stacked bars) ---
-    ratio_x = bucket_stats['ratio_bucket'].astype(str).tolist()
-    ratio_success = bucket_stats['mean'].tolist()
-    ratio_fail = bucket_stats['fail_rate'].tolist()
+    # --- 10. Challenge Accuracy by Bid Ratio ---
     ratio_bar_correct = go.Bar(
-        x=ratio_x, y=ratio_success,
+        x=s['bucket_labels'], y=s['bucket_success'],
         base=0,
         name='Correct call',
         marker_color='#00CC00',
         showlegend=False,
-        text=[f'{v:.0%}' for v in ratio_success],
+        text=[f'{v:.0%}' for v in s['bucket_success']],
         textposition='inside',
     )
     ratio_bar_wrong = go.Bar(
-        x=ratio_x, y=ratio_fail,
-        base=ratio_success,
+        x=s['bucket_labels'], y=s['bucket_fail'],
+        base=s['bucket_success'],
         name='Wrong call',
         marker_color='#FF4444',
         showlegend=False,
-        text=[f'{v:.0%}' for v in ratio_fail],
+        text=[f'{v:.0%}' for v in s['bucket_fail']],
         textposition='inside',
-    )
-
-    # --- 8. Bid Escalation Curve ---
-    avg_bids_per_round = df_rounds['bid_count'].mean()
-    escalation_line = go.Scatter(
-        x=escalation['bid_count'],
-        y=escalation['bid_count_claimed'],
-        mode='lines+markers',
-        line=dict(color='#FFD700', width=2),
-        marker=dict(size=6),
-        showlegend=False,
     )
 
     # --- Assemble subplots ---
@@ -330,20 +424,19 @@ def show_tournament_stats(
     fig.add_trace(ratio_bar_wrong, row=5, col=3)
 
     # Mean line annotation on histogram
-    # (add_vline can't be used here because go.Table in row 3 has no xaxis)
     hist_xref = 'x2'
     fig.add_shape(
         type='line',
-        x0=mean_rounds, x1=mean_rounds,
+        x0=s['mean_rounds'], x1=s['mean_rounds'],
         y0=0, y1=1,
         xref=hist_xref,
         yref='y2 domain',
         line=dict(color='#FFD700', width=2, dash='dash'),
     )
     fig.add_annotation(
-        x=mean_rounds, y=1,
+        x=s['mean_rounds'], y=1,
         xref=hist_xref, yref='y2 domain',
-        text=f'mean {mean_rounds:.1f}',
+        text=f"mean {s['mean_rounds']:.1f}",
         showarrow=False,
         font=dict(color='#FFD700', size=10),
         xanchor='left', yanchor='top',
@@ -352,16 +445,16 @@ def show_tournament_stats(
     # Annotate fastest / longest game
     hist_yref = 'y2'
     fig.add_annotation(
-        x=fastest_row['rounds'], y=0,
-        text=f"Fastest<br>seed {fastest_row['seed']}",
+        x=s['fastest_rounds'], y=0,
+        text=f"Fastest<br>seed {s['fastest_seed']}",
         showarrow=True, arrowhead=2,
         arrowcolor='#90EE90', font=dict(color='#90EE90', size=10),
         xref=hist_xref, yref=hist_yref,
         ax=0, ay=-40,
     )
     fig.add_annotation(
-        x=longest_row['rounds'], y=0,
-        text=f"Longest<br>seed {longest_row['seed']}",
+        x=s['longest_rounds'], y=0,
+        text=f"Longest<br>seed {s['longest_seed']}",
         showarrow=True, arrowhead=2,
         arrowcolor='#FF7F7F', font=dict(color='#FF7F7F', size=10),
         xref=hist_xref, yref=hist_yref,
@@ -409,7 +502,7 @@ def show_tournament_stats(
     fig.add_annotation(
         x=0.5, y=1.04,
         xref='x7 domain', yref='y7 domain',
-        text=f'avg {avg_bids_per_round:.1f} bids/round',
+        text=f"avg {s['avg_bids_per_round']:.1f} bids/round",
         showarrow=False,
         font=dict(color='#aaaaaa', size=11),
         xanchor='center',
