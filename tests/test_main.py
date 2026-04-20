@@ -105,10 +105,10 @@ class TestPirateRenderer(unittest.TestCase):
                      caller_spot='CPU')
 
     def test_player_eliminated_human(self):
-        self._render('player_eliminated', player_name='You', spot='HUMAN')
+        self._render('player_eliminated', player_name='You', spot='HUMAN', round_num=3)
 
     def test_player_eliminated_cpu(self):
-        self._render('player_eliminated', player_name='Bob', spot='CPU')
+        self._render('player_eliminated', player_name='Bob', spot='CPU', round_num=3)
 
     def test_game_won(self):
         self._render('game_won', winner_name='Alice')

@@ -262,6 +262,16 @@ class TestFullRoundIntegration(unittest.TestCase):
         self.assertIn('challenge_resolved', event_types)
         self.assertIn('round_summary', event_types)
 
+        # New schema fields
+        cr = next(e for e in events if e['type'] == 'challenge_resolved')
+        self.assertIn('loser_name', cr)
+        self.assertEqual(cr['loser_name'], 'P2')  # challenge failed → P2 loses
+
+        rs = next(e for e in events if e['type'] == 'round_summary')
+        self.assertIn('player_dice', rs)
+        self.assertIsInstance(rs['player_dice'], list)
+        self.assertTrue(all('name' in entry and 'dice' in entry for entry in rs['player_dice']))
+
 
 class TestRunGame(unittest.TestCase):
     def test_returns_expected_keys(self):
@@ -378,6 +388,10 @@ class TestFullRoundSpotOn(unittest.TestCase):
         self.assertEqual(p1.num_dice, 4)
         self.assertEqual(p2.num_dice, 5)
 
+        sor = next(e for e in events if e['type'] == 'spot_on_resolved')
+        self.assertIn('loser_names', sor)
+        self.assertEqual(sor['loser_names'], ['P1'])  # P2 called spot-on, P1 is the other player
+
     def test_spot_on_failure_caller_loses_die(self):
         # round_rolls = [3]*10, bid (5, 3) → 10 ≠ 5 → caller P2 loses die
         game, p1, p2, events = self._make_two_player_game([3] * 5, [3] * 5)
@@ -387,6 +401,10 @@ class TestFullRoundSpotOn(unittest.TestCase):
             game.process_round()
         self.assertEqual(p2.num_dice, 4)
         self.assertEqual(p1.num_dice, 5)
+
+        sor = next(e for e in events if e['type'] == 'spot_on_resolved')
+        self.assertIn('loser_names', sor)
+        self.assertEqual(sor['loser_names'], ['P2'])  # caller loses on failure
 
 
 class TestGameWon(unittest.TestCase):
@@ -409,6 +427,10 @@ class TestGameWon(unittest.TestCase):
         event_types = [e['type'] for e in events]
         self.assertIn('player_eliminated', event_types)
         self.assertIn('game_won', event_types)
+
+        pe = next(e for e in events if e['type'] == 'player_eliminated')
+        self.assertIn('round_num', pe)
+        self.assertEqual(pe['round_num'], 1)
 
 
 class TestLogEvents(unittest.TestCase):

@@ -148,7 +148,8 @@ class LiarsDiceGame:
                                bid_count=prev_bid_cnt,
                                bid_face=prev_bid_face,
                                actual_count=prev_bid_actual_cnt,
-                               ones_count=actual_ones_cnt)
+                               ones_count=actual_ones_cnt,
+                               loser_name=loser.name)
                     for observer in self.players:
                         observer.observe_outcome(prev_player_nm, succeeded)
                     inner_event = ['SUCCESS' if succeeded else 'FAILURE', Action.CHALLENGE, self.players[p].name]
@@ -172,7 +173,8 @@ class LiarsDiceGame:
                     self._emit('spot_on_resolved',
                                succeeded=succeeded,
                                caller_name=self.players[p].name,
-                               caller_spot=self.players[p].spot)
+                               caller_spot=self.players[p].spot,
+                               loser_names=[l.name for l in losers])
                     if succeeded:
                         inner_event = ['SUCCESS', Action.SPOT_ON, self.players[p].name]
                         self.log_event(inner_event)
@@ -194,7 +196,7 @@ class LiarsDiceGame:
             logger.debug('%s has %d dice', player.name, player.num_dice)
         removed_players = self._eliminate_players()
         for player in removed_players:
-            self._emit('player_eliminated', player_name=player.name, spot=player.spot)
+            self._emit('player_eliminated', player_name=player.name, spot=player.spot, round_num=self.round_num)
 
         self.count_dice()
 
@@ -202,7 +204,8 @@ class LiarsDiceGame:
             self._emit('game_won', winner_name=self.players[0].name)
             self.game_status = False
         else:
-            self._emit('round_summary', num_players=self.num_players, tot_num_dice=self.tot_num_dice)
+            self._emit('round_summary', num_players=self.num_players, tot_num_dice=self.tot_num_dice,
+                       player_dice=[{'name': pl.name, 'dice': pl.dice[:pl.num_dice]} for pl in self.players])
 
         if self.round_num > self.max_rounds:
             logger.debug('Max rounds reached, ending game')

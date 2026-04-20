@@ -116,7 +116,9 @@ def pirate_renderer(event: dict) -> None:
         _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'spot_on_resolved':
         if event['succeeded']:
-            print(Fore.CYAN + '<!> SPOT ON! Everyone else loses a die!')
+            losers = event.get('loser_names', [])
+            loser_str = ', '.join(losers) if losers else 'Everyone else'
+            print(Fore.CYAN + f'<!> SPOT ON! {loser_str} lose{"s" if len(losers) == 1 else ""} a die!')
         else:
             if event['caller_spot'] == 'HUMAN':
                 print(Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
@@ -125,9 +127,9 @@ def pirate_renderer(event: dict) -> None:
         _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'player_eliminated':
         if event['spot'] == 'HUMAN':
-            print(Fore.BLUE + Style.BRIGHT + f'<X> {event["player_name"]}, you have been eliminated from the game!')
+            print(Fore.BLUE + Style.BRIGHT + f'<X> {event["player_name"]}, you have been eliminated from the game! (Round {event["round_num"]})')
         else:
-            print(Fore.WHITE + f'<X> {event["player_name"]} has been eliminated from the game!')
+            print(Fore.WHITE + f'<X> {event["player_name"]} has been eliminated from the game! (Round {event["round_num"]})')
         _pause(presentation.PAUSE_DRAMATIC)
     elif etype == 'game_won':
         print(f'<!> There is only one player remaining. {event["winner_name"]} has won the game!')
