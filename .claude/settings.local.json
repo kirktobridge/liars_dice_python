@@ -12,7 +12,8 @@
       "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -q)",
       "Bash(.venv/bin/pytest tests/ -v)",
       "Bash(.venv/bin/python -m pytest tests/ -q --tb=short)",
-      "Bash(.venv/bin/pytest tests/ -v --tb=short)"
+      "Bash(.venv/bin/pytest tests/ -v --tb=short)",
+      "Bash(.venv/bin/pytest tests/ -q)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"

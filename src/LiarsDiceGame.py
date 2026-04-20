@@ -88,7 +88,7 @@ class LiarsDiceGame:
                                  self.round_events[0], self.round_events[0].action,
                                  self.players[p].name, self.players[p].dice[:self.players[p].num_dice])
                     bidder_num_dice = self.players[p - 1].num_dice
-                    if self.players[p].spot == 'HUMAN':
+                    if self.players[p].player_type == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
                         idx = next((i for i, pl in enumerate(active) if pl is self.players[p]), None)
                         if idx is None:
@@ -173,7 +173,7 @@ class LiarsDiceGame:
                     self._emit('spot_on_resolved',
                                succeeded=succeeded,
                                caller_name=self.players[p].name,
-                               caller_spot=self.players[p].spot,
+                               caller_player_type=self.players[p].player_type,
                                loser_names=[l.name for l in losers])
                     if succeeded:
                         inner_event = ['SUCCESS', Action.SPOT_ON, self.players[p].name]
@@ -196,7 +196,7 @@ class LiarsDiceGame:
             logger.debug('%s has %d dice', player.name, player.num_dice)
         removed_players = self._eliminate_players()
         for player in removed_players:
-            self._emit('player_eliminated', player_name=player.name, spot=player.spot, round_num=self.round_num)
+            self._emit('player_eliminated', player_name=player.name, player_type=player.player_type, round_num=self.round_num)
 
         self.count_dice()
 

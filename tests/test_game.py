@@ -18,8 +18,8 @@ def make_game(num_players=3):
     return LiarsDiceGame(num_players)
 
 
-def make_player(name, num_dice=5, spot='CPU', dice=None):
-    p = Player(name, spot=spot)
+def make_player(name, num_dice=5, player_type='CPU', dice=None):
+    p = Player(name, player_type=player_type)
     p.num_dice = num_dice
     p.dice = (dice or [3, 3, 3, 4, 5]) + [-1] * (Constants.MAX_NUM_DICE - num_dice)
     return p

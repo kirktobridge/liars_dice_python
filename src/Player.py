@@ -19,17 +19,17 @@ def _get_binom(n: int) -> binom:
 
 class Player:
 
-    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler: 'InputHandler | None' = None):
+    def __init__(self, name: str, player_type='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler: 'InputHandler | None' = None):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
-        logger.debug('Player %s created (spot=%s)', name, spot)
+        logger.debug('Player %s created (player_type=%s)', name, player_type)
         self.num_dice = num_dice
         self.eliminated = eliminated
         self.dice = [-1] * self.num_dice
         self.rolls_mode = 0
         self.wild_count = 0
         self.mode_count = 0
-        self.spot = spot
+        self.player_type = player_type
         self._rng = rng if rng is not None else random.Random()
         self.risk_appetite = self._rng.choice(
             Constants.RISK_APPETITE_DISTRIBUTION)
@@ -107,7 +107,7 @@ class Player:
         prev_event = prev_events[0]
         prev_action = prev_event.action
 
-        if self.spot == 'HUMAN':
+        if self.player_type == 'HUMAN':
             return self._handle_human_turn(prev_event, tot_other_dice)
 
         self._compute_dice_stats()

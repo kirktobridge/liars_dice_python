@@ -14,15 +14,15 @@ class TestPlayerInit(unittest.TestCase):
     def test_defaults(self):
         p = Player("Alice")
         self.assertEqual(p.name, "Alice")
-        self.assertEqual(p.spot, "CPU")
+        self.assertEqual(p.player_type, "CPU")
         self.assertEqual(p.num_dice, Constants.MAX_NUM_DICE)
         self.assertFalse(p.eliminated)
         self.assertEqual(len(p.dice), Constants.MAX_NUM_DICE)
         self.assertTrue(all(d == -1 for d in p.dice))
 
     def test_human_spot(self):
-        p = Player("Bob", spot="HUMAN")
-        self.assertEqual(p.spot, "HUMAN")
+        p = Player("Bob", player_type="HUMAN")
+        self.assertEqual(p.player_type, "HUMAN")
 
     def test_risk_appetite_in_distribution(self):
         p = Player("Test")
@@ -213,7 +213,7 @@ class TestTakeTurnHuman(unittest.TestCase):
         return deque([TurnResult(Bid(cnt, face), Action.BID, name)])
 
     def _make_human(self, input_handler=None):
-        p = Player("Human_Test", spot="HUMAN", input_handler=input_handler or (lambda _: {}))
+        p = Player("Human_Test", player_type="HUMAN", input_handler=input_handler or (lambda _: {}))
         p.num_dice = 5
         p.dice = [3, 3, 3, 4, 5, -1]
         return p

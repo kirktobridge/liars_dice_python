@@ -120,13 +120,13 @@ def pirate_renderer(event: dict) -> None:
             loser_str = ', '.join(losers) if losers else 'Everyone else'
             print(Fore.CYAN + f'<!> SPOT ON! {loser_str} lose{"s" if len(losers) == 1 else ""} a die!')
         else:
-            if event['caller_spot'] == 'HUMAN':
+            if event['caller_player_type'] == 'HUMAN':
                 print(Fore.BLUE + '<!> Sorry, that bid wasn\'t spot on.\n<i> You will lose a die.')
             else:
                 print(Fore.CYAN + f'<!> {event["caller_name"]} lost their spot on call!')
         _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'player_eliminated':
-        if event['spot'] == 'HUMAN':
+        if event['player_type'] == 'HUMAN':
             print(Fore.BLUE + Style.BRIGHT + f'<X> {event["player_name"]}, you have been eliminated from the game! (Round {event["round_num"]})')
         else:
             print(Fore.WHITE + f'<X> {event["player_name"]} has been eliminated from the game! (Round {event["round_num"]})')
@@ -292,7 +292,7 @@ def main():
                     print(Fore.YELLOW + Style.NORMAL + random.choice(presentation.INSULTS))
                 _pause(presentation.PAUSE_ROUTINE)
                 continue
-            game.add_player(Player(player_name, spot='HUMAN', input_handler=human_input_handler))
+            game.add_player(Player(player_name, player_type='HUMAN', input_handler=human_input_handler))
             break
 
         sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)

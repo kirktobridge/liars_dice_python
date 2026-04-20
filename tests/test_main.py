@@ -94,21 +94,21 @@ class TestPirateRenderer(unittest.TestCase):
 
     def test_spot_on_resolved_success(self):
         self._render('spot_on_resolved', succeeded=True, caller_name='Alice',
-                     caller_spot='CPU')
+                     caller_player_type='CPU')
 
     def test_spot_on_resolved_failure_human(self):
         self._render('spot_on_resolved', succeeded=False, caller_name='You',
-                     caller_spot='HUMAN')
+                     caller_player_type='HUMAN')
 
     def test_spot_on_resolved_failure_cpu(self):
         self._render('spot_on_resolved', succeeded=False, caller_name='Bob',
-                     caller_spot='CPU')
+                     caller_player_type='CPU')
 
     def test_player_eliminated_human(self):
-        self._render('player_eliminated', player_name='You', spot='HUMAN', round_num=3)
+        self._render('player_eliminated', player_name='You', player_type='HUMAN', round_num=3)
 
     def test_player_eliminated_cpu(self):
-        self._render('player_eliminated', player_name='Bob', spot='CPU', round_num=3)
+        self._render('player_eliminated', player_name='Bob', player_type='CPU', round_num=3)
 
     def test_game_won(self):
         self._render('game_won', winner_name='Alice')
