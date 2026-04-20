@@ -57,6 +57,7 @@ def show_tournament_stats(
     spot_wins = spot[spot['challenge_succeeded']].groupby('action_caller').size().rename('wins')
     spot_stats = pd.concat([spot_attempts, spot_wins], axis=1).fillna(0).astype(int)
     spot_stats = spot_stats.reindex(sorted_players, fill_value=0)
+    spot_stats['win_pct'] = (spot_stats['wins'] / spot_stats['attempts'].replace(0, pd.NA) * 100).fillna(0).round(1)
 
     num_players_val = int(df['num_players'].iloc[0])
     pos_counts = (df_eliminations
@@ -102,6 +103,22 @@ def show_tournament_stats(
             meanline_visible=True,
             showlegend=False,
         ))
+
+    # --- 3. Spot On Accuracy by Player (horizontal bar) ---
+    spot_acc_bar = go.Bar(
+        x=[float(spot_stats.loc[p, 'win_pct']) if p in spot_stats.index else 0.0
+           for p in sorted_players],
+        y=sorted_players,
+        orientation='h',
+        marker_color=[medal_colors.get(i, '#5B8DB8') for i in range(len(sorted_players))],
+        text=[
+            f"{int(spot_stats.loc[p, 'wins'])}/{int(spot_stats.loc[p, 'attempts'])} spot-ons"
+            if p in spot_stats.index else '0/0 spot-ons'
+            for p in sorted_players
+        ],
+        textposition='auto',
+        showlegend=False,
+    )
 
     # --- 5. Challenge Accuracy by Player (horizontal bar) ---
     chall_acc_bar = go.Bar(
@@ -264,7 +281,7 @@ def show_tournament_stats(
         subplot_titles=(
             'Win Rate',
             'Game Length Distribution',
-            '',
+            'Spot On Accuracy by Player',
             'Dice Count at Challenge',
             'Challenge Accuracy by Player',
             'Bid vs. Actual Count at Challenge',
@@ -277,7 +294,7 @@ def show_tournament_stats(
             'Challenge Accuracy by Bid Ratio',
         ),
         specs=[
-            [{'type': 'bar'},    {'type': 'histogram'}, {'type': 'scatter'}],
+            [{'type': 'bar'},    {'type': 'histogram'}, {'type': 'bar'}],
             [{'type': 'violin'}, {'type': 'bar'},        {'type': 'scatter'}],
             [{'type': 'table', 'colspan': 3}, None, None],
             [{'type': 'scatter', 'colspan': 3}, None, None],
@@ -292,6 +309,7 @@ def show_tournament_stats(
     # Row 1
     fig.add_trace(bar_chart, row=1, col=1)
     fig.add_trace(hist, row=1, col=2)
+    fig.add_trace(spot_acc_bar, row=1, col=3)
 
     # Row 2
     for vt in violin_traces:
@@ -373,6 +391,7 @@ def show_tournament_stats(
     # Axis labels — Row 1
     fig.update_xaxes(title_text='Wins', row=1, col=1)
     fig.update_xaxes(title_text='Rounds', row=1, col=2)
+    fig.update_xaxes(title_text='Spot On Win %', row=1, col=3)
     # Row 2
     fig.update_yaxes(title_text='Total Dice on Table', row=2, col=1)
     fig.update_xaxes(title_text='Challenge Win %', row=2, col=2)
