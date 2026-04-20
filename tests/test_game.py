@@ -331,6 +331,13 @@ class TestRunTournament(unittest.TestCase):
         df, _, _ = run_tournament(n=n, num_players=3)
         self.assertListEqual(sorted(df['seed'].tolist()), list(range(n)))
 
+    def test_parallel_false_does_not_spawn_processes(self):
+        from unittest.mock import patch
+        with patch('tournament.ProcessPoolExecutor') as mock_executor:
+            df, _, _ = run_tournament(n=5, num_players=3, parallel=False)
+        mock_executor.assert_not_called()
+        self.assertEqual(len(df), 5)
+
 
 class TestSpotOnResolution(unittest.TestCase):
     def _setup(self, actual_dice, bid_cnt, bid_face):

@@ -98,9 +98,14 @@ def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personal
 
 
 def run_tournament(
-    n: int, num_players: int = 4, workers: int | None = None
+    n: int, num_players: int = 4, workers: int | None = None, parallel: bool = False
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Run n games and return (df_games, df_rounds, df_eliminations)."""
+    """Run n games and return (df_games, df_rounds, df_eliminations).
+
+    parallel=True uses ProcessPoolExecutor and is intended for CLI/offline use only.
+    Web callers must use the default parallel=False (serial path) to avoid spawning
+    subprocesses inside a request handler or async event loop.
+    """
     if not (2 <= num_players <= Constants.MAX_PLAYERS):
         raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
     # Create players once so personalities are consistent across all games
@@ -112,7 +117,7 @@ def run_tournament(
     # Throttle tqdm updates for large simulations to avoid render overhead
     update_interval = max(1, n // 1000)  # ~1000 updates regardless of n
 
-    if num_workers == 1:
+    if not parallel or num_workers == 1:
         # Serial path — reuses player objects (original behaviour)
         results = []
         with tqdm(
@@ -178,7 +183,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        df, df_rounds, df_eliminations = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers)
+        df, df_rounds, df_eliminations = run_tournament(args.num_games, num_players=args.num_players, workers=args.workers, parallel=True)
     except ValueError as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
