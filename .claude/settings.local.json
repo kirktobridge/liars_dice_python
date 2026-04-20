@@ -1,24 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -v)",
-      "Bash(.venv/bin/python -m pytest tests/test_game.py tests/test_player.py -q)",
-      "Bash(.venv/bin/python -m pytest tests/ -v)",
-      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -v)",
+      "Bash(.venv/bin/pytest *)",
+      "Bash(.venv/bin/python -m pytest *)",
+      "Bash(.venv/bin/python simulate.py *)",
+      "Bash(.venv/bin/python web/test_smoke.py)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/uvicorn *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -v --tb=short)",
-      "Bash(.venv/bin/python simulate.py -n 200 -p 4 -w 1)",
-      "Bash(.venv/bin/pytest tests/test_game.py tests/test_player.py -q)",
-      "Bash(.venv/bin/pytest tests/ -v)",
-      "Bash(.venv/bin/python -m pytest tests/ -q --tb=short)",
-      "Bash(.venv/bin/pytest tests/ -v --tb=short)",
-      "Bash(.venv/bin/pytest tests/ -q)",
-      "Bash(.venv/bin/pytest tests/test_game.py -v)",
-      "Bash(.venv/bin/pip install *)",
-      "Bash(.venv/bin/python web/test_smoke.py)",
-      "Bash(.venv/bin/uvicorn web.app:app --reload)",
-      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(curl -s *)",
       "Bash(kill %1)"
     ],
     "additionalDirectories": [
