@@ -27,7 +27,7 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self._logging = log
-        self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt' if log else None
+        self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.log' if log else None
         self._file_handler = None
         self._game_event_logger = None
         self.tot_num_dice = 0
