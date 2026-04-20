@@ -3,6 +3,7 @@ from Player import Player
 from models import Action, Bid
 import colorama
 from colorama import Fore, Back, Style
+import logging
 import time
 import sys
 import constants as Constants
@@ -11,6 +12,11 @@ import random
 from collections import Counter
 
 _fast = False
+
+
+def configure_logging(debug: bool = False) -> None:
+    level = logging.DEBUG if debug else logging.WARNING
+    logging.basicConfig(level=level, format='%(name)s [%(levelname)s] %(message)s', stream=sys.stderr)
 
 
 def _pause(duration: float) -> None:
@@ -30,11 +36,7 @@ def pirate_renderer(event: dict) -> None:
     elif etype == 'dice_rolled':
         print(Fore.CYAN + '<i> Dice Rolled')
     elif etype == 'turn_started':
-        round_msg = ''
-        if Constants.DEBUG:
-            round_msg = str(event['num_dice']) + 'dice '
-        round_msg += f'<*> Round {event["round_num"]}: {event["player_name"]}\'s Turn'
-        print(round_msg)
+        print(f'<*> Round {event["round_num"]}: {event["player_name"]}\'s Turn')
         _pause(presentation.PAUSE_MICRO)
     elif etype == 'bid_made':
         print(Fore.WHITE + f'<!> {event["player_name"]} bids {event["count"]} {event["face"]}\'s.')
@@ -133,8 +135,6 @@ def pirate_renderer(event: dict) -> None:
         _pause(presentation.PAUSE_ROUTINE)
     elif etype == 'error':
         print(Fore.MAGENTA + Style.DIM + event['message'])
-    elif etype == 'debug':
-        print(Fore.MAGENTA + Style.DIM + f'<d> {event["msg"]}')
 
 
 def human_input_handler(request: dict) -> dict:
@@ -211,6 +211,7 @@ def main():
     Triggers game start and prints game log upon completion.'''
     global _fast
     _fast = '--fast' in sys.argv
+    configure_logging(debug='--debug' in sys.argv)
 
     colorama.init(autoreset=True)
     for line0 in presentation.TITLE_CARD:
@@ -319,8 +320,8 @@ def main():
 
         print(Fore.BLUE + Style.BRIGHT +
               '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
-        if Constants.DEBUG == True and game._log_path:
-            print(Fore.MAGENTA + f'----- GAME LOG: {game._log_path} -----')
+        if game._log_path:
+            print(Fore.CYAN + f'<i> Game log saved to: {game._log_path}')
 
 
 if __name__ == '__main__':

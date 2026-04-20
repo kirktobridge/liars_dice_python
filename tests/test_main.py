@@ -8,7 +8,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import main
 from main import pirate_renderer, human_input_handler, _prompt_bid_count, _prompt_bid_face
 from models import Action, Bid
-import constants as Constants
 
 
 def _renderer_event(etype, **kwargs):
@@ -38,13 +37,8 @@ class TestPirateRenderer(unittest.TestCase):
     def test_dice_rolled(self):
         self._render('dice_rolled')
 
-    def test_turn_started_nodebug(self):
-        with patch.object(Constants, 'DEBUG', False):
-            self._render('turn_started', round_num=1, player_name='Alice', num_dice=5)
-
-    def test_turn_started_debug(self):
-        with patch.object(Constants, 'DEBUG', True):
-            self._render('turn_started', round_num=1, player_name='Alice', num_dice=5)
+    def test_turn_started(self):
+        self._render('turn_started', round_num=1, player_name='Alice', num_dice=5)
 
     def test_bid_made(self):
         self._render('bid_made', player_name='Alice', count=3, face=4)
@@ -125,8 +119,11 @@ class TestPirateRenderer(unittest.TestCase):
     def test_error(self):
         self._render('error', message='something went wrong')
 
-    def test_debug(self):
-        self._render('debug', msg='internal state')
+    def test_debug_event_is_noop(self):
+        # debug events are no longer handled by pirate_renderer
+        with patch('builtins.print') as mock_print:
+            pirate_renderer(_renderer_event('debug', msg='internal state'))
+        mock_print.assert_not_called()
 
     def test_unknown_event_is_noop(self):
         # Should not raise even for unrecognised event types.

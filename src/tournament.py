@@ -1,6 +1,9 @@
+import logging
 import os
 import random
 import sys
+
+logging.getLogger('liars_dice').addHandler(logging.NullHandler())
 from concurrent.futures import ProcessPoolExecutor
 from tqdm import tqdm
 import pandas as pd

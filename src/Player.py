@@ -1,10 +1,12 @@
 from statistics import mode
 from collections import deque
+import logging
 import random
 import constants as Constants
-from colorama import Fore, Style
 from scipy.stats import binom
 from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext
+
+logger = logging.getLogger(__name__)
 
 _binom_cache: dict[int, binom] = {}
 
@@ -20,12 +22,7 @@ class Player:
     def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler=None):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
-        if Constants.DEBUG:
-            if spot == 'CPU':
-                print(Fore.CYAN + Style.DIM +
-                      f'<i> Player {self.name} has been created.')
-            elif spot == 'HUMAN':
-                print(Fore.BLUE + f'<i> Player {self.name} has been created.')
+        logger.debug('Player %s created (spot=%s)', name, spot)
         self.num_dice = num_dice
         self.eliminated = eliminated
         self.dice = [-1] * self.num_dice
@@ -63,15 +60,8 @@ class Player:
         '''Removes virtual die from the Player object, and updates Player's dice
         count variable.'''
         self.dice[self.num_dice-1] = -1
-        if Constants.DEBUG:
-            print(Fore.MAGENTA + Style.DIM +
-                  f'{self.name} had {self.num_dice} dice')
+        logger.debug('%s: dice count %d -> %d', self.name, self.num_dice, self.num_dice - 1)
         self.num_dice -= 1
-        if Constants.DEBUG:
-            print(Fore.MAGENTA + Style.DIM +
-                  f'{self.name} now has {self.num_dice} dice')
-        if Constants.DEBUG:
-            print(Fore.MAGENTA + Style.DIM + f'{self.name} lost a die!')
 
     def add_die(self):
         '''Adds virtual die to Player's dice inventory.'''
@@ -138,8 +128,8 @@ class Player:
             ctx = self._build_response_context(prev_event, tot_other_dice, bidder_num_dice, all_prev_bids)
             return self._decide_action(ctx)
 
-        raise Exception(
-            Fore.MAGENTA + f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
+        logger.error('prev_action behavior missing. Previous Event: %s', prev_event)
+        raise Exception(f'Player Exception Raised, prev_action behavior missing. Previous Event: {prev_event}')
 
     def _handle_human_turn(self, prev_event: TurnResult, tot_other_dice: int) -> TurnResult:
         if prev_event.action == Action.START:
@@ -167,8 +157,7 @@ class Player:
             self.mode_count = 1
 
     def _make_opening_bid(self) -> TurnResult:
-        if Constants.DEBUG:
-            print('START RECIEVED BY ' + self.name)
+        logger.debug('START received by %s', self.name)
         risk_factor = self.risk_appetite / Constants.MAX_RISK_SCORE
         extra = sum(1 for _ in range(2) if self._rng.random() < risk_factor)
         if self.mode_count >= Constants.MINIMUM_BID:

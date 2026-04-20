@@ -1,11 +1,15 @@
 import os
 import sys
+import logging
 import random
 from datetime import datetime
 import constants as Constants
 from Player import Player
 from collections import deque
 from models import Action, Bid, TurnResult
+
+logger = logging.getLogger(__name__)
+
 
 class LiarsDiceGame:
 
@@ -14,8 +18,7 @@ class LiarsDiceGame:
         self._rng = rng if rng is not None else random.Random()
         if num_players < 2:
             raise ValueError(f"LiarsDiceGame requires at least 2 players, got {num_players}.")
-        if Constants.DEBUG:
-            self._emit('debug', msg='Game Object Initialized')
+        logger.debug('Game object initialized, num_players=%d', num_players)
         self.num_players = num_players
         self.max_rounds = max_rounds
         self.round_num = 0
@@ -25,7 +28,8 @@ class LiarsDiceGame:
         self.round_rolls = []
         self._logging = log
         self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.txt' if log else None
-        self.game_log_file = None
+        self._file_handler = None
+        self._game_event_logger = None
         self.tot_num_dice = 0
         self.event_counter = 0
         self.round_events = deque()
@@ -43,13 +47,12 @@ class LiarsDiceGame:
         except Exception:
             message = log_string
         self._emit('error', func_name=func_name, message=message)
-        self.log_event(message)
+        logger.error('%s', message)
 
     def add_player(self, p):
         try:
             self.players.append(p)
-            if Constants.DEBUG:
-                self._emit('debug', msg=f'Player {p.name} appended to game player list.')
+            logger.debug('Player %s appended to game player list', p.name)
         except Exception as e:
             self.print_error('add_player')
 
@@ -79,8 +82,7 @@ class LiarsDiceGame:
         tot_dice = self.count_dice()
         while round_cont:
             for p in range(0, self.num_players):
-                if Constants.DEBUG:
-                    self._emit('debug', msg=f'{self.players[p].name}: {self.players[p].dice[:self.players[p].num_dice]}')
+                logger.debug('%s dice: %s', self.players[p].name, self.players[p].dice[:self.players[p].num_dice])
                 self._emit('turn_started',
                            player_name=self.players[p].name,
                            num_dice=self.players[p].num_dice,
@@ -104,9 +106,9 @@ class LiarsDiceGame:
                     continue
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
-                    if Constants.DEBUG and self._logging:
-                        self.game_log_file.write(
-                            f'Passing prev_event {self.round_events[0]} and action {self.round_events[0].action} to {self.players[p].name}. \nThey have dice: {self.players[p].dice[:self.players[p].num_dice]}.\n')
+                    logger.debug('Passing prev_event %s (action=%s) to %s (dice=%s)',
+                                 self.round_events[0], self.round_events[0].action,
+                                 self.players[p].name, self.players[p].dice[:self.players[p].num_dice])
                     bidder_num_dice = self.players[p - 1].num_dice
                     if self.players[p].spot == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
@@ -203,14 +205,11 @@ class LiarsDiceGame:
                         self.round_loser = losers[0]
                         round_cont = False
                         break
-            if Constants.DEBUG and self._logging:
-                self.game_log_file.write('End of for loop\n')
+            logger.debug('End of for loop in process_round')
 
-        if self._logging:
-            self.game_log_file.write('Broke out of while round_cont loop\n')
-        if Constants.DEBUG:
-            for player in self.players:
-                self._emit('debug', msg=f'{player.name} has {player.num_dice} dice')
+        logger.debug('Broke out of round_cont loop')
+        for player in self.players:
+            logger.debug('%s has %d dice', player.name, player.num_dice)
         removed_players = self._eliminate_players()
         for player in removed_players:
             self._emit('player_eliminated', player_name=player.name, spot=player.spot)
@@ -223,8 +222,8 @@ class LiarsDiceGame:
         else:
             self._emit('round_summary', num_players=self.num_players, tot_num_dice=self.tot_num_dice)
 
-        if Constants.DEBUG and self.round_num > self.max_rounds:
-            self._emit('debug', msg='Max rounds reached. Ending game...')
+        if self.round_num > self.max_rounds:
+            logger.debug('Max rounds reached, ending game')
             self.game_status = False
 
         self._reorder_for_next_round()
@@ -251,26 +250,34 @@ class LiarsDiceGame:
             return
         try:
             if isinstance(event, TurnResult):
-                event_w_cnt = ["#" + str(self.event_counter), str(event.bid), str(event.action), event.player_name]
-                self.game_log_file.write(str(event_w_cnt) + '\n')
+                msg = f'#{self.event_counter} | {event.action} | {event.player_name} | {event.bid}'
             elif isinstance(event, list):
-                event_w_cnt = ["#" + str(self.event_counter)] + event
-                self.game_log_file.write(str(event_w_cnt) + '\n')
+                data, etype, actor = event[0], event[1], event[2]
+                msg = f'#{self.event_counter} | {etype} | {actor} | {data}'
             elif isinstance(event, str):
-                event_string = '#' + str(self.event_counter) + ' ' + event
-                self.game_log_file.write(event_string + '\n')
+                msg = f'#{self.event_counter} | ERROR | SYS | {event}'
+            else:
+                return
+            self._game_event_logger.info(msg)
         except Exception as e:
             self.print_error('log_event')
 
     def close(self) -> None:
-        """Close the log file if one was opened."""
-        if self._logging and self.game_log_file:
-            self.game_log_file.close()
-            self.game_log_file = None
+        """Remove the file handler and close the log file if one was opened."""
+        if self._logging and self._file_handler:
+            self._game_event_logger.removeHandler(self._file_handler)
+            self._file_handler.close()
+            self._file_handler = None
 
     def __enter__(self) -> 'LiarsDiceGame':
         if self._logging:
-            self.game_log_file = open(self._log_path, 'w+')
+            self._game_event_logger = logging.getLogger('liars_dice.game_events')
+            handler = logging.FileHandler(self._log_path, mode='w')
+            handler.setFormatter(logging.Formatter('%(message)s'))
+            self._game_event_logger.addHandler(handler)
+            self._game_event_logger.setLevel(logging.INFO)
+            self._game_event_logger.propagate = False
+            self._file_handler = handler
         return self
 
     def __exit__(self, *_) -> None:
@@ -304,9 +311,7 @@ class LiarsDiceGame:
         to_remove = [p for p in self.players if p.num_dice == 0]
         for player in to_remove:
             player.eliminated = True
-            if Constants.DEBUG and self._logging:
-                self.game_log_file.write(
-                    f'{player.name} is being removed from the player array')
+            logger.debug('%s being removed from player array', player.name)
             self.players.remove(player)
         self.num_players = len(self.players)
         return to_remove

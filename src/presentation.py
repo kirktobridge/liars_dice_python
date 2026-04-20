@@ -1,10 +1,10 @@
 import colorama
 from colorama import Fore, Style
-from constants import MAX_NUM_DICE, MAX_PLAYERS, DEBUG
+from constants import MAX_NUM_DICE, MAX_PLAYERS
 
-PAUSE_MICRO    = 0 if DEBUG else 0.25
-PAUSE_ROUTINE  = 0 if DEBUG else 0.6
-PAUSE_DRAMATIC = 0 if DEBUG else 1.2
+PAUSE_MICRO    = 0.25
+PAUSE_ROUTINE  = 0.6
+PAUSE_DRAMATIC = 1.2
 
 INSULTS = ['\'Tis not enough rum in the world to make yer face look good, ye cowardly, slack-jawed monkey! ... Arrrrgh!',
            'Did yer mother drop ye\' on yer\' head as a child?',

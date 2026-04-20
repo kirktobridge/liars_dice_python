@@ -20,7 +20,6 @@ MAX_PEER_PRESSURE_SCORE = max(PEER_PRESSURE_DISTRIBUTION)
 ATTENTIVENESS_DISTRIBUTION = list(range(1, 101))
 MAX_ATTENTIVENESS_SCORE = max(ATTENTIVENESS_DISTRIBUTION)
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
-DEBUG = False
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PLAYER_NAMES = ['Captain Jack Sparrow', 'Captain Hector Barbossa', 'First Mate Joshamee Gibbs',
                 'Pirate King Elizabeth Swann', 'Will Turner', 'Jack the Monkey', 'Captain Davy Jones', 'Captain Blackbeard', 'Calypso']

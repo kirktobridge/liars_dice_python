@@ -14,10 +14,8 @@ from tournament import run_game, run_tournament
 
 
 def make_game(num_players=3):
-    """Create a LiarsDiceGame with a mocked log file. No on_event renderer (no-op lambda)."""
-    with patch('builtins.open', mock_open()):
-        game = LiarsDiceGame(num_players)
-    return game
+    """Create a LiarsDiceGame with no logging and no on_event renderer."""
+    return LiarsDiceGame(num_players)
 
 
 def make_player(name, num_dice=5, spot='CPU', dice=None):
@@ -88,8 +86,7 @@ class TestLogEvent(unittest.TestCase):
         self.assertEqual(len(self.game.round_events), 1)
 
     def test_log_string_event(self):
-        with patch('builtins.open', mock_open()):
-            game = LiarsDiceGame(2, on_event=lambda e: None)
+        game = LiarsDiceGame(2, on_event=lambda e: None)
         game.log_event("test event")
         self.assertEqual(game.event_counter, 1)
         self.assertEqual(len(game.round_events), 1)
@@ -432,21 +429,23 @@ class TestLogEvents(unittest.TestCase):
 
 class TestCloseAndContextManager(unittest.TestCase):
     def test_close_with_logging_closes_file(self):
-        with patch('builtins.open', mock_open()):
+        with patch('logging.FileHandler') as mock_handler_cls:
+            mock_handler = mock_handler_cls.return_value
             with LiarsDiceGame(2, log=True) as game:
-                mock_file = game.game_log_file
-            mock_file.close.assert_called_once()
-            self.assertIsNone(game.game_log_file)
+                pass
+            mock_handler.close.assert_called_once()
+            self.assertIsNone(game._file_handler)
 
     def test_close_without_logging_is_noop(self):
         game = make_game(2)
         game.close()  # must not raise
 
     def test_context_manager_closes_file_on_exit(self):
-        with patch('builtins.open', mock_open()):
+        with patch('logging.FileHandler') as mock_handler_cls:
+            mock_handler = mock_handler_cls.return_value
             with LiarsDiceGame(2, log=True) as game:
-                mock_file = game.game_log_file
-        mock_file.close.assert_called_once()
+                pass
+        mock_handler.close.assert_called_once()
 
 
 class TestPrintError(unittest.TestCase):
