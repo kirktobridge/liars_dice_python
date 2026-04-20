@@ -1,7 +1,6 @@
 # my additions
 .claude/
 *LiarsDiceGame_Log.txt
-*.html
 *.png
 
 # Byte-compiled / optimized / DLL files
