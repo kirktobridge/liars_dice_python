@@ -4,7 +4,7 @@ import logging
 import random
 import constants as Constants
 from scipy.stats import binom
-from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext
+from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext, InputHandler
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +19,7 @@ def _get_binom(n: int) -> binom:
 
 class Player:
 
-    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler=None):
+    def __init__(self, name: str, spot='CPU', eliminated=False, num_dice=Constants.MAX_NUM_DICE, rng: random.Random | None = None, input_handler: 'InputHandler | None' = None):
         '''Constructor for the Player object. Initializes key variables.'''
         self.name = name
         logger.debug('Player %s created (spot=%s)', name, spot)

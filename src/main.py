@@ -1,6 +1,6 @@
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
-from models import Action, Bid
+from models import Action, Bid, InputRequest, InputResponse
 import colorama
 from colorama import Fore, Back, Style
 import logging
@@ -139,7 +139,7 @@ def pirate_renderer(event: dict) -> None:
         print(Fore.MAGENTA + Style.DIM + event['message'])
 
 
-def human_input_handler(request: dict) -> dict:
+def human_input_handler(request: InputRequest) -> InputResponse:
     """Handle all human player I/O. Returns {'action': Action, 'bid': Bid | None}."""
     dice = request['dice']
     tot_other_dice = request['tot_other_dice']

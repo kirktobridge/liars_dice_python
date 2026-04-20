@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Literal, Protocol, TypedDict
 
 
 class Action(str, Enum):
@@ -39,6 +40,32 @@ class TurnResult:
     bid: 'Bid | None'
     action: Action
     player_name: str
+
+
+class OpeningBidRequest(TypedDict):
+    type: Literal['opening_bid']
+    dice: list[int]
+    tot_other_dice: int
+
+
+class DecisionRequest(TypedDict):
+    type: Literal['decision']
+    dice: list[int]
+    tot_other_dice: int
+    prev_bid: 'Bid'
+    prev_player: str
+
+
+InputRequest = OpeningBidRequest | DecisionRequest
+
+
+class InputResponse(TypedDict):
+    action: Action
+    bid: 'Bid | None'
+
+
+class InputHandler(Protocol):
+    def __call__(self, request: InputRequest) -> InputResponse: ...
 
 
 @dataclass(frozen=True)
