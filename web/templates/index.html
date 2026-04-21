@@ -192,15 +192,17 @@
           <!-- Hidden select — game.js populates and reads this -->
           <select id="num-players" style="display:none" aria-hidden="true"></select>
           <div class="coin-dial">
-            <button type="button" class="coin-arrow" id="coin-prev" aria-label="Fewer opponents">&#8249;</button>
+            <button type="button" class="coin-arrow" id="coin-prev"
+                    onclick="coinStep(-1)" aria-label="Fewer opponents">&#8249;</button>
             <div class="coin" id="coin-widget">
-              <div class="coin-face">
+              <div class="coin-face" style="pointer-events:none">
                 <div class="coin-number" id="coin-number">2</div>
                 <div class="coin-opp-label" id="coin-label">OPPONENTS</div>
                 <div class="coin-viii">VIII</div>
               </div>
             </div>
-            <button type="button" class="coin-arrow" id="coin-next" aria-label="More opponents">&#8250;</button>
+            <button type="button" class="coin-arrow" id="coin-next"
+                    onclick="coinStep(1)" aria-label="More opponents">&#8250;</button>
           </div>
         </div>
 

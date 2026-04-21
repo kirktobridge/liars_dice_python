@@ -24,6 +24,7 @@ const DICE_UNICODE = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅
 let ws              = null;
 let humanName       = '';
 let storedNumPlayers = 3;
+let coinTotal        = 3; // maintained by coinStep(); read by initLobby
 let humanDice       = [];
 let isHumanTurn     = false;
 let currentRequest  = null;   // OpeningBidRequest | DecisionRequest
@@ -653,7 +654,7 @@ function initLobby() {
     errMsg.classList.add('hidden');
 
     humanName        = name;
-    storedNumPlayers = parseInt(numSelect.value) || 3;
+    storedNumPlayers = coinTotal;
     startGame();
   });
 
@@ -693,51 +694,42 @@ function startGame() {
 // ============================================================
 // COIN DIAL (piece-of-eight opponent picker)
 // ============================================================
-function initCoinDial() {
-  const numSelect  = $('num-players');
+// Called directly via onclick="" in the HTML — no event listener registration needed.
+function coinStep(delta) {
+  const next = coinTotal + delta;
+  if (next < 2 || next > MAX_PLAYERS) return;
+  coinTotal = next;
+
   const coinNumber = $('coin-number');
   const coinLabel  = $('coin-label');
   const coinWidget = $('coin-widget');
   const prevBtn    = $('coin-prev');
   const nextBtn    = $('coin-next');
 
-  if (!prevBtn || !nextBtn) return;
+  const opp = coinTotal - 1;
+  if (coinNumber) coinNumber.textContent = opp;
+  if (coinLabel)  coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
+  if (prevBtn)    prevBtn.disabled = coinTotal <= 2;
+  if (nextBtn)    nextBtn.disabled = coinTotal >= MAX_PLAYERS;
 
-  // Own state locally — don't read back from the hidden select
-  let total = parseInt(numSelect && numSelect.value) || 3;
-
-  function render() {
-    const opp = total - 1;
-    coinNumber.textContent = opp;
-    coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
-    prevBtn.disabled = total <= 2;
-    nextBtn.disabled = total >= MAX_PLAYERS;
-    if (numSelect) numSelect.value = String(total);
+  if (coinWidget) {
+    coinWidget.classList.remove('coin-ticked');
+    void coinWidget.offsetWidth;
+    coinWidget.classList.add('coin-ticked');
   }
+}
 
-  prevBtn.addEventListener('click', function () {
-    if (total <= 2) return;
-    total--;
-    if (coinWidget) {
-      coinWidget.classList.remove('coin-ticked');
-      void coinWidget.offsetWidth;
-      coinWidget.classList.add('coin-ticked');
-    }
-    render();
-  });
-
-  nextBtn.addEventListener('click', function () {
-    if (total >= MAX_PLAYERS) return;
-    total++;
-    if (coinWidget) {
-      coinWidget.classList.remove('coin-ticked');
-      void coinWidget.offsetWidth;
-      coinWidget.classList.add('coin-ticked');
-    }
-    render();
-  });
-
-  render();
+function initCoinDial() {
+  // Just sync the visual to the initial coinTotal — no event listeners needed.
+  const opp = coinTotal - 1;
+  const coinNumber = $('coin-number');
+  const coinLabel  = $('coin-label');
+  const prevBtn    = $('coin-prev');
+  const nextBtn    = $('coin-next');
+  if (coinNumber) coinNumber.textContent = opp;
+  if (coinLabel)  coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
+  if (prevBtn)    prevBtn.disabled = coinTotal <= 2;
+  if (nextBtn)    nextBtn.disabled = coinTotal >= MAX_PLAYERS;
 }
 
 // ============================================================
