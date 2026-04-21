@@ -701,33 +701,43 @@ function initCoinDial() {
   const prevBtn    = $('coin-prev');
   const nextBtn    = $('coin-next');
 
-  if (!numSelect || !coinWidget) return;
+  if (!prevBtn || !nextBtn) return;
 
-  function sync() {
-    const total = parseInt(numSelect.value) || 3;
-    const opp   = total - 1;
+  // Own state locally — don't read back from the hidden select
+  let total = parseInt(numSelect && numSelect.value) || 3;
+
+  function render() {
+    const opp = total - 1;
     coinNumber.textContent = opp;
     coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
     prevBtn.disabled = total <= 2;
     nextBtn.disabled = total >= MAX_PLAYERS;
+    if (numSelect) numSelect.value = String(total);
   }
 
-  function tick(delta) {
-    const v = parseInt(numSelect.value) || 3;
-    const next = Math.min(Math.max(v + delta, 2), MAX_PLAYERS);
-    if (next === v) return;
-    numSelect.value = next;
-    // Brief coin-spin animation
-    coinWidget.classList.remove('coin-ticked');
-    void coinWidget.offsetWidth; // force reflow to restart animation
-    coinWidget.classList.add('coin-ticked');
-    sync();
-  }
+  prevBtn.addEventListener('click', function () {
+    if (total <= 2) return;
+    total--;
+    if (coinWidget) {
+      coinWidget.classList.remove('coin-ticked');
+      void coinWidget.offsetWidth;
+      coinWidget.classList.add('coin-ticked');
+    }
+    render();
+  });
 
-  prevBtn.addEventListener('click', () => tick(-1));
-  nextBtn.addEventListener('click', () => tick(+1));
+  nextBtn.addEventListener('click', function () {
+    if (total >= MAX_PLAYERS) return;
+    total++;
+    if (coinWidget) {
+      coinWidget.classList.remove('coin-ticked');
+      void coinWidget.offsetWidth;
+      coinWidget.classList.add('coin-ticked');
+    }
+    render();
+  });
 
-  sync(); // align visual with whatever initLobby() set
+  render();
 }
 
 // ============================================================
