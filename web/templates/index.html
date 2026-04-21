@@ -20,6 +20,142 @@
     }
   </script>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* ── PIECE OF EIGHT DIAL ─────────────────────────────── */
+    .coin-dial {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 6px 0;
+    }
+
+    .coin {
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      /* Milled / reeded edge via conic gradient */
+      background: repeating-conic-gradient(
+        from 1deg,
+        #c4991e 0deg 3deg,
+        #6b4c08 3deg 8.5deg
+      );
+      box-shadow:
+        0 8px 24px rgba(0,0,0,0.9),
+        0 2px 4px rgba(0,0,0,0.5),
+        inset 0 1px 0 rgba(255,220,80,0.15);
+      position: relative;
+      user-select: none;
+      flex-shrink: 0;
+      perspective: 400px;
+    }
+
+    .coin-face {
+      position: absolute;
+      inset: 7px;
+      border-radius: 50%;
+      background: radial-gradient(
+        circle at 38% 30%,
+        #ffe47a 0%,
+        #d49c18 22%,
+        #a87010 52%,
+        #7a5008 78%,
+        #472e04 100%
+      );
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: background 0.2s;
+    }
+
+    /* Inner decorative ring */
+    .coin-face::before {
+      content: '';
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(220,170,40,0.3);
+      pointer-events: none;
+    }
+
+    /* Cross embossing (like Spanish real) */
+    .coin-face::after {
+      content: '';
+      position: absolute;
+      inset: 16px;
+      border-radius: 50%;
+      background:
+        linear-gradient(rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 100%) center / 1px 100% no-repeat,
+        linear-gradient(rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 100%) center / 100% 1px no-repeat;
+      pointer-events: none;
+    }
+
+    .coin-number {
+      font-family: 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 2.5rem;
+      color: #1a0c00;
+      line-height: 1;
+      position: relative;
+      z-index: 1;
+      text-shadow: 0 1px 0 rgba(255,220,80,0.45);
+    }
+
+    .coin-opp-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.46rem;
+      letter-spacing: 0.22em;
+      color: rgba(26,12,0,0.62);
+      text-transform: uppercase;
+      position: relative;
+      z-index: 1;
+      margin-top: 3px;
+    }
+
+    .coin-viii {
+      font-family: 'Cinzel', serif;
+      font-size: 0.5rem;
+      letter-spacing: 0.12em;
+      color: rgba(26,12,0,0.38);
+      position: absolute;
+      bottom: 18px;
+      z-index: 1;
+    }
+
+    @keyframes coin-tick {
+      0%   { transform: scale(1)    rotateY(0deg); }
+      35%  { transform: scale(0.94) rotateY(18deg); }
+      100% { transform: scale(1)    rotateY(0deg); }
+    }
+    .coin.coin-ticked { animation: coin-tick 0.22s ease-out; }
+
+    .coin-arrow {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #2e2010, #1a1208);
+      border: 1px solid #3a2810;
+      color: #c9a84c;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+      padding: 0;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .coin-arrow:hover:not(:disabled) {
+      border-color: #c9a84c;
+      color: #ffd700;
+      box-shadow: 0 0 8px rgba(201,168,76,0.3);
+    }
+    .coin-arrow:active:not(:disabled) { transform: scale(0.91); }
+    .coin-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+  </style>
 </head>
 <body class="h-full text-stone-100 overflow-hidden">
 
@@ -34,7 +170,7 @@
       <h1 class="font-decorative text-4xl text-amber-400 mb-1 tracking-wider" style="text-shadow: 0 0 20px rgba(201,168,76,0.4)">
         LIAR'S DICE
       </h1>
-      <p class="text-stone-400 font-body italic mb-8 text-lg">Fortune favors the bold and the deceitful</p>
+      <p class="text-stone-400 font-body italic mb-8 text-sm"><br></br>You command in the Age of Piracy, where bold captains sail free waters, where waves are not measured in feet but as increments of fear, and those who pass the test become legend.</p>
 
       <a href="/tournament"
         class="block text-center text-xs font-display tracking-widest text-stone-500 hover:text-amber-400 transition-colors mb-6 -mt-4">
@@ -51,12 +187,21 @@
                    focus:outline-none focus:border-amber-500 transition-colors placeholder-stone-600">
         </div>
 
-        <div>
-          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">OPPONENTS</label>
-          <select id="num-players"
-            class="w-full bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100
-                   focus:outline-none focus:border-amber-500 transition-colors cursor-pointer">
-          </select>
+        <div class="text-center">
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-2">OPPONENTS</label>
+          <!-- Hidden select — game.js populates and reads this -->
+          <select id="num-players" style="display:none" aria-hidden="true"></select>
+          <div class="coin-dial">
+            <button type="button" class="coin-arrow" id="coin-prev" aria-label="Fewer opponents">&#8249;</button>
+            <div class="coin" id="coin-widget">
+              <div class="coin-face">
+                <div class="coin-number" id="coin-number">2</div>
+                <div class="coin-opp-label" id="coin-label">OPPONENTS</div>
+                <div class="coin-viii">VIII</div>
+              </div>
+            </div>
+            <button type="button" class="coin-arrow" id="coin-next" aria-label="More opponents">&#8250;</button>
+          </div>
         </div>
 
         <button id="start-btn"

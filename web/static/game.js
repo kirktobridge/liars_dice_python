@@ -691,6 +691,46 @@ function startGame() {
 }
 
 // ============================================================
+// COIN DIAL (piece-of-eight opponent picker)
+// ============================================================
+function initCoinDial() {
+  const numSelect  = $('num-players');
+  const coinNumber = $('coin-number');
+  const coinLabel  = $('coin-label');
+  const coinWidget = $('coin-widget');
+  const prevBtn    = $('coin-prev');
+  const nextBtn    = $('coin-next');
+
+  if (!numSelect || !coinWidget) return;
+
+  function sync() {
+    const total = parseInt(numSelect.value) || 3;
+    const opp   = total - 1;
+    coinNumber.textContent = opp;
+    coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
+    prevBtn.disabled = total <= 2;
+    nextBtn.disabled = total >= MAX_PLAYERS;
+  }
+
+  function tick(delta) {
+    const v = parseInt(numSelect.value) || 3;
+    const next = Math.min(Math.max(v + delta, 2), MAX_PLAYERS);
+    if (next === v) return;
+    numSelect.value = next;
+    // Brief coin-spin animation
+    coinWidget.classList.remove('coin-ticked');
+    void coinWidget.offsetWidth; // force reflow to restart animation
+    coinWidget.classList.add('coin-ticked');
+    sync();
+  }
+
+  prevBtn.addEventListener('click', () => tick(-1));
+  nextBtn.addEventListener('click', () => tick(+1));
+
+  sync(); // align visual with whatever initLobby() set
+}
+
+// ============================================================
 // PLAY AGAIN
 // ============================================================
 function initPlayAgain() {
@@ -750,6 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initFaceSelector();
   initLobby();
+  initCoinDial();
   initBidForm();
   initPlayAgain();
   disableActions();
