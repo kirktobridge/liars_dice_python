@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liar's Dice — Tournament</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cinzel+Decorative:wght@700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Cinzel', 'serif'],
+            decorative: ['"Cinzel Decorative"', 'serif'],
+            body: ['"Crimson Text"', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3"></script>
+  <style>
+    body { overflow-y: auto; min-height: 100vh; }
+
+    /* ── page chrome ── */
+    .page-header {
+      background: linear-gradient(180deg, #0f0c07 0%, #1a1208 100%);
+      border-bottom: 1px solid #3a2810;
+    }
+
+    /* ── form panel ── */
+    .setup-panel {
+      background: linear-gradient(160deg, #22180a 0%, #1a1106 40%, #201609 70%, #251b0d 100%);
+      border: 1px solid #3a2810;
+    }
+
+    /* ── progress bar ── */
+    .progress-track {
+      background: rgba(255,255,255,0.08);
+      border-radius: 9999px;
+      overflow: hidden;
+      height: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 9999px;
+      background: linear-gradient(90deg, #c9a84c, #ffd700);
+      transition: width 0.4s ease;
+    }
+    .progress-fill.indeterminate {
+      width: 40% !important;
+      animation: progress-slide 1.6s ease-in-out infinite;
+    }
+    @keyframes progress-slide {
+      0%   { margin-left: 0;   width: 40%; }
+      50%  { margin-left: 60%; width: 40%; }
+      100% { margin-left: 0;   width: 40%; }
+    }
+
+    /* ── dashboard grid ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .panel-full { grid-column: 1 / -1; }
+
+    /* ── chart panels ── */
+    .chart-panel {
+      background: linear-gradient(160deg, #1c1408 0%, #141006 60%, #181208 100%);
+      border: 1px solid #2e1f08;
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .panel-title {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      color: #8a7a60;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .chart-wrap {
+      position: relative;
+    }
+    .chart-wrap-sm  { height: 280px; }
+    .chart-wrap-md  { height: 320px; }
+    .chart-wrap-lg  { height: 260px; }
+    .chart-wrap-xl  { height: 220px; }
+
+    /* ── summary stats ── */
+    .stat-chip {
+      background: rgba(201,168,76,0.08);
+      border: 1px solid rgba(201,168,76,0.2);
+      border-radius: 8px;
+      padding: 10px 18px;
+      text-align: center;
+    }
+    .stat-value {
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      color: #ffd700;
+      display: block;
+    }
+    .stat-label {
+      font-family: 'Crimson Text', serif;
+      font-size: 0.8rem;
+      color: #8a7a60;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* ── player profiles table ── */
+    .profiles-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: 'Crimson Text', serif;
+      font-size: 0.95rem;
+    }
+    .profiles-table th {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: #ffd700;
+      background: #1e1a0e;
+      padding: 9px 12px;
+      text-align: center;
+      border-bottom: 1px solid #3a2810;
+    }
+    .profiles-table th:first-child { text-align: left; }
+    .profiles-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(58,40,16,0.5);
+      color: #d4c8a8;
+      text-align: center;
+    }
+    .profiles-table td:first-child { text-align: left; font-weight: 600; }
+    .profiles-table tr:nth-child(even) td { background: rgba(0,0,0,0.15); }
+
+    /* ── heatmap table ── */
+    .heatmap-scroll { overflow-x: auto; }
+    .heatmap-table {
+      border-collapse: collapse;
+      font-size: 10px;
+      font-family: 'Cinzel', serif;
+    }
+    .heatmap-table th {
+      color: #8a7a60;
+      padding: 4px 6px;
+      text-align: center;
+      white-space: nowrap;
+      font-size: 9px;
+    }
+    .heatmap-table td {
+      width: 44px;
+      height: 28px;
+      text-align: center;
+      font-size: 9px;
+      color: rgba(255,255,255,0.85);
+      border: 1px solid rgba(0,0,0,0.3);
+      cursor: default;
+      transition: opacity 0.15s;
+    }
+    .heatmap-table td:hover { opacity: 0.8; }
+
+    /* ── error banner ── */
+    .error-banner {
+      background: rgba(139,42,42,0.3);
+      border: 1px solid #8b2a2a;
+      border-radius: 8px;
+      color: #ff9999;
+      padding: 12px 16px;
+      font-family: 'Crimson Text', serif;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body class="text-stone-100" style="background: radial-gradient(ellipse at 30% 0%, #0f1219 0%, #0a0a0c 55%, #080808 100%);">
+
+  <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
+  <div class="page-header px-8 py-5 flex items-center gap-6">
+    <a href="/" class="font-display text-xs tracking-widest text-stone-500 hover:text-amber-400 transition-colors">
+      ← BACK TO GAME
+    </a>
+    <div class="flex-1 text-center">
+      <span class="text-2xl">⚓</span>
+      <h1 class="font-decorative text-2xl text-amber-400 inline ml-3 tracking-wider">
+        TOURNAMENT SIMULATOR
+      </h1>
+    </div>
+    <div class="w-28"></div><!-- spacer -->
+  </div>
+
+  <!-- ── SETUP FORM ────────────────────────────────────────────── -->
+  <div class="max-w-2xl mx-auto mt-10 px-6">
+    <div class="setup-panel rounded-2xl p-8">
+      <p class="font-body italic text-stone-400 text-center mb-6 text-lg">
+        Pit the pirates against each other across many battles — then let the numbers tell the tale.
+      </p>
+
+      <form id="run-form" class="flex flex-wrap gap-6 items-end justify-center">
+
+        <div>
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">
+            NUMBER OF GAMES
+          </label>
+          <input id="n-games" type="number" min="1" max="10000" value="1000"
+            class="bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100 w-36
+                   focus:outline-none focus:border-amber-500 transition-colors text-center font-display">
+        </div>
+
+        <div>
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">
+            PLAYERS PER GAME
+          </label>
+          <select id="num-players"
+            class="bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100 w-36
+                   focus:outline-none focus:border-amber-500 transition-colors cursor-pointer font-display">
+            <option value="2">2 Players</option>
+            <option value="3">3 Players</option>
+            <option value="4" selected>4 Players</option>
+            <option value="5">5 Players</option>
+            <option value="6">6 Players</option>
+            <option value="7">7 Players</option>
+            <option value="8">8 Players</option>
+          </select>
+        </div>
+
+        <button type="submit"
+          class="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-stone-900 font-display
+                 font-bold py-2 px-8 rounded-lg tracking-widest transition-colors shadow-lg">
+          RUN SIMULATION
+        </button>
+
+      </form>
+
+      <p id="form-error" class="text-red-400 text-sm font-body italic text-center mt-3 hidden"></p>
+    </div>
+  </div>
+
+  <!-- ── PROGRESS ──────────────────────────────────────────────── -->
+  <div id="progress-section" class="max-w-2xl mx-auto mt-8 px-6 hidden">
+    <div class="setup-panel rounded-2xl p-6">
+      <p id="progress-msg" class="font-display text-xs tracking-widest text-stone-400 text-center mb-4">
+        LOADING…
+      </p>
+      <div class="progress-track">
+        <div id="progress-fill" class="progress-fill indeterminate"></div>
+      </div>
+      <p id="progress-sub" class="font-body italic text-stone-600 text-sm text-center mt-3"></p>
+    </div>
+  </div>
+
+  <!-- ── ERROR ─────────────────────────────────────────────────── -->
+  <div id="error-section" class="max-w-2xl mx-auto mt-8 px-6 hidden">
+    <div class="error-banner" id="error-msg">An error occurred.</div>
+  </div>
+
+  <!-- ── RESULTS ───────────────────────────────────────────────── -->
+  <div id="results-section" class="max-w-screen-xl mx-auto mt-10 px-6 pb-16 hidden">
+
+    <!-- Summary chips -->
+    <div id="summary-stats" class="flex flex-wrap gap-4 justify-center mb-10"></div>
+
+    <div class="dashboard-grid">
+
+      <!-- Row 1: Win Rate | Game Length | Spot On -->
+      <div class="chart-panel">
+        <div class="panel-title">Win Rate</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-win-rate"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Game Length Distribution</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-game-length"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Spot On Accuracy by Player</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-spot-on"></canvas></div>
+      </div>
+
+      <!-- Row 2: Challenge Acc | Bid Scatter | Bid Ratio -->
+      <div class="chart-panel">
+        <div class="panel-title">Challenge Accuracy by Player</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-challenge-acc"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Bid vs. Actual Count at Challenge</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-scatter"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Challenge Accuracy by Bid Ratio</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-ratio"></canvas></div>
+      </div>
+
+      <!-- Row 3: Player Profiles (full width) -->
+      <div class="chart-panel panel-full">
+        <div class="panel-title">Player Profiles</div>
+        <div id="table-profiles"></div>
+      </div>
+
+      <!-- Row 4: Bid Escalation (full width) -->
+      <div class="chart-panel panel-full">
+        <div class="panel-title">Bid Escalation Curve</div>
+        <div class="chart-wrap chart-wrap-xl"><canvas id="chart-escalation"></canvas></div>
+      </div>
+
+      <!-- Row 5: Challenge Heatmap (full width) -->
+      <div class="chart-panel panel-full">
+        <div class="panel-title">Challenge Success Rate — Bidder Dice × Bid Amount</div>
+        <div class="heatmap-scroll">
+          <div id="table-heatmap"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="/static/tournament.js"></script>
+</body>
+</html>
