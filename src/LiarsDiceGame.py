@@ -1,12 +1,24 @@
 import logging
 import random
 from datetime import datetime
+from pathlib import Path
 import constants as Constants
 from Player import Player
 from collections import deque
 from models import Action, Bid, GameState, PlayerState, TurnResult
 
 logger = logging.getLogger(__name__)
+
+_CLI_LOGS_DIR = Path(__file__).parent.parent / 'logs' / 'cli'
+_MAX_CLI_LOGS = 10
+
+
+def _cli_log_path() -> Path:
+    _CLI_LOGS_DIR.mkdir(parents=True, exist_ok=True)
+    logs = sorted(_CLI_LOGS_DIR.glob('*_LiarsDiceGame_Log.log'), key=lambda p: p.stat().st_mtime)
+    for old in logs[:max(0, len(logs) - (_MAX_CLI_LOGS - 1))]:
+        old.unlink()
+    return _CLI_LOGS_DIR / f'{datetime.now().strftime("%Y-%m-%d_%H_%M_%S")}_LiarsDiceGame_Log.log'
 
 
 class LiarsDiceGame:
@@ -25,7 +37,7 @@ class LiarsDiceGame:
         self.game_status = True
         self.round_rolls = []
         self._logging = log
-        self._log_path = f'{datetime.now().strftime("%H_%M_%S")}_LiarsDiceGame_Log.log' if log else None
+        self._log_path = _cli_log_path() if log else None
         self._file_handler = None
         self._game_event_logger = None
         self.tot_num_dice = 0
