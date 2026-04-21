@@ -31,6 +31,7 @@ let selectedFace    = 1;
 let eventLog        = [];
 let lastSnapshot    = null;
 let currentTurnPlayer = null; // tracks who's about to act, from turn_started
+let totalDiceInGame = 20;
 
 // ============================================================
 // DOM SHORTHAND
@@ -205,17 +206,40 @@ function renderBid(snap) {
 // ============================================================
 // SNAPSHOT RENDERER (full re-render from state)
 // ============================================================
+function updateSliderFill() {
+  const slider = $('bid-count');
+  if (!slider) return;
+  const min = parseInt(slider.min) || 1;
+  const max = parseInt(slider.max) || 1;
+  const val = parseInt(slider.value) || min;
+  const pct = ((val - min) / (max - min) * 100).toFixed(1) + '%';
+  slider.style.setProperty('--pct', pct);
+}
+
 function renderSnapshot(snap) {
   lastSnapshot = snap;
 
   // Status bar
   const sb = $('status-bar');
+  const totalDice = snap.active_players.reduce((s, p) => s + p.num_dice, 0);
   if (sb) {
-    const totalDice = snap.active_players.reduce((s, p) => s + p.num_dice, 0);
     sb.innerHTML =
       `<span style="font-family:'Cinzel',serif; color:#c9a84c; font-weight:600;">Round ${snap.round_num}</span>` +
       `<span style="color:#3a3028;">·</span>` +
       `<span style="color:#7a6a58;">${totalDice} dice at sea</span>`;
+  }
+
+  // Keep slider max in sync with total dice in game
+  totalDiceInGame = totalDice;
+  const slider = $('bid-count');
+  if (slider) {
+    slider.max = totalDice;
+    if (parseInt(slider.value) > totalDice) {
+      slider.value = totalDice;
+      const disp = $('bid-count-display');
+      if (disp) disp.textContent = totalDice;
+    }
+    updateSliderFill();
   }
 
   renderRoster(snap);
@@ -311,6 +335,10 @@ function enableActions(request) {
     const defaultFace = humanDice.length ? humanDice[0] : 1;
     setSelectedFace(defaultFace);
   }
+
+  const disp = $('bid-count-display');
+  if (disp) disp.textContent = $('bid-count').value;
+  updateSliderFill();
 
   validateBidForm();
 
@@ -681,6 +709,12 @@ function startGame() {
   currentTurnPlayer = null;
   eventLog          = [];
   lastSnapshot      = null;
+  totalDiceInGame   = storedNumPlayers * 5;
+  const slider = $('bid-count');
+  if (slider) { slider.max = totalDiceInGame; slider.value = 2; }
+  const disp = $('bid-count-display');
+  if (disp) disp.textContent = '2';
+  updateSliderFill();
 
   renderHumanDice();
   renderFeed();
@@ -703,31 +737,37 @@ function initCoinDial() {
 
   if (!numSelect || !coinWidget) return;
 
+  let current = parseInt(numSelect.value) || 3;
+
   function sync() {
-    const total = parseInt(numSelect.value) || 3;
-    const opp   = total - 1;
+    const opp = current - 1;
     coinNumber.textContent = opp;
     coinLabel.textContent  = opp === 1 ? 'OPPONENT' : 'OPPONENTS';
-    prevBtn.disabled = total <= 2;
-    nextBtn.disabled = total >= MAX_PLAYERS;
+    prevBtn.disabled = current <= 2;
+    nextBtn.disabled = current >= MAX_PLAYERS;
+    numSelect.value  = String(current);
   }
 
   function tick(delta) {
-    const v = parseInt(numSelect.value) || 3;
-    const next = Math.min(Math.max(v + delta, 2), MAX_PLAYERS);
-    if (next === v) return;
-    numSelect.value = next;
-    // Brief coin-spin animation
-    coinWidget.classList.remove('coin-ticked');
-    void coinWidget.offsetWidth; // force reflow to restart animation
-    coinWidget.classList.add('coin-ticked');
+    const next = Math.min(Math.max(current + delta, 2), MAX_PLAYERS);
+    if (next === current) return;
+    current = next;
     sync();
+    coinWidget.classList.remove('coin-ticked');
+    void coinWidget.offsetWidth;
+    coinWidget.classList.add('coin-ticked');
+    coinWidget.addEventListener('animationend', () => coinWidget.classList.remove('coin-ticked'), { once: true });
   }
 
   prevBtn.addEventListener('click', () => tick(-1));
   nextBtn.addEventListener('click', () => tick(+1));
 
-  sync(); // align visual with whatever initLobby() set
+  coinWidget.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    tick(e.deltaY > 0 ? -1 : 1);
+  }, { passive: false });
+
+  sync();
 }
 
 // ============================================================
@@ -748,7 +788,12 @@ function initPlayAgain() {
 // BID FORM WIRING
 // ============================================================
 function initBidForm() {
-  $('bid-count').addEventListener('input', validateBidForm);
+  $('bid-count').addEventListener('input', () => {
+    const disp = $('bid-count-display');
+    if (disp) disp.textContent = $('bid-count').value;
+    updateSliderFill();
+    validateBidForm();
+  });
 
   $('btn-confirm-bid').addEventListener('click', () => {
     if (!isHumanTurn || !currentRequest) return;
@@ -794,4 +839,5 @@ document.addEventListener('DOMContentLoaded', () => {
   initBidForm();
   initPlayAgain();
   disableActions();
+  updateSliderFill();
 });

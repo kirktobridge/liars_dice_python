@@ -28,6 +28,7 @@
       justify-content: center;
       gap: 20px;
       padding: 6px 0;
+      perspective: 400px;
     }
 
     .coin {
@@ -47,7 +48,6 @@
       position: relative;
       user-select: none;
       flex-shrink: 0;
-      perspective: 400px;
     }
 
     .coin-face {
@@ -155,6 +155,43 @@
     }
     .coin-arrow:active:not(:disabled) { transform: scale(0.91); }
     .coin-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+
+    /* ── BID COUNT SLIDER ────────────────────────────────── */
+    #bid-count {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #2a2018;
+      outline: none;
+      cursor: pointer;
+    }
+    #bid-count::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #ffe47a, #c9a84c 55%, #8a6010);
+      border: 2px solid #3a2810;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+    }
+    #bid-count::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 38% 35%, #ffe47a, #c9a84c 55%, #8a6010);
+      border: 2px solid #3a2810;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+    }
+    #bid-count::-webkit-slider-runnable-track {
+      background: linear-gradient(to right, #c9a84c var(--pct, 0%), #2a2018 var(--pct, 0%));
+      height: 6px;
+      border-radius: 3px;
+    }
   </style>
 </head>
 <body class="h-full text-stone-100 overflow-hidden">
@@ -275,11 +312,14 @@
           <div class="mb-4">
             <div id="bid-action-label" class="text-xs font-display tracking-widest text-stone-500 mb-3">MAKE YOUR BID</div>
 
-            <div class="flex items-center gap-3 mb-3">
-              <label class="text-stone-400 text-sm shrink-0">Count</label>
-              <input id="bid-count" type="number" min="1" value="2"
-                class="bg-stone-900 border border-stone-700 rounded-lg px-3 py-1 text-stone-100 w-20
-                       focus:outline-none focus:border-amber-500 text-center">
+            <div class="mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-stone-400 text-sm">Count</label>
+                <span id="bid-count-display"
+                  class="font-display font-bold text-xl text-amber-400"
+                  style="text-shadow:0 0 8px rgba(201,168,76,0.4); min-width:2ch; text-align:right;">2</span>
+              </div>
+              <input id="bid-count" type="range" min="1" max="20" value="2">
             </div>
 
             <div class="text-stone-500 text-xs font-display tracking-wide mb-2">FACE VALUE</div>
