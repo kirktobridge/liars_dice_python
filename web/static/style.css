@@ -51,15 +51,62 @@ body {
 }
 
 /* ============================================================
-   LOBBY BACKGROUND DECORATION
+   LOBBY — STORMY OCEAN BACKGROUND
    ============================================================ */
-.lobby-bg {
+.ocean-bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 80%, rgba(15, 35, 50, 0.6) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(40, 20, 5, 0.5) 0%, transparent 50%);
+  background: linear-gradient(170deg, #040810 0%, #070f1c 35%, #091422 70%, #050b16 100%);
+  overflow: hidden;
   pointer-events: none;
+}
+
+.wave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260%;
+  height: 260%;
+  margin-left: -130%;
+  margin-top: -130%;
+  border-radius: 42%;
+}
+
+.wave-1 {
+  background: rgba(10, 30, 72, 0.42);
+  animation: wave-spin 14s linear infinite;
+}
+
+.wave-2 {
+  background: rgba(6, 18, 52, 0.38);
+  animation: wave-spin 19s linear infinite reverse;
+  border-radius: 38%;
+}
+
+.wave-3 {
+  background: rgba(14, 38, 82, 0.3);
+  animation: wave-spin 24s linear infinite;
+  border-radius: 46%;
+  animation-delay: -8s;
+}
+
+.wave-4 {
+  background: rgba(4, 12, 36, 0.4);
+  animation: wave-spin 11s linear infinite reverse;
+  border-radius: 35%;
+  animation-delay: -3s;
+}
+
+.wave-5 {
+  background: rgba(22, 52, 105, 0.18);
+  animation: wave-spin 31s linear infinite;
+  border-radius: 50%;
+  animation-delay: -15s;
+}
+
+@keyframes wave-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 /* ============================================================
