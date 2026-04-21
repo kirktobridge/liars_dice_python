@@ -2,7 +2,7 @@
 .claude/
 *LiarsDiceGame_Log.txt
 *.png
-
+logs/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
