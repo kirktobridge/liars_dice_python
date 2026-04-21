@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sys
@@ -12,10 +13,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from web.game_session import GameSession
+from web.timing import EVENT_DELAYS
+from web.web_logging import setup_web_logging, get_logger
 from models import Action, Bid, InputResponse
 import constants as Constants
 
 BASE = Path(__file__).parent
+
+setup_web_logging()
+_log = get_logger('app')
 
 app = FastAPI()
 app.mount('/static', StaticFiles(directory=str(BASE / 'static')), name='static')
@@ -43,23 +49,31 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
     try:
         join_raw = await websocket.receive_json()
         if join_raw.get('type') != 'join':
+            _log.warning('session=%s bad handshake: %s', session_id[:8], join_raw.get('type'))
             await websocket.close(code=1008)
             return
 
         human_name: str = join_raw['human_name']
         num_players: int = int(join_raw['num_players'])
-        session = GameSession(num_players=num_players, human_name=human_name)
+        session = GameSession(num_players=num_players, human_name=human_name,
+                              session_id=session_id)
         _sessions[session_id] = session
+        _log.info('SESSION_CREATE session=%s player=%r num_players=%d',
+                  session_id[:8], human_name, num_players)
 
-        import asyncio
         loop = asyncio.get_event_loop()
 
         while True:
             msg = await loop.run_in_executor(None, session.get_next_message)
+            delay = EVENT_DELAYS.get(msg['event'].get('type', ''), 0.0)
+            if delay:
+                await asyncio.sleep(delay)
             await websocket.send_json(_to_json_safe(msg))
 
             snap = msg.get('snapshot', {})
             if snap.get('game_over'):
+                winner = snap.get('winner', 'unknown')
+                _log.info('GAME_OVER session=%s winner=%r', session_id[:8], winner)
                 break
 
             if msg['event'].get('type') == 'input_request':
@@ -67,9 +81,14 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 session.send_action(_parse_response(raw))
 
     except WebSocketDisconnect:
-        pass
+        _log.info('SESSION_DISCONNECT session=%s', session_id[:8])
+    except Exception:
+        _log.exception('SESSION_ERROR session=%s', session_id[:8])
+        raise
     finally:
         _sessions.pop(session_id, None)
+        _log.debug('SESSION_CLEANUP session=%s active_sessions=%d',
+                   session_id[:8], len(_sessions))
 
 
 def _to_json_safe(obj) -> dict:
@@ -146,6 +165,7 @@ def _numpy_default(o):
 
 
 def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
+    _log.info('TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, num_players)
     try:
         from tournament import run_tournament
         from charts import compute_tournament_stats
@@ -154,5 +174,7 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
         stats = compute_tournament_stats(df, df_rounds, df_elim)
         sanitized = json.loads(json.dumps(stats, default=_numpy_default))
         _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
+        _log.info('TOURNAMENT_COMPLETE job=%s', job_id[:8])
     except Exception as exc:
         _jobs[job_id].update(status='error', progress=0.0, error=str(exc))
+        _log.exception('TOURNAMENT_ERROR job=%s', job_id[:8])

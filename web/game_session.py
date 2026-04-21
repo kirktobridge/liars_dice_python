@@ -10,6 +10,7 @@ from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 import constants as Constants
 from models import Action, Bid, InputRequest, InputResponse
+from web.web_logging import get_logger
 
 
 class WebInputHandler:
@@ -46,11 +47,14 @@ def _serialise_request(req: InputRequest) -> dict:
 
 
 class GameSession:
-    def __init__(self, num_players: int, human_name: str) -> None:
+    def __init__(self, num_players: int, human_name: str, session_id: str = '') -> None:
         self._out: queue.Queue[dict] = queue.Queue()
         self._handler = WebInputHandler()
         self._num_players = num_players
         self._human_name = human_name
+        self._session_id = session_id[:8] or 'unknown'
+        self._log = get_logger(f'session.{self._session_id}')
+        self._event_seq = 0
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
 
@@ -60,7 +64,13 @@ class GameSession:
         cpu_names = rng.sample(available, self._num_players - 1)
 
         def on_event(event: dict) -> None:
+            self._event_seq += 1
             snap = game.snapshot().to_dict()
+            self._log.debug('#%d | %s | %s | %s',
+                            self._event_seq,
+                            event.get('type', '?'),
+                            event.get('player', 'SYS'),
+                            event.get('bid') or event.get('data', ''))
             self._out.put({'event': event, 'snapshot': snap})
 
         game = LiarsDiceGame(self._num_players, on_event=on_event)
@@ -77,6 +87,7 @@ class GameSession:
 
         # Sentinel with game_over=True snapshot
         snap = game.snapshot().to_dict()
+        self._log.info('SESSION_ENDED after %d events', self._event_seq)
         self._out.put({'event': {'type': 'session_ended'}, 'snapshot': snap})
 
     def send_action(self, response: InputResponse) -> None:
