@@ -273,13 +273,13 @@ class Player:
         if ctx.spot_on_prob == best_probability:
             return TurnResult(None, Action.SPOT_ON, self.name)
 
-        # Priority 2: Stochastic SPOT_ON override — risk appetite can override the dominant play
-        if ctx.spot_on_prob > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
-            return TurnResult(None, Action.SPOT_ON, self.name)
-
-        # Priority 3: CHALLENGE if dominant
+        # Priority 2: CHALLENGE if dominant
         if effective_challenge_prob == best_probability:
             return TurnResult(None, Action.CHALLENGE, self.name)
+
+        # Priority 3: Stochastic SPOT_ON override — risk appetite can override the dominant play
+        if ctx.spot_on_prob > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
+            return TurnResult(None, Action.SPOT_ON, self.name)
 
         # Priority 4: BID or RAISE
         action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
