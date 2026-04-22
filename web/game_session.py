@@ -10,6 +10,7 @@ from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 import constants as Constants
 from models import Action, Bid, InputRequest, InputResponse
+from advisor import advisor_probs
 from web.web_logging import get_logger
 
 
@@ -28,8 +29,20 @@ class WebInputHandler:
     def __call__(self, request: InputRequest) -> InputResponse:
         snap = self._game.snapshot().to_dict() if self._game else {}
         assert self._out is not None, 'WebInputHandler.bind() must be called before use'
+        valid_bids = _compute_valid_bids(request)
+        prev_bid_obj = request.get('prev_bid')  # Bid dataclass (before serialisation)
+        advisor = advisor_probs(
+            human_dice=request['dice'],
+            tot_other_dice=request['tot_other_dice'],
+            prev_bid=prev_bid_obj,
+            valid_bids=valid_bids,
+        )
         self._out.put({
-            'event': {'type': 'input_request', 'request': _serialise_request(request)},
+            'event': {
+                'type': 'input_request',
+                'request': _serialise_request(request),
+                'advisor': _serialise_advisor(advisor),
+            },
             'snapshot': snap,
         })
         return self._action_queue.get()
@@ -44,6 +57,33 @@ def _serialise_request(req: InputRequest) -> dict:
         b = out['prev_bid']
         out['prev_bid'] = {'count': b.count, 'face': b.face}
     return out
+
+
+def _compute_valid_bids(request: InputRequest) -> list[Bid]:
+    dice = request['dice']
+    tot_other = request['tot_other_dice']
+    max_count = tot_other + len(dice)
+    if request['type'] == 'opening_bid':
+        return [Bid(c, f) for c in range(1, max_count + 1) for f in range(1, 7)]
+    prev = request['prev_bid']  # Bid dataclass (before serialisation)
+    result = []
+    for c in range(prev.count, max_count + 1):
+        for f in range(1, 7):
+            if c > prev.count or (c == prev.count and f > prev.face):
+                result.append(Bid(c, f))
+    return result
+
+
+def _serialise_advisor(data: dict) -> dict:
+    bid_probs_serial = {
+        str(face): {str(count): round(prob, 4) for count, prob in counts.items()}
+        for face, counts in data['bid_probs'].items()
+    }
+    return {
+        'challenge_prob': data['challenge_prob'],
+        'spot_on_prob':   data['spot_on_prob'],
+        'bid_probs':      bid_probs_serial,
+    }
 
 
 class GameSession:

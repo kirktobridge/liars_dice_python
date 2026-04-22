@@ -324,3 +324,35 @@ body {
    ============================================================ */
 .font-display { font-family: 'Cinzel', serif; }
 .font-decorative { font-family: 'Cinzel Decorative', serif; }
+
+/* ============================================================
+   ADVISOR MODE
+   ============================================================ */
+.advisor-wrapper { position: relative; }
+
+.advisor-prob {
+    display: block;
+    font-size: 0.68rem;
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.05em;
+    text-align: center;
+    height: 1rem;
+    line-height: 1rem;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+/* Show on wrapper hover when the span has text */
+.advisor-wrapper:hover .advisor-prob:not(:empty) { opacity: 1; }
+
+/* Bid prob always visible (below confirm button, user is already looking at it) */
+#advisor-bid-prob { opacity: 1; min-height: 1rem; }
+
+.advisor-prob-good { color: #6da870; }
+.advisor-prob-dim  { color: #5a5040; }
+
+.advisor-toggle-on {
+    color: #c9a84c !important;
+    border-color: #c9a84c !important;
+}

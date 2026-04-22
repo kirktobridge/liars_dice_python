@@ -32,6 +32,8 @@ let eventLog        = [];
 let lastSnapshot    = null;
 let currentTurnPlayer = null; // tracks who's about to act, from turn_started
 let totalDiceInGame = 20;
+let advisorData     = null;
+let advisorEnabled  = false;
 
 // ============================================================
 // DOM SHORTHAND
@@ -359,6 +361,8 @@ function disableActions() {
   setButtonDisabled($('btn-confirm-bid'), true);
 
   $('waiting-indicator').style.display = '';
+  advisorData = null;
+  updateAdvisorDisplay();
 }
 
 function setButtonDisabled(btn, disabled) {
@@ -384,6 +388,7 @@ function initFaceSelector() {
     btn.addEventListener('click', () => {
       setSelectedFace(f);
       validateBidForm();
+      updateAdvisorBidProb();
     });
     container.appendChild(btn);
   }
@@ -518,7 +523,9 @@ function handleMessage(data) {
     const req = event.request;
     humanDice = req.dice || [];
     renderHumanDice();
+    advisorData = event.advisor || null;
     enableActions(req);
+    updateAdvisorDisplay();
     addFeedEntry(`<span style="color:#c9a84c; font-family:'Cinzel',serif; font-size:0.8rem;">YOUR TURN</span>`);
     return;
   }
@@ -793,6 +800,7 @@ function initBidForm() {
     if (disp) disp.textContent = $('bid-count').value;
     updateSliderFill();
     validateBidForm();
+    updateAdvisorBidProb();
   });
 
   $('btn-confirm-bid').addEventListener('click', () => {
@@ -826,6 +834,63 @@ function escHtml(str) {
 }
 
 // ============================================================
+// ADVISOR MODE
+// ============================================================
+function updateAdvisorToggle() {
+  const btn = $('btn-advisor-toggle');
+  if (!btn) return;
+  btn.setAttribute('aria-pressed', String(advisorEnabled));
+  btn.classList.toggle('advisor-toggle-on', advisorEnabled);
+}
+
+function updateAdvisorBidProb() {
+  const span = $('advisor-bid-prob');
+  if (!span) return;
+  if (!advisorEnabled || !advisorData || !isHumanTurn) { span.textContent = ''; return; }
+  const count = String($('bid-count').value);
+  const face  = String(selectedFace);
+  const faceMap = advisorData.bid_probs && advisorData.bid_probs[face];
+  const p = (faceMap && faceMap[count] !== undefined) ? faceMap[count] : null;
+  if (p === null) { span.textContent = ''; return; }
+  const pct = Math.round(p * 100);
+  span.textContent = `${pct}% holds`;
+  span.className   = 'advisor-prob ' + (p >= 0.5 ? 'advisor-prob-good' : 'advisor-prob-dim');
+}
+
+function updateAdvisorDisplay() {
+  const challengeSpan = $('advisor-challenge-prob');
+  const spotOnSpan    = $('advisor-spot-on-prob');
+
+  if (!advisorEnabled || !advisorData || !isHumanTurn) {
+    if (challengeSpan) challengeSpan.textContent = '';
+    if (spotOnSpan)    spotOnSpan.textContent    = '';
+    updateAdvisorBidProb();
+    return;
+  }
+
+  const setSpan = (span, p, label) => {
+    if (!span) return;
+    if (p === null || p === undefined) { span.textContent = ''; return; }
+    const pct = Math.round(p * 100);
+    span.textContent = `${pct}% ${label}`;
+    span.className   = 'advisor-prob ' + (p >= 0.5 ? 'advisor-prob-good' : 'advisor-prob-dim');
+  };
+  setSpan(challengeSpan, advisorData.challenge_prob, 'success');
+  setSpan(spotOnSpan,    advisorData.spot_on_prob,   'exact');
+  updateAdvisorBidProb();
+}
+
+function initAdvisorToggle() {
+  const btn = $('btn-advisor-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    advisorEnabled = !advisorEnabled;
+    updateAdvisorToggle();
+    updateAdvisorDisplay();
+  });
+}
+
+// ============================================================
 // BOOT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
@@ -838,6 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initCoinDial();
   initBidForm();
   initPlayAgain();
+  initAdvisorToggle();
   disableActions();
   updateSliderFill();
 });
