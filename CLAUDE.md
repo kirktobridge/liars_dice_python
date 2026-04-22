@@ -26,6 +26,48 @@ A Flask web interface lives under `web/`:
 
 Run the web server: .venv/bin/uvicorn web.app:app
 
+## Logging
+
+Log files are written to `logs/`:
+
+- `logs/web/` — web server session logs (up to 10 kept, oldest pruned). Each file covers one server run. Logger hierarchy: `liars_dice` (root) → `liars_dice.game` (`LiarsDiceGame.py`) → `liars_dice.player` (`Player.py`) → `liars_dice.game_events` (per-turn event file, CLI only). Format: `HH:MM:SS | LEVEL | logger | message`.
+- `logs/cli/` — per-game event log written when `LiarsDiceGame(log=True)` is used from the CLI.
+
+Every log line from `liars_dice.game` includes a full dice snapshot: `Name(n):[d1,d2,...]` for all active players. Key events and what they record:
+
+| Log token | What it tells you |
+|---|---|
+| `turn start \| <player>` | Which player's turn is starting; full hands at that moment |
+| `calling take_turn \| prev_action=... \| prev_bid=...` | What state was handed to the player's decision logic |
+| `BID \| <player> bids NxF` | Player made a bid; hands at the moment of the bid |
+| `RAISE \| <player> raises to NxF` | Player raised; hands at that moment |
+| `CHALLENGE \| <challenger> challenges <bidder> bid NxF` | Challenge called; full hands visible |
+| `CHALLENGE result \| succeeded=... \| bid=NxF actual=A (ones=O) \| loser=...` | Outcome: whether the bid held, real count of the face, ones count, who loses a die |
+| `SPOT-ON \| <caller> calls spot-on on <bidder> bid NxF` | Spot-on called; full hands visible |
+| `SPOT-ON result \| succeeded=... \| bid=NxF actual=A \| losers=[...]` | Outcome: exact count vs bid, who loses |
+
+### Using logs for RCA
+
+**Bad AI decision (e.g. called challenge when bid was safe):** Find the `CHALLENGE` line, note the hands snapshot, then look one line up at `calling take_turn | prev_bid=...` to confirm what the player saw. Cross-check `CHALLENGE result actual=` — if the actual count was well above the bid, the player's probability model misjudged. Check `Player.py` `_get_challenge_prob` with those dice counts.
+
+**Spot-on called at wrong time:** Find `SPOT-ON` line and read the hands. Check whether any player's dice could plausibly have produced the exact bid count — if the hands make it obvious the spot-on was a long shot, trace back through `calling take_turn` lines to see what prior bids led to that decision.
+
+**Player stuck / round didn't end:** Search for `NONE` actions (logged as `Action.NONE`). A run of NONE events for the same player means `take_turn` raised an exception; the preceding `calling take_turn` line shows the game state that triggered it.
+
+**Dice counts not adding up after elimination:** Compare `turn start` snapshots at the start of consecutive rounds. The `(n)` count beside each name is the authoritative die count at that moment.
+
+**Quick grep recipes:**
+```bash
+# All decisions for one player in the latest web log
+grep "Alice" logs/web/*.log | grep -E "BID|RAISE|CHALLENGE|SPOT-ON"
+
+# Every challenge outcome in a session
+grep "CHALLENGE result" logs/web/*.log
+
+# Rounds where spot-on succeeded
+grep "SPOT-ON result.*succeeded=True" logs/web/*.log
+```
+
 ## Test Commands
 
 - Run all tests: `.venv/bin/pytest tests/ -v`
