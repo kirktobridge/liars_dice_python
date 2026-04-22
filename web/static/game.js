@@ -221,13 +221,13 @@ function updateSliderFill() {
 function renderSnapshot(snap) {
   lastSnapshot = snap;
 
-  // Status bar
-  const sb = $('status-bar');
+  // Status bar — update text span only so the ADVISOR button is preserved
+  const sbText = $('status-bar-text');
   const totalDice = snap.active_players.reduce((s, p) => s + p.num_dice, 0);
-  if (sb) {
-    sb.innerHTML =
+  if (sbText) {
+    sbText.innerHTML =
       `<span style="font-family:'Cinzel',serif; color:#c9a84c; font-weight:600;">Round ${snap.round_num}</span>` +
-      `<span style="color:#3a3028;">·</span>` +
+      `<span style="color:#3a3028; margin:0 0.4rem;">·</span>` +
       `<span style="color:#7a6a58;">${totalDice} dice at sea</span>`;
   }
 
