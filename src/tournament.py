@@ -2,6 +2,7 @@ import logging
 import os
 import random
 import sys
+from collections.abc import Callable
 
 logging.getLogger('liars_dice').addHandler(logging.NullHandler())
 logger = logging.getLogger(__name__)
@@ -98,7 +99,11 @@ def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personal
 
 
 def run_tournament(
-    n: int, num_players: int = 4, workers: int | None = None, parallel: bool = False
+    n: int,
+    num_players: int = 4,
+    workers: int | None = None,
+    parallel: bool = False,
+    on_progress: Callable[[float], None] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run n games and return (df_games, df_rounds, df_eliminations).
 
@@ -109,7 +114,8 @@ def run_tournament(
     if not (2 <= num_players <= Constants.MAX_PLAYERS):
         raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
     # Create players once so personalities are consistent across all games
-    personality_rng = random.Random(0)
+    # We don't need them to be same across tournaments though. Let's consider seed=0 "canon"
+    personality_rng = random.Random()
     names = Constants.PLAYER_NAMES[:num_players]
     persistent_players = {name: Player(name, rng=personality_rng) for name in names}
 
@@ -132,6 +138,8 @@ def run_tournament(
                 result = run_game(seed=i, num_players=num_players, players=persistent_players)
                 results.append(result)
                 pbar.set_postfix(last_winner=result['winner'], rounds=result['rounds'])
+                if on_progress and (i % update_interval == 0):
+                    on_progress((i + 1) / n)
     else:
         # Parallel path — snapshot personalities so workers can reconstruct players safely
         personalities: _Personalities = {

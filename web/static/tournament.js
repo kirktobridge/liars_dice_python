@@ -120,10 +120,10 @@ document.getElementById('run-form').addEventListener('submit', async e => {
   stopPolling();
   document.getElementById('progress-msg').textContent =
     `SIMULATING ${n.toLocaleString()} GAMES WITH ${numPlayers} PLAYERS…`;
-  document.getElementById('progress-sub').textContent = 'This may take a moment. Hold your dice.';
+  document.getElementById('progress-sub').textContent = 'Hold your dice…';
   const fill = document.getElementById('progress-fill');
-  fill.style.width = '';
-  fill.classList.add('indeterminate');
+  fill.classList.remove('indeterminate');
+  fill.style.width = '0%';
   showSection('progress-section');
 
   try {
@@ -139,7 +139,7 @@ document.getElementById('run-form').addEventListener('submit', async e => {
     }
     const data = await resp.json();
     jobId = data.job_id;
-    pollTimer = setInterval(pollStatus, 1000);
+    pollTimer = setInterval(pollStatus, 200);
   } catch (err) {
     showError(`Network error: ${err.message}`);
   }
@@ -158,10 +158,13 @@ async function pollStatus() {
     if (!resp.ok) return;
     const data = await resp.json();
 
+    const fill = document.getElementById('progress-fill');
+    const pct  = Math.round((data.progress || 0) * 100);
+    fill.style.width = `${pct}%`;
+    document.getElementById('progress-sub').textContent = `${pct}% complete`;
+
     if (data.status === 'complete') {
       stopPolling();
-      const fill = document.getElementById('progress-fill');
-      fill.classList.remove('indeterminate');
       fill.style.width = '100%';
       document.getElementById('progress-sub').textContent = 'Complete! Rendering the spoils…';
       setTimeout(fetchAndRender, 200);

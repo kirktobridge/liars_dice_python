@@ -24,7 +24,7 @@ A Flask web interface lives under `web/`:
 - `web/static/` — CSS, JS, and static assets
 - `web/test_smoke.py` — smoke tests for the Flask app routes
 
-Run the web server: `python -m web.app` (or `flask --app web.app run`)
+Run the web server: .venv/bin/uvicorn web.app:app
 
 ## Test Commands
 

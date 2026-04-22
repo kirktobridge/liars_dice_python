@@ -2,12 +2,13 @@ import asyncio
 import json
 import os
 import sys
+import threading
 import uuid
 from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -124,7 +125,7 @@ class _TournamentRunBody(BaseModel):
 
 
 @app.post('/tournament/run')
-async def tournament_run(body: _TournamentRunBody, background_tasks: BackgroundTasks):
+async def tournament_run(body: _TournamentRunBody):
     if not (1 <= body.n <= 10000):
         raise HTTPException(status_code=422, detail='n must be between 1 and 10000')
     if not (2 <= body.num_players <= Constants.MAX_PLAYERS):
@@ -134,7 +135,9 @@ async def tournament_run(body: _TournamentRunBody, background_tasks: BackgroundT
         )
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {'status': 'running', 'progress': 0.0, 'result': None, 'error': None}
-    background_tasks.add_task(_tournament_worker, job_id, body.n, body.num_players)
+    threading.Thread(
+        target=_tournament_worker, args=(job_id, body.n, body.num_players), daemon=True
+    ).start()
     return {'job_id': job_id}
 
 
@@ -170,7 +173,10 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
         from tournament import run_tournament
         from charts import compute_tournament_stats
 
-        df, df_rounds, df_elim = run_tournament(n, num_players, parallel=False)
+        def _progress_cb(frac: float) -> None:
+            _jobs[job_id]['progress'] = frac
+
+        df, df_rounds, df_elim = run_tournament(n, num_players, parallel=False, on_progress=_progress_cb)
         stats = compute_tournament_stats(df, df_rounds, df_elim)
         sanitized = json.loads(json.dumps(stats, default=_numpy_default))
         _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
