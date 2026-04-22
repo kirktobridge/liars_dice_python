@@ -51,7 +51,8 @@ def _build_result(
 
 def run_game(seed: int, num_players: int, players: dict[str, Player] | None = None) -> dict:
     rng = random.Random(seed)
-    names = Constants.PLAYER_NAMES[:num_players]
+    names = list(players.keys()) if players is not None else Constants.PLAYER_NAMES[:num_players]
+    num_players = len(names)
     if players is None:
         players = {name: Player(name, rng=rng) for name in names}
     else:
@@ -104,20 +105,37 @@ def run_tournament(
     workers: int | None = None,
     parallel: bool = False,
     on_progress: Callable[[float], None] | None = None,
+    player_configs: list[dict] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run n games and return (df_games, df_rounds, df_eliminations).
 
     parallel=True uses ProcessPoolExecutor and is intended for CLI/offline use only.
     Web callers must use the default parallel=False (serial path) to avoid spawning
     subprocesses inside a request handler or async event loop.
+
+    player_configs: optional list of dicts with keys name, risk_appetite,
+        peer_pressure_score, attentiveness_score. When provided, these players
+        are used with fixed personalities instead of randomly assigning traits.
     """
+    if player_configs is not None:
+        names = [c['name'] for c in player_configs]
+        num_players = len(names)
+    else:
+        names = Constants.PLAYER_NAMES[:num_players]
     if not (2 <= num_players <= Constants.MAX_PLAYERS):
         raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
-    # Create players once so personalities are consistent across all games
-    # We don't need them to be same across tournaments though. Let's consider seed=0 "canon"
-    personality_rng = random.Random()
-    names = Constants.PLAYER_NAMES[:num_players]
-    persistent_players = {name: Player(name, rng=personality_rng) for name in names}
+    if player_configs is not None:
+        dummy_rng = random.Random()
+        persistent_players = {}
+        for c in player_configs:
+            p = Player(c['name'], rng=dummy_rng)
+            p.risk_appetite = c['risk_appetite']
+            p.peer_pressure_score = c['peer_pressure_score']
+            p.attentiveness_score = c['attentiveness_score']
+            persistent_players[c['name']] = p
+    else:
+        personality_rng = random.Random()
+        persistent_players = {name: Player(name, rng=personality_rng) for name in names}
 
     num_workers = workers if workers is not None else os.cpu_count() or 1
     # Throttle tqdm updates for large simulations to avoid render overhead

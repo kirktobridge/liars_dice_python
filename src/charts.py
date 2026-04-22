@@ -100,7 +100,14 @@ def compute_tournament_stats(
     ))
 
     # --- Player profiles ---
-    all_players = Constants.PLAYER_NAMES[:num_players_val]
+    # Derive from the p_*_risk columns present in the DataFrame so custom
+    # player sets (which differ from PLAYER_NAMES[:n]) work correctly.
+    _safe_to_name = {name.replace(' ', '_'): name for name in Constants.PLAYER_NAMES}
+    all_players = [
+        _safe_to_name[col[2:-5]]
+        for col in df.columns
+        if col.startswith('p_') and col.endswith('_risk') and col[2:-5] in _safe_to_name
+    ]
     profile_wins: list[int] = []
     profile_win_pct: list[str] = []
     profile_risk: list[int] = []

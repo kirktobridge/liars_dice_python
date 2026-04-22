@@ -535,6 +535,171 @@ function renderEscalation(s) {
   });
 }
 
+// ── custom tournament ─────────────────────────────────────────────────────────
+
+let ALL_NAMES = [];
+
+async function loadPlayerNames() {
+  try {
+    const resp = await fetch('/tournament/player-names');
+    if (resp.ok) ALL_NAMES = (await resp.json()).names;
+  } catch (_) {}
+}
+
+function getUsedNames() {
+  return Array.from(document.querySelectorAll('.custom-name-select')).map(s => s.value);
+}
+
+function refreshCustomControls() {
+  const rows = document.querySelectorAll('.custom-player-row');
+  document.getElementById('btn-add-player').disabled = rows.length >= 8;
+  const used = new Set(getUsedNames());
+  document.querySelectorAll('.custom-name-select').forEach(sel => {
+    const current = sel.value;
+    Array.from(sel.options).forEach(opt => {
+      opt.disabled = used.has(opt.value) && opt.value !== current;
+    });
+  });
+  document.querySelectorAll('.btn-remove-player').forEach(btn => {
+    btn.disabled = rows.length <= 2;
+  });
+}
+
+function traitDisplayLabel(type, v) {
+  if (type === 'risk') return riskLabel(v);
+  if (type === 'att')  return attLabel(v);
+  return String(v);
+}
+
+function addPlayerRow(name, risk = 50, peer = 50, att = 50) {
+  const list = document.getElementById('custom-player-list');
+  const row  = document.createElement('div');
+  row.className = 'custom-player-row';
+
+  const nameOpts = ALL_NAMES.map(n =>
+    `<option value="${n}"${n === name ? ' selected' : ''}>${n}</option>`
+  ).join('');
+
+  row.innerHTML = `
+    <select class="custom-name-select">${nameOpts}</select>
+    <div class="custom-row-traits">
+      <div class="trait-group">
+        <label>Risk Appetite</label>
+        <input type="range" class="trait-slider" min="1" max="100" value="${risk}" data-trait="risk">
+        <span class="trait-value">${traitDisplayLabel('risk', risk)}</span>
+      </div>
+      <div class="trait-group">
+        <label>Peer Pressure</label>
+        <input type="range" class="trait-slider" min="1" max="100" value="${peer}" data-trait="peer">
+        <span class="trait-value">${peer}</span>
+      </div>
+      <div class="trait-group">
+        <label>Attentiveness</label>
+        <input type="range" class="trait-slider" min="1" max="100" value="${att}" data-trait="att">
+        <span class="trait-value">${traitDisplayLabel('att', att)}</span>
+      </div>
+    </div>
+    <button class="btn-remove-player" type="button" title="Remove player">✕</button>
+  `;
+
+  row.querySelectorAll('.trait-slider').forEach(slider => {
+    slider.addEventListener('input', () => {
+      const v = parseInt(slider.value, 10);
+      slider.nextElementSibling.textContent = traitDisplayLabel(slider.dataset.trait, v);
+    });
+  });
+
+  row.querySelector('.custom-name-select').addEventListener('change', refreshCustomControls);
+
+  row.querySelector('.btn-remove-player').addEventListener('click', () => {
+    row.remove();
+    refreshCustomControls();
+  });
+
+  list.appendChild(row);
+  refreshCustomControls();
+}
+
+function initCustomScreen() {
+  document.getElementById('custom-player-list').innerHTML = '';
+  ALL_NAMES.slice(0, 4).forEach(name => addPlayerRow(name));
+}
+
+// Mode toggle
+document.getElementById('btn-mode-standard').addEventListener('click', () => {
+  document.getElementById('setup-section').classList.remove('hidden');
+  document.getElementById('custom-section').classList.add('hidden');
+  document.getElementById('btn-mode-standard').classList.add('active');
+  document.getElementById('btn-mode-custom').classList.remove('active');
+});
+
+document.getElementById('btn-mode-custom').addEventListener('click', () => {
+  document.getElementById('setup-section').classList.add('hidden');
+  document.getElementById('custom-section').classList.remove('hidden');
+  document.getElementById('btn-mode-standard').classList.remove('active');
+  document.getElementById('btn-mode-custom').classList.add('active');
+  if (document.querySelectorAll('.custom-player-row').length === 0) initCustomScreen();
+});
+
+// Add pirate button
+document.getElementById('btn-add-player').addEventListener('click', () => {
+  const used = new Set(getUsedNames());
+  const next = ALL_NAMES.find(n => !used.has(n)) || ALL_NAMES[0];
+  addPlayerRow(next);
+});
+
+// Custom run form
+document.getElementById('custom-run-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const n     = parseInt(document.getElementById('custom-n-games').value, 10);
+  const errEl = document.getElementById('custom-form-error');
+
+  if (!n || n < 1 || n > 10000) {
+    errEl.textContent = 'Number of games must be between 1 and 10,000.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  errEl.classList.add('hidden');
+
+  const rows = document.querySelectorAll('.custom-player-row');
+  const players = Array.from(rows).map(row => ({
+    name:                row.querySelector('.custom-name-select').value,
+    risk_appetite:       parseInt(row.querySelector('[data-trait="risk"]').value, 10),
+    peer_pressure_score: parseInt(row.querySelector('[data-trait="peer"]').value, 10),
+    attentiveness_score: parseInt(row.querySelector('[data-trait="att"]').value, 10),
+  }));
+
+  stopPolling();
+  document.getElementById('progress-msg').textContent =
+    `SIMULATING ${n.toLocaleString()} CUSTOM GAMES WITH ${players.length} PLAYERS…`;
+  document.getElementById('progress-sub').textContent = 'Hold your dice…';
+  const fill = document.getElementById('progress-fill');
+  fill.classList.remove('indeterminate');
+  fill.style.width = '0%';
+  showSection('progress-section');
+
+  try {
+    const resp = await fetch('/tournament/run-custom', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ n, players }),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      showError(err.detail || 'Failed to start simulation.');
+      return;
+    }
+    const data = await resp.json();
+    jobId = data.job_id;
+    pollTimer = setInterval(pollStatus, 200);
+  } catch (err) {
+    showError(`Network error: ${err.message}`);
+  }
+});
+
+// Load names on page load
+loadPlayerNames();
+
 // ── 9. Challenge Success Heatmap (HTML table) ─────────────────────────────────
 
 function renderHeatmap(s) {

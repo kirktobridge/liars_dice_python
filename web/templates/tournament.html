@@ -166,6 +166,88 @@
     }
     .heatmap-table td:hover { opacity: 0.8; }
 
+    /* ── mode toggle ── */
+    .mode-btn {
+      font-family: 'Cinzel', serif;
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      padding: 6px 16px;
+      border-radius: 6px;
+      border: 1px solid #3a2810;
+      background: transparent;
+      color: #8a7a60;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .mode-btn:hover { border-color: #c9a84c; color: #c9a84c; }
+    .mode-btn.active { background: rgba(201,168,76,0.15); border-color: #c9a84c; color: #ffd700; }
+
+    /* ── custom player row ── */
+    .custom-player-row {
+      display: grid;
+      grid-template-columns: 190px 1fr auto;
+      gap: 16px;
+      align-items: start;
+      padding: 14px 16px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid #2e1f08;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+    .custom-name-select {
+      width: 100%;
+      background: #1a1208;
+      border: 1px solid #3a2810;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: #d4c8a8;
+      font-family: 'Crimson Text', serif;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 2px;
+    }
+    .custom-name-select:focus { outline: none; border-color: #c9a84c; }
+    .custom-row-traits {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .trait-group label {
+      display: block;
+      font-family: 'Cinzel', serif;
+      font-size: 0.55rem;
+      letter-spacing: 0.1em;
+      color: #8a7a60;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .trait-slider {
+      width: 100%;
+      accent-color: #c9a84c;
+      cursor: pointer;
+    }
+    .trait-value {
+      display: block;
+      font-family: 'Crimson Text', serif;
+      font-size: 0.8rem;
+      color: #c9a84c;
+      margin-top: 2px;
+    }
+    .btn-remove-player {
+      background: rgba(139,42,42,0.2);
+      border: 1px solid rgba(139,42,42,0.4);
+      color: #ff9999;
+      border-radius: 6px;
+      width: 30px;
+      height: 30px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.15s;
+      margin-top: 3px;
+    }
+    .btn-remove-player:hover { background: rgba(139,42,42,0.4); }
+    .btn-remove-player:disabled { opacity: 0.3; cursor: default; }
+
     /* ── error banner ── */
     .error-banner {
       background: rgba(139,42,42,0.3);
@@ -191,11 +273,14 @@
         TOURNAMENT SIMULATOR
       </h1>
     </div>
-    <div class="w-28"></div><!-- spacer -->
+    <div class="flex gap-2">
+      <button id="btn-mode-standard" class="mode-btn active" type="button">STANDARD</button>
+      <button id="btn-mode-custom" class="mode-btn" type="button">CUSTOM</button>
+    </div>
   </div>
 
   <!-- ── SETUP FORM ────────────────────────────────────────────── -->
-  <div class="max-w-2xl mx-auto mt-10 px-6">
+  <div id="setup-section" class="max-w-2xl mx-auto mt-10 px-6">
     <div class="setup-panel rounded-2xl p-8">
       <p class="font-body italic text-stone-400 text-center mb-6 text-lg">
         Pit the pirates against each other across many battles — then let the numbers tell the tale.
@@ -238,6 +323,43 @@
       </form>
 
       <p id="form-error" class="text-red-400 text-sm font-body italic text-center mt-3 hidden"></p>
+    </div>
+  </div>
+
+  <!-- ── CUSTOM TOURNAMENT SETUP ──────────────────────────────── -->
+  <div id="custom-section" class="max-w-4xl mx-auto mt-10 px-6 hidden">
+    <div class="setup-panel rounded-2xl p-8">
+      <p class="font-body italic text-stone-400 text-center mb-6 text-lg">
+        Choose your crew and set their mettle before the battle begins.
+      </p>
+
+      <div id="custom-player-list" class="mb-6"></div>
+
+      <div class="flex flex-wrap gap-4 items-end justify-between">
+        <button id="btn-add-player" type="button"
+          class="border border-stone-600 bg-stone-800 hover:bg-stone-700 text-amber-400
+                 font-display text-xs tracking-widest py-2 px-5 rounded-lg transition-colors">
+          + ADD PIRATE
+        </button>
+
+        <form id="custom-run-form" class="flex flex-wrap gap-4 items-end">
+          <div>
+            <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">
+              NUMBER OF GAMES
+            </label>
+            <input id="custom-n-games" type="number" min="1" max="10000" value="1000"
+              class="bg-stone-900 border border-stone-700 rounded-lg px-4 py-2 text-stone-100 w-36
+                     focus:outline-none focus:border-amber-500 transition-colors text-center font-display">
+          </div>
+          <button type="submit"
+            class="bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-stone-900 font-display
+                   font-bold py-2 px-8 rounded-lg tracking-widest transition-colors shadow-lg">
+            RUN SIMULATION
+          </button>
+        </form>
+      </div>
+
+      <p id="custom-form-error" class="text-red-400 text-sm font-body italic text-center mt-3 hidden"></p>
     </div>
   </div>
 

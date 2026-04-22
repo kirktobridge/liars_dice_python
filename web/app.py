@@ -119,9 +119,26 @@ async def tournament_page():
     return FileResponse(str(BASE / 'templates' / 'tournament.html'))
 
 
+@app.get('/tournament/player-names')
+async def tournament_player_names():
+    return {'names': Constants.PLAYER_NAMES}
+
+
 class _TournamentRunBody(BaseModel):
     n: int
     num_players: int
+
+
+class _PlayerConfig(BaseModel):
+    name: str
+    risk_appetite: int
+    peer_pressure_score: int
+    attentiveness_score: int
+
+
+class _CustomTournamentRunBody(BaseModel):
+    n: int
+    players: list[_PlayerConfig]
 
 
 @app.post('/tournament/run')
@@ -167,6 +184,38 @@ def _numpy_default(o):
     raise TypeError(f'Not JSON serializable: {type(o)}')
 
 
+@app.post('/tournament/run-custom')
+async def tournament_run_custom(body: _CustomTournamentRunBody):
+    if not (1 <= body.n <= 10000):
+        raise HTTPException(status_code=422, detail='n must be between 1 and 10000')
+    if not (2 <= len(body.players) <= Constants.MAX_PLAYERS):
+        raise HTTPException(
+            status_code=422,
+            detail=f'Number of players must be between 2 and {Constants.MAX_PLAYERS}',
+        )
+    valid_names = set(Constants.PLAYER_NAMES)
+    names_seen = set()
+    for pc in body.players:
+        if pc.name not in valid_names:
+            raise HTTPException(status_code=422, detail=f'Unknown player name: {pc.name}')
+        if pc.name in names_seen:
+            raise HTTPException(status_code=422, detail=f'Duplicate player name: {pc.name}')
+        names_seen.add(pc.name)
+        if not (1 <= pc.risk_appetite <= 100):
+            raise HTTPException(status_code=422, detail=f'risk_appetite out of range for {pc.name}')
+        if not (1 <= pc.peer_pressure_score <= 100):
+            raise HTTPException(status_code=422, detail=f'peer_pressure_score out of range for {pc.name}')
+        if not (1 <= pc.attentiveness_score <= 100):
+            raise HTTPException(status_code=422, detail=f'attentiveness_score out of range for {pc.name}')
+    job_id = str(uuid.uuid4())
+    _jobs[job_id] = {'status': 'running', 'progress': 0.0, 'result': None, 'error': None}
+    player_configs = [pc.model_dump() for pc in body.players]
+    threading.Thread(
+        target=_custom_tournament_worker, args=(job_id, body.n, player_configs), daemon=True
+    ).start()
+    return {'job_id': job_id}
+
+
 def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
     _log.info('TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, num_players)
     try:
@@ -184,3 +233,24 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
     except Exception as exc:
         _jobs[job_id].update(status='error', progress=0.0, error=str(exc))
         _log.exception('TOURNAMENT_ERROR job=%s', job_id[:8])
+
+
+def _custom_tournament_worker(job_id: str, n: int, player_configs: list[dict]) -> None:
+    _log.info('CUSTOM_TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, len(player_configs))
+    try:
+        from tournament import run_tournament
+        from charts import compute_tournament_stats
+
+        def _progress_cb(frac: float) -> None:
+            _jobs[job_id]['progress'] = frac
+
+        df, df_rounds, df_elim = run_tournament(
+            n, parallel=False, on_progress=_progress_cb, player_configs=player_configs
+        )
+        stats = compute_tournament_stats(df, df_rounds, df_elim)
+        sanitized = json.loads(json.dumps(stats, default=_numpy_default))
+        _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
+        _log.info('CUSTOM_TOURNAMENT_COMPLETE job=%s', job_id[:8])
+    except Exception as exc:
+        _jobs[job_id].update(status='error', progress=0.0, error=str(exc))
+        _log.exception('CUSTOM_TOURNAMENT_ERROR job=%s', job_id[:8])
