@@ -7,7 +7,7 @@ from Player import Player
 from collections import deque
 from models import Action, Bid, GameState, PlayerState, TurnResult
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('liars_dice.game')
 
 _CLI_LOGS_DIR = Path(__file__).parent.parent / 'logs' / 'cli'
 _MAX_CLI_LOGS = 10
@@ -72,7 +72,7 @@ class LiarsDiceGame:
         tot_dice = self.count_dice()
         while round_cont:
             for p in range(0, self.num_players):
-                logger.debug('%s dice: %s', self.players[p].name, self.players[p].dice[:self.players[p].num_dice])
+                logger.debug('turn start | %s | hands: %s', self.players[p].name, self._dice_snapshot())
                 self._emit('turn_started',
                            player_name=self.players[p].name,
                            num_dice=self.players[p].num_dice,
@@ -96,9 +96,10 @@ class LiarsDiceGame:
                     continue
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
-                    logger.debug('Passing prev_event %s (action=%s) to %s (dice=%s)',
-                                 self.round_events[0], self.round_events[0].action,
-                                 self.players[p].name, self.players[p].dice[:self.players[p].num_dice])
+                    logger.debug('calling take_turn | player=%s | prev_action=%s | prev_bid=%s | hands: %s',
+                                 self.players[p].name, self.round_events[0].action,
+                                 getattr(self.round_events[0], 'bid', None),
+                                 self._dice_snapshot())
                     bidder_num_dice = self.players[p - 1].num_dice
                     if self.players[p].player_type == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
@@ -129,16 +130,25 @@ class LiarsDiceGame:
                     continue
 
                 if cur_event.action == Action.BID:
+                    logger.debug('BID | %s bids %dx%d | hands: %s',
+                                 self.players[p].name, cur_event.bid.count, cur_event.bid.face,
+                                 self._dice_snapshot())
                     self._emit('bid_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
                 elif cur_event.action == Action.RAISE:
+                    logger.debug('RAISE | %s raises to %dx%d | hands: %s',
+                                 self.players[p].name, cur_event.bid.count, cur_event.bid.face,
+                                 self._dice_snapshot())
                     self._emit('raise_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
                 elif cur_event.action == Action.CHALLENGE:
+                    logger.debug('CHALLENGE | %s challenges %s bid %dx%d | hands: %s',
+                                 self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
+                                 self._dice_snapshot())
                     self._emit('challenge_called',
                                challenger_name=self.players[p].name,
                                bidder_name=prev_player_nm,
@@ -154,6 +164,9 @@ class LiarsDiceGame:
                     succeeded, loser = self._resolve_challenge(prev_bid_obj, self.players[p], self.players[p-1])
                     prev_bid_actual_cnt = self.round_rolls.count(prev_bid_face)
                     actual_ones_cnt = self.round_rolls.count(1)
+                    logger.debug('CHALLENGE result | succeeded=%s | bid=%dx%d actual=%d (ones=%d) | loser=%s',
+                                 succeeded, prev_bid_cnt, prev_bid_face,
+                                 prev_bid_actual_cnt, actual_ones_cnt, loser.name)
                     self._emit('challenge_resolved',
                                succeeded=succeeded,
                                challenger_name=self.players[p].name,
@@ -171,6 +184,9 @@ class LiarsDiceGame:
                     break
 
                 if cur_event.action == Action.SPOT_ON:
+                    logger.debug('SPOT-ON | %s calls spot-on on %s bid %dx%d | hands: %s',
+                                 self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
+                                 self._dice_snapshot())
                     self._emit('spot_on_called',
                                caller_name=self.players[p].name,
                                bidder_name=prev_player_nm,
@@ -182,6 +198,9 @@ class LiarsDiceGame:
                         for pl in self.players], bid_face=prev_bid_face)
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, losers = self._resolve_spot_on(prev_bid_obj, self.players[p])
+                    logger.debug('SPOT-ON result | succeeded=%s | bid=%dx%d actual=%d | losers=%s',
+                                 succeeded, prev_bid_cnt, prev_bid_face,
+                                 self.round_rolls.count(prev_bid_face), [l.name for l in losers])
                     self._emit('spot_on_resolved',
                                succeeded=succeeded,
                                caller_name=self.players[p].name,
@@ -227,6 +246,11 @@ class LiarsDiceGame:
 
         return self.game_status
 
+    def _dice_snapshot(self) -> str:
+        return '  '.join(
+            f'{p.name}({p.num_dice}):{p.dice[:p.num_dice]}' for p in self.players
+        )
+
     def log_events(self, events):
         '''log_event for multiple events.'''
         try:
@@ -246,13 +270,14 @@ class LiarsDiceGame:
         if not self._logging:
             return
         try:
+            snap = self._dice_snapshot()
             if isinstance(event, TurnResult):
-                msg = f'#{self.event_counter} | {event.action} | {event.player_name} | {event.bid}'
+                msg = f'#{self.event_counter} | {event.action} | {event.player_name} | bid={event.bid} | {snap}'
             elif isinstance(event, list):
                 data, etype, actor = event[0], event[1], event[2]
-                msg = f'#{self.event_counter} | {etype} | {actor} | {data}'
+                msg = f'#{self.event_counter} | {etype} | {actor} | {data} | {snap}'
             elif isinstance(event, str):
-                msg = f'#{self.event_counter} | ERROR | SYS | {event}'
+                msg = f'#{self.event_counter} | ERROR | SYS | {event} | {snap}'
             else:
                 return
             self._game_event_logger.info(msg)

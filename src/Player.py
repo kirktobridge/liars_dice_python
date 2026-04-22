@@ -6,7 +6,7 @@ import constants as Constants
 from scipy.stats import binom
 from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext, InputHandler
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('liars_dice.player')
 
 _binom_cache: dict[int, binom] = {}
 
