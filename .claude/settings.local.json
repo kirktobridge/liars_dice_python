@@ -10,7 +10,11 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(curl -s *)",
-      "Bash(kill %1)"
+      "Bash(kill %1)",
+      "Bash(.venv/bin/python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('players:', d['sorted_players']\\); print\\('wins:', d['win_counts']\\)\")",
+      "Bash(.venv/bin/python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d\\)\")",
+      "Bash(.venv/bin/python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('players:', d['sorted_players']\\); print\\('wins:', d['win_counts']\\); print\\('profiles:', d['profile_players']\\)\")",
+      "Bash(pkill -f \"uvicorn web.app:app\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"
