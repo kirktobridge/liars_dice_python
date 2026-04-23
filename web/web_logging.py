@@ -23,6 +23,7 @@ def setup_web_logging() -> None:
     file_handler.setFormatter(fmt)
 
     stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
     stream_handler.setFormatter(fmt)
 
     logger = logging.getLogger('liars_dice')

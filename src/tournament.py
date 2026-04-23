@@ -106,6 +106,7 @@ def run_tournament(
     parallel: bool = False,
     on_progress: Callable[[float], None] | None = None,
     player_configs: list[dict] | None = None,
+    show_progress: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run n games and return (df_games, df_rounds, df_eliminations).
 
@@ -151,6 +152,7 @@ def run_tournament(
             miniters=update_interval,
             dynamic_ncols=True,
             colour="green",
+            disable=not show_progress,
         ) as pbar:
             for i in pbar:
                 result = run_game(seed=i, num_players=num_players, players=persistent_players)
@@ -176,6 +178,7 @@ def run_tournament(
                 miniters=update_interval,
                 dynamic_ncols=True,
                 colour="green",
+                disable=not show_progress,
             ))
 
     round_rows = [row for r in results for row in r.pop('_round_rows', [])]

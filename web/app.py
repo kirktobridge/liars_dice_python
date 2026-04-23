@@ -228,7 +228,7 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
         def _progress_cb(frac: float) -> None:
             _jobs[job_id]['progress'] = frac
 
-        df, df_rounds, df_elim = run_tournament(n, num_players, parallel=False, on_progress=_progress_cb)
+        df, df_rounds, df_elim = run_tournament(n, num_players, parallel=False, on_progress=_progress_cb, show_progress=False)
         stats = compute_tournament_stats(df, df_rounds, df_elim)
         sanitized = json.loads(json.dumps(stats, default=_numpy_default))
         _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
@@ -248,7 +248,7 @@ def _custom_tournament_worker(job_id: str, n: int, player_configs: list[dict]) -
             _jobs[job_id]['progress'] = frac
 
         df, df_rounds, df_elim = run_tournament(
-            n, parallel=False, on_progress=_progress_cb, player_configs=player_configs
+            n, parallel=False, on_progress=_progress_cb, player_configs=player_configs, show_progress=False
         )
         stats = compute_tournament_stats(df, df_rounds, df_elim)
         sanitized = json.loads(json.dumps(stats, default=_numpy_default))
