@@ -22,7 +22,8 @@ A Flask web interface lives under `web/`:
 - `web/game_session.py` — `GameSession` class: bridges the game engine to the web layer, manages per-session state
 - `web/templates/` — Jinja2 HTML templates
 - `web/static/` — CSS, JS, and static assets
-- `web/test_smoke.py` — smoke tests for the Flask app routes
+- `web/test_overlay_e2e.py` — Playwright E2E tests for the cups-lifted overlay
+- `web/test_game_e2e.py` — Playwright E2E tests for lobby, bidding, game-over, and tournament flows
 
 Run the web server: .venv/bin/uvicorn web.app:app
 
@@ -70,10 +71,12 @@ grep "SPOT-ON result.*succeeded=True" logs/web/*.log
 
 ## Test Commands
 
-- Run all tests: `.venv/bin/pytest tests/ -v`
-- Run web smoke tests: `.venv/bin/pytest web/test_smoke.py -v`
+- Run all unit tests: `.venv/bin/pytest tests/ -v`
 - Run single file: `.venv/bin/pytest tests/test_player.py -v`
 - Run single test: `.venv/bin/pytest tests/test_player.py::TestGetNeededCnt::test_bid_on_ones_no_double_count -v`
+- Run Playwright E2E tests (requires server on port 8765): `.venv/bin/pytest web/ -v`
+  - Start server first: `.venv/bin/uvicorn web.app:app --port 8765`
+  - E2E tests live in `web/` (not `tests/`) because they depend on a running server
 
 ## Code Style
 
