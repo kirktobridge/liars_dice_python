@@ -181,6 +181,7 @@ def compute_tournament_stats(
         "profile_risk": profile_risk,
         "profile_peer": profile_peer,
         "profile_att": profile_att,
+        "profile_win_pct_float": [round(w / n_games * 100, 1) for w in profile_wins],
     }
 
 

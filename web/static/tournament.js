@@ -202,6 +202,7 @@ function renderDashboard(s) {
   renderBidScatter(s);
   renderBidRatio(s);
   renderProfiles(s);
+  renderCorrelationCharts(s);
   renderEscalation(s);
   renderHeatmap(s);
 }
@@ -700,7 +701,65 @@ document.getElementById('custom-run-form').addEventListener('submit', async e =>
 // Load names on page load
 loadPlayerNames();
 
-// ── 9. Challenge Success Heatmap (HTML table) ─────────────────────────────────
+// ── 9. Trait vs Win Rate (scatter charts) ────────────────────────────────────
+
+function makeTraitChart(canvasId, traitValues, winPcts, playerNames, xLabel, color) {
+  destroyChart(canvasId);
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  charts[canvasId] = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        data: traitValues.map((v, i) => ({ x: v, y: winPcts[i] })),
+        backgroundColor: color,
+        pointRadius: 7,
+        pointHoverRadius: 9,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: baseLegend(false),
+        tooltip: {
+          callbacks: {
+            label: ctx => `${playerNames[ctx.dataIndex]}: ${ctx.parsed.y}%`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          min: 0, max: 105,
+          grid: { color: GRID_COLOR },
+          ticks: { color: TICK_COLOR, font: { size: 10 } },
+          title: { display: true, text: xLabel, color: TICK_COLOR, font: { size: 10 } },
+        },
+        y: {
+          min: 0, max: 100,
+          grid: { color: GRID_COLOR },
+          ticks: { color: TICK_COLOR, font: { size: 10 }, callback: v => `${v}%` },
+          title: { display: true, text: 'Win %', color: TICK_COLOR, font: { size: 10 } },
+        },
+      },
+    },
+  });
+}
+
+function renderCorrelationCharts(s) {
+  const section = document.getElementById('correlation-section');
+  if (!s.profile_players || s.profile_players.length < 2) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+  const names   = s.profile_players;
+  const winPcts = s.profile_win_pct_float;
+  makeTraitChart('corrRiskChart', s.profile_risk, winPcts, names, 'Risk Appetite (1–100)', '#c9a84c');
+  makeTraitChart('corrPeerChart', s.profile_peer, winPcts, names, 'Peer Pressure (1–100)', '#5B8DB8');
+  makeTraitChart('corrAttChart',  s.profile_att,  winPcts, names, 'Attentiveness (1–100)', '#7ecf86');
+}
+
+// ── 10. Challenge Success Heatmap (HTML table) ────────────────────────────────
 
 function renderHeatmap(s) {
   const { heat_x, heat_y, heat_z, heat_text, heat_n } = s;

@@ -437,17 +437,32 @@ function showRollsReveal(event) {
   const content  = $('rolls-reveal-content');
   if (!overlay || !content) return;
 
-  const bidFace = event.bid_face;
+  const bidFace  = event.bid_face;
+  const bidCount = event.bid_count;
 
   content.innerHTML = '';
 
   const title = document.createElement('h3');
   title.style.cssText = `
     font-family:'Cinzel',serif; font-size:1.4rem; color:#c9a84c;
-    text-align:center; margin-bottom:1.5rem; letter-spacing:0.15em;
+    text-align:center; margin-bottom:0.75rem; letter-spacing:0.15em;
   `;
   title.textContent = '— CUPS LIFTED —';
   content.appendChild(title);
+
+  if (bidCount != null && bidFace != null) {
+    const bidLine = document.createElement('div');
+    bidLine.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:1.2rem;';
+    const bidLabel = document.createElement('span');
+    bidLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68; letter-spacing:0.1em;';
+    bidLabel.textContent = `BID: ${bidCount} ×`;
+    bidLine.appendChild(bidLabel);
+    const dieWrapper = document.createElement('div');
+    dieWrapper.classList.add('die-wrapper');
+    dieWrapper.appendChild(makeDieSVG(bidFace, 32));
+    bidLine.appendChild(dieWrapper);
+    content.appendChild(bidLine);
+  }
 
   const grid = document.createElement('div');
   grid.style.cssText = 'display:flex; flex-wrap:wrap; gap:20px; justify-content:center;';
@@ -477,10 +492,63 @@ function showRollsReveal(event) {
   }
 
   content.appendChild(grid);
+  // outcome + close button added by resolveRollsReveal()
   overlay.classList.remove('hidden');
+}
 
-  // Auto-dismiss
-  setTimeout(() => overlay.classList.add('hidden'), 3200);
+function resolveRollsReveal(succeeded, outcomeLabel, actualCount, onesCount, bidFace) {
+  const overlay = $('rolls-reveal-overlay');
+  const content = $('rolls-reveal-content');
+  if (!overlay || !content) return;
+
+  const actualLine = document.createElement('div');
+  actualLine.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; margin-top:1rem;';
+
+  const actualLabel = document.createElement('span');
+  actualLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68; letter-spacing:0.1em;';
+  actualLabel.textContent = `ACTUAL: ${actualCount} ×`;
+  actualLine.appendChild(actualLabel);
+
+  const dieWrapper2 = document.createElement('div');
+  dieWrapper2.classList.add('die-wrapper');
+  dieWrapper2.appendChild(makeDieSVG(bidFace, 32));
+  actualLine.appendChild(dieWrapper2);
+
+  if (bidFace !== 1 && onesCount > 0) {
+    const plusLabel = document.createElement('span');
+    plusLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68;';
+    plusLabel.textContent = `+ ${onesCount} ×`;
+    actualLine.appendChild(plusLabel);
+    const onesWrapper = document.createElement('div');
+    onesWrapper.classList.add('die-wrapper');
+    onesWrapper.appendChild(makeDieSVG(1, 32));
+    actualLine.appendChild(onesWrapper);
+  }
+
+  content.appendChild(actualLine);
+
+  const verdict = document.createElement('div');
+  verdict.style.cssText = `
+    font-family:'Cinzel',serif; font-size:1.3rem; font-weight:bold;
+    text-align:center; margin-top:0.9rem; letter-spacing:0.12em;
+    color:${succeeded ? '#4caf6e' : '#c06060'};
+  `;
+  verdict.textContent = outcomeLabel;
+  content.appendChild(verdict);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Lower Cups';
+  closeBtn.style.cssText = `
+    display:block; margin:1.5rem auto 0;
+    background:#7c4f1e; color:#f5e6c8; border:1px solid #c9a84c;
+    font-family:'Cinzel',serif; font-size:0.9rem; letter-spacing:0.1em;
+    padding:0.5rem 1.8rem; border-radius:6px; cursor:pointer;
+  `;
+  closeBtn.onclick = () => {
+    overlay.classList.add('hidden');
+    if (ws) ws.send(JSON.stringify({ type: 'rolls_revealed_ack' }));
+  };
+  content.appendChild(closeBtn);
 }
 
 // ============================================================
@@ -542,10 +610,12 @@ function handleMessage(data) {
 
   // ── Challenges / Spot On ─────────────────────────────────
   if (t === 'challenge_called') {
+    disableActions();
     addFeedEntry(`⚔ <b style="color:#d0c0a0">${escHtml(event.challenger_name)}</b> calls out <b style="color:#d0c0a0">${escHtml(event.bidder_name)}</b>!`);
     return;
   }
   if (t === 'spot_on_called') {
+    disableActions();
     addFeedEntry(`🎯 <b style="color:#d0c0a0">${escHtml(event.caller_name)}</b> calls Spot On!`);
     return;
   }
@@ -558,6 +628,8 @@ function handleMessage(data) {
 
   // ── Resolutions ──────────────────────────────────────────
   if (t === 'challenge_resolved') {
+    const outcomeLabel = event.succeeded ? 'CORRECT CALL' : 'FAILURE';
+    resolveRollsReveal(event.succeeded, outcomeLabel, event.actual_count, event.ones_count, event.bid_face);
     const result = event.succeeded
       ? `<span style="color:#6da870;">Challenge succeeds</span>`
       : `<span style="color:#c06060;">Challenge fails</span>`;
@@ -569,6 +641,8 @@ function handleMessage(data) {
     return;
   }
   if (t === 'spot_on_resolved') {
+    const outcomeLabel = event.succeeded ? 'CORRECT CALL' : 'FAILURE';
+    resolveRollsReveal(event.succeeded, outcomeLabel, event.actual_count, event.ones_count, event.bid_face);
     const result = event.succeeded
       ? `<span style="color:#6da870;">Spot On hits!</span>`
       : `<span style="color:#c06060;">Spot On misses!</span>`;

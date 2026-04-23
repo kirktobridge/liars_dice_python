@@ -158,7 +158,7 @@ class LiarsDiceGame:
                                bidder_num_dice=self.players[p-1].num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
-                        for pl in self.players], bid_face=prev_bid_face)
+                        for pl in self.players], bid_face=prev_bid_face, bid_count=prev_bid_cnt)
                     round_cont = False
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, loser = self._resolve_challenge(prev_bid_obj, self.players[p], self.players[p-1])
@@ -195,16 +195,23 @@ class LiarsDiceGame:
                                tot_num_dice=self.tot_num_dice)
                     self._emit('rolls_revealed', player_rolls=[
                         {'name': pl.name, 'dice': pl.dice[:pl.num_dice]}
-                        for pl in self.players], bid_face=prev_bid_face)
+                        for pl in self.players], bid_face=prev_bid_face, bid_count=prev_bid_cnt)
                     prev_bid_obj = Bid(prev_bid_cnt, prev_bid_face)
                     succeeded, losers = self._resolve_spot_on(prev_bid_obj, self.players[p])
+                    _spot_actual = self.round_rolls.count(prev_bid_face)
+                    _spot_ones   = self.round_rolls.count(1)
+                    _spot_effective = _spot_actual + _spot_ones if prev_bid_face != 1 else _spot_actual
                     logger.debug('SPOT-ON result | succeeded=%s | bid=%dx%d actual=%d | losers=%s',
                                  succeeded, prev_bid_cnt, prev_bid_face,
-                                 self.round_rolls.count(prev_bid_face), [l.name for l in losers])
+                                 _spot_actual, [l.name for l in losers])
                     self._emit('spot_on_resolved',
                                succeeded=succeeded,
                                caller_name=self.players[p].name,
                                caller_player_type=self.players[p].player_type,
+                               bid_count=prev_bid_cnt,
+                               bid_face=prev_bid_face,
+                               actual_count=_spot_actual,
+                               ones_count=_spot_ones,
                                loser_names=[l.name for l in losers])
                     if succeeded:
                         inner_event = ['SUCCESS', Action.SPOT_ON, self.players[p].name]

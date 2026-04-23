@@ -248,6 +248,20 @@
     .btn-remove-player:hover { background: rgba(139,42,42,0.4); }
     .btn-remove-player:disabled { opacity: 0.3; cursor: default; }
 
+    /* ── correlation charts ── */
+    .correlation-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .corr-chart-wrap { min-width: 0; }
+    .corr-chart-label {
+      font-family: 'Cinzel', serif;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      color: #8a7a60;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    @media (max-width: 700px) { .correlation-grid { grid-template-columns: 1fr; } }
+
     /* ── error banner ── */
     .error-banner {
       background: rgba(139,42,42,0.3);
@@ -421,6 +435,25 @@
       <div class="chart-panel panel-full">
         <div class="panel-title">Player Profiles</div>
         <div id="table-profiles"></div>
+      </div>
+
+      <!-- Row 3b: Trait vs Win Rate (full width) -->
+      <div id="correlation-section" class="chart-panel panel-full" style="display:none">
+        <div class="panel-title">Trait vs Win Rate</div>
+        <div class="correlation-grid">
+          <div class="corr-chart-wrap">
+            <div class="corr-chart-label">Risk Appetite</div>
+            <div class="chart-wrap chart-wrap-sm"><canvas id="corrRiskChart"></canvas></div>
+          </div>
+          <div class="corr-chart-wrap">
+            <div class="corr-chart-label">Peer Pressure</div>
+            <div class="chart-wrap chart-wrap-sm"><canvas id="corrPeerChart"></canvas></div>
+          </div>
+          <div class="corr-chart-wrap">
+            <div class="corr-chart-label">Attentiveness</div>
+            <div class="chart-wrap chart-wrap-sm"><canvas id="corrAttChart"></canvas></div>
+          </div>
+        </div>
       </div>
 
       <!-- Row 4: Bid Escalation (full width) -->

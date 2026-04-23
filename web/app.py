@@ -81,6 +81,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 raw = await websocket.receive_json()
                 session.send_action(_parse_response(raw))
 
+            if msg['event'].get('type') in ('challenge_resolved', 'spot_on_resolved'):
+                await websocket.receive_json()  # wait for rolls_revealed_ack
+
     except WebSocketDisconnect:
         _log.info('SESSION_DISCONNECT session=%s', session_id[:8])
     except Exception:
