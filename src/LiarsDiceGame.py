@@ -72,7 +72,8 @@ class LiarsDiceGame:
         tot_dice = self.count_dice()
         while round_cont:
             for p in range(0, self.num_players):
-                logger.debug('turn start | %s | hands: %s', self.players[p].name, self._dice_snapshot())
+                if logger.isEnabledFor(logging.DEBUG):
+                    logger.debug('turn start | %s | hands: %s', self.players[p].name, self._dice_snapshot())
                 self._emit('turn_started',
                            player_name=self.players[p].name,
                            num_dice=self.players[p].num_dice,
@@ -96,10 +97,11 @@ class LiarsDiceGame:
                     continue
                 cur_event = TurnResult(None, Action.NONE, '')
                 try:
-                    logger.debug('calling take_turn | player=%s | prev_action=%s | prev_bid=%s | hands: %s',
-                                 self.players[p].name, self.round_events[0].action,
-                                 getattr(self.round_events[0], 'bid', None),
-                                 self._dice_snapshot())
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug('calling take_turn | player=%s | prev_action=%s | prev_bid=%s | hands: %s',
+                                     self.players[p].name, self.round_events[0].action,
+                                     getattr(self.round_events[0], 'bid', None),
+                                     self._dice_snapshot())
                     bidder_num_dice = self.players[p - 1].num_dice
                     if self.players[p].player_type == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
@@ -130,25 +132,28 @@ class LiarsDiceGame:
                     continue
 
                 if cur_event.action == Action.BID:
-                    logger.debug('BID | %s bids %dx%d | hands: %s',
-                                 self.players[p].name, cur_event.bid.count, cur_event.bid.face,
-                                 self._dice_snapshot())
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug('BID | %s bids %dx%d | hands: %s',
+                                     self.players[p].name, cur_event.bid.count, cur_event.bid.face,
+                                     self._dice_snapshot())
                     self._emit('bid_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
                 elif cur_event.action == Action.RAISE:
-                    logger.debug('RAISE | %s raises to %dx%d | hands: %s',
-                                 self.players[p].name, cur_event.bid.count, cur_event.bid.face,
-                                 self._dice_snapshot())
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug('RAISE | %s raises to %dx%d | hands: %s',
+                                     self.players[p].name, cur_event.bid.count, cur_event.bid.face,
+                                     self._dice_snapshot())
                     self._emit('raise_made',
                                player_name=self.players[p].name,
                                count=cur_event.bid.count,
                                face=cur_event.bid.face)
                 elif cur_event.action == Action.CHALLENGE:
-                    logger.debug('CHALLENGE | %s challenges %s bid %dx%d | hands: %s',
-                                 self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
-                                 self._dice_snapshot())
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug('CHALLENGE | %s challenges %s bid %dx%d | hands: %s',
+                                     self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
+                                     self._dice_snapshot())
                     self._emit('challenge_called',
                                challenger_name=self.players[p].name,
                                bidder_name=prev_player_nm,
@@ -184,9 +189,10 @@ class LiarsDiceGame:
                     break
 
                 if cur_event.action == Action.SPOT_ON:
-                    logger.debug('SPOT-ON | %s calls spot-on on %s bid %dx%d | hands: %s',
-                                 self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
-                                 self._dice_snapshot())
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug('SPOT-ON | %s calls spot-on on %s bid %dx%d | hands: %s',
+                                     self.players[p].name, prev_player_nm, prev_bid_cnt, prev_bid_face,
+                                     self._dice_snapshot())
                     self._emit('spot_on_called',
                                caller_name=self.players[p].name,
                                bidder_name=prev_player_nm,
