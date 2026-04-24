@@ -1,0 +1,75 @@
+/* ============================================================
+   THEME — edit this file to change colors and fonts
+   ============================================================ */
+:root {
+  /* ── Fonts ─────────────────────────────────────────────── */
+  --font-display:    'Cinzel', serif;
+  --font-decorative: 'Cinzel Decorative', serif;
+  --font-body:       'Crimson Text', Georgia, serif;
+
+  /* ── Gold palette ───────────────────────────────────────── */
+  --color-gold:            #c9a84c;
+  --color-gold-bright:     #ffd700;
+  --color-gold-dim:        #8a6010;
+
+  /* Alpha variants — update these when changing --color-gold */
+  --color-gold-alpha-04:   rgba(201, 168, 76, 0.04);
+  --color-gold-alpha-08:   rgba(201, 168, 76, 0.08);
+  --color-gold-alpha-12:   rgba(201, 168, 76, 0.12);
+  --color-gold-alpha-14:   rgba(201, 168, 76, 0.14);
+  --color-gold-alpha-15:   rgba(201, 168, 76, 0.15);
+  --color-gold-alpha-30:   rgba(201, 168, 76, 0.3);
+  --color-gold-alpha-40:   rgba(201, 168, 76, 0.4);
+  --color-gold-alpha-90:   rgba(201, 168, 76, 0.9);
+
+  /* ── Background darks ───────────────────────────────────── */
+  --color-bg-dark-1:       #0f1219;
+  --color-bg-dark-2:       #0a0a0c;
+  --color-bg-dark-3:       #080808;
+
+  /* ── Wood tones ─────────────────────────────────────────── */
+  --color-wood-1:          #22180a;
+  --color-wood-2:          #1a1106;
+  --color-wood-3:          #201609;
+  --color-wood-4:          #251b0d;
+  --color-wood-dark:       #141006;
+  --color-wood-darker:     #1c1408;
+  --color-wood-mid:        #181208;
+
+  /* ── Borders ────────────────────────────────────────────── */
+  --color-border-wood:     #3a2810;
+  --color-border-wood-dim: #2e1f08;
+  --color-border-gold:     #5a3e18;
+
+  /* ── Error / red ────────────────────────────────────────── */
+  --color-error:           #8b2a2a;
+  --color-error-bg:        rgba(180, 30, 30, 0.35);
+  --color-error-alpha-20:  rgba(139, 42, 42, 0.2);
+  --color-error-alpha-40:  rgba(139, 42, 42, 0.4);
+
+  /* ── Text ───────────────────────────────────────────────── */
+  --color-text-base:       #f0e2c0;
+  --color-text-muted:      #c0b090;
+  --color-text-dim:        #d4c8a8;
+  --color-text-dark:       #8a7a60;
+  --color-text-ink:        #1a1208;
+
+  /* ── Advisor ────────────────────────────────────────────── */
+  --color-advisor-good:    #6da870;
+  --color-advisor-dim:     #5a5040;
+
+  /* ── Coin ───────────────────────────────────────────────── */
+  --color-coin-face-1:     #ffe47a;
+  --color-coin-face-2:     #d49c18;
+  --color-coin-face-3:     #a87010;
+  --color-coin-face-4:     #7a5008;
+  --color-coin-face-5:     #472e04;
+  --color-coin-edge-light: #c4991e;
+  --color-coin-edge-dark:  #6b4c08;
+
+  /* ── Misc components ────────────────────────────────────── */
+  --color-header-bg-1:     #0f0c07;
+  --color-header-bg-2:     #1a1208;
+  --color-table-header-bg: #1e1a0e;
+  --color-slider-track:    #2a2018;
+}

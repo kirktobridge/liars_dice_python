@@ -1,0 +1,181 @@
+/* ── PIECE OF EIGHT DIAL ─────────────────────────────── */
+.coin-dial {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 6px 0;
+  perspective: 400px;
+}
+
+.coin {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(
+    from 1deg,
+    var(--color-coin-edge-light) 0deg 3deg,
+    var(--color-coin-edge-dark)  3deg 8.5deg
+  );
+  box-shadow:
+    0 8px 24px rgba(0,0,0,0.9),
+    0 2px 4px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,220,80,0.15);
+  position: relative;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.coin-face {
+  position: absolute;
+  inset: 7px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 38% 30%,
+    var(--color-coin-face-1)  0%,
+    var(--color-coin-face-2) 22%,
+    var(--color-coin-face-3) 52%,
+    var(--color-coin-face-4) 78%,
+    var(--color-coin-face-5) 100%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background 0.2s;
+}
+
+/* Inner decorative ring */
+.coin-face::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(220,170,40,0.3);
+  pointer-events: none;
+}
+
+/* Cross embossing (like Spanish real) */
+.coin-face::after {
+  content: '';
+  position: absolute;
+  inset: 16px;
+  border-radius: 50%;
+  background:
+    linear-gradient(rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 100%) center / 1px 100% no-repeat,
+    linear-gradient(rgba(0,0,0,0.12) 0px, rgba(0,0,0,0.12) 100%) center / 100% 1px no-repeat;
+  pointer-events: none;
+}
+
+.coin-number {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 2.5rem;
+  color: #1a0c00;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 0 rgba(255,220,80,0.45);
+}
+
+.coin-opp-label {
+  font-family: var(--font-display);
+  font-size: 0.46rem;
+  letter-spacing: 0.22em;
+  color: rgba(26,12,0,0.62);
+  text-transform: uppercase;
+  position: relative;
+  z-index: 1;
+  margin-top: 3px;
+}
+
+.coin-viii {
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+  color: rgba(26,12,0,0.38);
+  position: absolute;
+  bottom: 18px;
+  z-index: 1;
+}
+
+@keyframes coin-tick {
+  0%   { transform: scale(1)    rotateY(0deg); }
+  35%  { transform: scale(0.94) rotateY(18deg); }
+  100% { transform: scale(1)    rotateY(0deg); }
+}
+.coin.coin-ticked { animation: coin-tick 0.22s ease-out; }
+
+.coin-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 35%, #2e2010, var(--color-header-bg-2));
+  border: 1px solid var(--color-border-wood);
+  color: var(--color-gold);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.coin-arrow:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  color: var(--color-gold-bright);
+  box-shadow: 0 0 8px var(--color-gold-alpha-30);
+}
+.coin-arrow:active:not(:disabled) { transform: scale(0.91); }
+.coin-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+
+/* ── BID COUNT SLIDER ────────────────────────────────── */
+#bid-count {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-slider-track);
+  outline: none;
+  cursor: pointer;
+}
+#bid-count::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, var(--color-coin-face-1), var(--color-gold) 55%, var(--color-gold-dim));
+  border: 2px solid var(--color-border-wood);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+#bid-count::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, var(--color-coin-face-1), var(--color-gold) 55%, var(--color-gold-dim));
+  border: 2px solid var(--color-border-wood);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+  cursor: pointer;
+}
+#bid-count::-webkit-slider-runnable-track {
+  background: linear-gradient(to right, var(--color-gold) var(--pct, 0%), var(--color-slider-track) var(--pct, 0%));
+  height: 6px;
+  border-radius: 3px;
+}
+
+/* ── Inline style replacements ───────────────────────── */
+.heading-glow {
+  text-shadow: 0 0 20px var(--color-gold-alpha-40);
+}
+
+.bid-count-display {
+  text-shadow: 0 0 8px var(--color-gold-alpha-40);
+  min-width: 2ch;
+  text-align: right;
+}
