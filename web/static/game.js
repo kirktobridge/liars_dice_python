@@ -400,6 +400,7 @@ function setSelectedFace(face) {
   document.querySelectorAll('.face-btn').forEach(btn => {
     btn.classList.toggle('face-btn-selected', parseInt(btn.dataset.face) === face);
   });
+  syncAdvisorBidHighlight();
 }
 
 function validateBidForm() {
@@ -875,6 +876,7 @@ function initBidForm() {
     updateSliderFill();
     validateBidForm();
     updateAdvisorBidProb();
+    syncAdvisorBidHighlight();
   });
 
   $('btn-confirm-bid').addEventListener('click', () => {
@@ -917,41 +919,211 @@ function updateAdvisorToggle() {
   btn.classList.toggle('advisor-toggle-on', advisorEnabled);
 }
 
-function updateAdvisorBidProb() {
-  const span = $('advisor-bid-prob');
-  if (!span) return;
-  if (!advisorEnabled || !advisorData || !isHumanTurn) { span.textContent = ''; return; }
+function syncAdvisorBidHighlight() {
   const count = String($('bid-count').value);
   const face  = String(selectedFace);
-  const faceMap = advisorData.bid_probs && advisorData.bid_probs[face];
-  const p = (faceMap && faceMap[count] !== undefined) ? faceMap[count] : null;
-  if (p === null) { span.textContent = ''; return; }
-  const pct = Math.round(p * 100);
-  span.textContent = `${pct}% holds`;
-  span.className   = 'advisor-prob ' + (p >= 0.5 ? 'advisor-prob-good' : 'advisor-prob-dim');
+  document.querySelectorAll('.advisor-bid-row').forEach(row => {
+    const sel = row.dataset.count === count && row.dataset.face === face;
+    row.classList.toggle('selected', sel);
+    const star = row.querySelector('.advisor-bid-star');
+    if (star) star.textContent = sel ? '★' : '';
+  });
+}
+
+function updateAdvisorBidProb() {
+  const span = $('advisor-bid-prob');
+  if (span) span.textContent = '';
+  syncAdvisorBidHighlight();
+}
+
+function buildAdvisorPanel() {
+  const panel = $('advisor-panel');
+  if (!panel) return;
+
+  if (!advisorEnabled || !advisorData || !isHumanTurn || !currentRequest) {
+    panel.style.display = 'none';
+    return;
+  }
+
+  panel.style.display = 'block';
+  panel.innerHTML = '';
+
+  // ── Block 1: Situation Bar ──────────────────────────────────
+  const oppDice   = currentRequest.tot_other_dice || 0;
+  const yourDice  = humanDice.length;
+  const totalDice = oppDice + yourDice;
+
+  const situLabel = document.createElement('div');
+  situLabel.className = 'advisor-section-label';
+  situLabel.textContent = 'SITUATION';
+  panel.appendChild(situLabel);
+
+  const statRow = document.createElement('div');
+  statRow.className = 'advisor-stat-row';
+  for (const { value, label } of [
+    { value: totalDice, label: 'TOTAL' },
+    { value: oppDice,   label: 'OPP. DICE' },
+    { value: yourDice,  label: 'YOUR DICE' },
+  ]) {
+    const box = document.createElement('div');
+    box.className = 'advisor-stat-box';
+    const valEl = document.createElement('div');
+    valEl.className = 'advisor-stat-value';
+    valEl.textContent = value;
+    const lblEl = document.createElement('div');
+    lblEl.className = 'advisor-stat-label';
+    lblEl.textContent = label;
+    box.appendChild(valEl);
+    box.appendChild(lblEl);
+    statRow.appendChild(box);
+  }
+  panel.appendChild(statRow);
+
+  // ── Block 2: Bid Assessment (decision only) ─────────────────
+  const prevBid = currentRequest.prev_bid;
+  if (currentRequest.type === 'decision' && prevBid) {
+    const assessLabel = document.createElement('div');
+    assessLabel.className = 'advisor-section-label';
+    assessLabel.textContent = 'BID ASSESSMENT';
+    panel.appendChild(assessLabel);
+
+    const assess = document.createElement('div');
+    assess.className = 'advisor-assessment';
+
+    const bidFace = prevBid.face;
+    const ownCount = humanDice.reduce((n, d) => {
+      if (d === bidFace) return n + 1;
+      if (bidFace !== 1 && d === 1) return n + 1;
+      return n;
+    }, 0);
+    const needed = prevBid.count - ownCount;
+    const neededText = needed <= 0
+      ? 'you already cover it'
+      : `${needed} still needed from ${oppDice} opp. dice`;
+
+    const note = document.createElement('div');
+    note.className = 'advisor-assessment-note';
+    note.textContent = `You hold: ${ownCount} matching · ${neededText}`;
+    assess.appendChild(note);
+
+    const chProb   = advisorData.challenge_prob  || 0;
+    const soProb   = advisorData.spot_on_prob     || 0;
+    const bidHolds = Math.max(0, 1 - chProb - soProb);
+
+    for (const { label, prob } of [
+      { label: 'CHALLENGE',  prob: chProb   },
+      { label: 'SPOT ON',    prob: soProb   },
+      { label: 'BID HOLDS',  prob: bidHolds },
+    ]) {
+      const pct  = Math.round(prob * 100);
+      const tier = prob >= 0.6 ? 'bar-high' : prob >= 0.3 ? 'bar-mid' : 'bar-low';
+
+      const probRow = document.createElement('div');
+      probRow.className = 'advisor-prob-row';
+
+      const labelEl = document.createElement('div');
+      labelEl.className = 'advisor-prob-row-label';
+      labelEl.textContent = label;
+
+      const track = document.createElement('div');
+      track.className = 'advisor-prob-bar-track';
+      const fill = document.createElement('div');
+      fill.className = `advisor-prob-bar-fill ${tier}`;
+      fill.style.width = pct + '%';
+      track.appendChild(fill);
+
+      const pctEl = document.createElement('div');
+      pctEl.className = `advisor-prob-pct ${tier}`;
+      pctEl.textContent = pct + '%';
+
+      probRow.appendChild(labelEl);
+      probRow.appendChild(track);
+      probRow.appendChild(pctEl);
+      assess.appendChild(probRow);
+    }
+
+    panel.appendChild(assess);
+  }
+
+  // ── Block 3: Top Bids Table ─────────────────────────────────
+  const bidsLabel = document.createElement('div');
+  bidsLabel.className = 'advisor-section-label';
+  bidsLabel.textContent = 'TOP BIDS';
+  panel.appendChild(bidsLabel);
+
+  const entries = [];
+  if (advisorData.bid_probs) {
+    for (const [face, counts] of Object.entries(advisorData.bid_probs)) {
+      for (const [count, prob] of Object.entries(counts)) {
+        entries.push({ face: parseInt(face), count: parseInt(count), prob });
+      }
+    }
+  }
+  entries.sort((a, b) => b.prob - a.prob);
+
+  const currentCount = String($('bid-count').value);
+  const currentFace  = String(selectedFace);
+
+  const table = document.createElement('div');
+  table.className = 'advisor-bids-table';
+
+  for (const { face, count, prob } of entries.slice(0, 5)) {
+    const pct  = Math.round(prob * 100);
+    const tier = prob >= 0.6 ? 'bar-high' : prob >= 0.3 ? 'bar-mid' : 'bar-low';
+    const isSel = String(count) === currentCount && String(face) === currentFace;
+
+    const row = document.createElement('div');
+    row.className = 'advisor-bid-row' + (isSel ? ' selected' : '');
+    row.dataset.count = String(count);
+    row.dataset.face  = String(face);
+
+    const bidLabel = document.createElement('div');
+    bidLabel.className = 'advisor-bid-label';
+    bidLabel.textContent = `${count}× ${DICE_UNICODE[face] || face}`;
+
+    const track = document.createElement('div');
+    track.className = 'advisor-prob-bar-track';
+    track.style.flex = '1';
+    const fill = document.createElement('div');
+    fill.className = `advisor-prob-bar-fill ${tier}`;
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+
+    const pctEl = document.createElement('div');
+    pctEl.className = 'advisor-bid-pct';
+    pctEl.textContent = pct + '%';
+
+    const star = document.createElement('div');
+    star.className = 'advisor-bid-star';
+    star.textContent = isSel ? '★' : '';
+
+    row.appendChild(bidLabel);
+    row.appendChild(track);
+    row.appendChild(pctEl);
+    row.appendChild(star);
+
+    row.addEventListener('click', () => {
+      $('bid-count').value = count;
+      const disp = $('bid-count-display');
+      if (disp) disp.textContent = count;
+      updateSliderFill();
+      setSelectedFace(face);
+      validateBidForm();
+      updateAdvisorBidProb();
+    });
+
+    table.appendChild(row);
+  }
+  panel.appendChild(table);
 }
 
 function updateAdvisorDisplay() {
   const challengeSpan = $('advisor-challenge-prob');
   const spotOnSpan    = $('advisor-spot-on-prob');
-
-  if (!advisorEnabled || !advisorData || !isHumanTurn) {
-    if (challengeSpan) challengeSpan.textContent = '';
-    if (spotOnSpan)    spotOnSpan.textContent    = '';
-    updateAdvisorBidProb();
-    return;
-  }
-
-  const setSpan = (span, p, label) => {
-    if (!span) return;
-    if (p === null || p === undefined) { span.textContent = ''; return; }
-    const pct = Math.round(p * 100);
-    span.textContent = `${pct}% ${label}`;
-    span.className   = 'advisor-prob ' + (p >= 0.5 ? 'advisor-prob-good' : 'advisor-prob-dim');
-  };
-  setSpan(challengeSpan, advisorData.challenge_prob, 'success');
-  setSpan(spotOnSpan,    advisorData.spot_on_prob,   'exact');
+  if (challengeSpan) challengeSpan.textContent = '';
+  if (spotOnSpan)    spotOnSpan.textContent    = '';
   updateAdvisorBidProb();
+  buildAdvisorPanel();
 }
 
 function initAdvisorToggle() {

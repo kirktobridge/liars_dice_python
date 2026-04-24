@@ -169,6 +169,174 @@
   border-radius: 3px;
 }
 
+/* ── ADVISOR PANEL ───────────────────────────────── */
+.advisor-panel {
+  display: none;
+  border-top: 1px solid rgba(201, 168, 76, 0.15);
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+}
+
+.advisor-section-label {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  letter-spacing: 0.18em;
+  color: #5a4a38;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+}
+
+.advisor-stat-row {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 0.85rem;
+}
+
+.advisor-stat-box {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(201, 168, 76, 0.1);
+  border-radius: 5px;
+  padding: 5px 4px;
+  text-align: center;
+}
+
+.advisor-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #c9a84c;
+  line-height: 1;
+}
+
+.advisor-stat-label {
+  font-family: var(--font-display);
+  font-size: 0.46rem;
+  letter-spacing: 0.1em;
+  color: #5a4a38;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+
+.advisor-assessment {
+  margin-bottom: 0.85rem;
+}
+
+.advisor-assessment-note {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.78rem;
+  color: #8a7a68;
+  margin-bottom: 0.55rem;
+  font-style: italic;
+}
+
+.advisor-prob-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 4px;
+}
+
+.advisor-prob-row-label {
+  font-family: var(--font-display);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  color: #8a7a68;
+  width: 66px;
+  flex-shrink: 0;
+}
+
+.advisor-prob-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.advisor-prob-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.advisor-prob-bar-fill.bar-high {
+  background: linear-gradient(to right, #c9a84c, #e8c875);
+}
+
+.advisor-prob-bar-fill.bar-mid {
+  background: #5a4a38;
+}
+
+.advisor-prob-bar-fill.bar-low {
+  background: #2e2418;
+}
+
+.advisor-prob-pct {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.advisor-prob-pct.bar-high { color: #c9a84c; }
+.advisor-prob-pct.bar-mid  { color: #7a6a58; }
+.advisor-prob-pct.bar-low  { color: #4a3a30; }
+
+.advisor-bids-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.advisor-bid-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.advisor-bid-row:hover {
+  background: rgba(201, 168, 76, 0.07);
+  border-color: rgba(201, 168, 76, 0.15);
+}
+
+.advisor-bid-row.selected {
+  background: rgba(201, 168, 76, 0.11);
+  border-color: rgba(201, 168, 76, 0.32);
+}
+
+.advisor-bid-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  color: #c9a84c;
+  width: 50px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.advisor-bid-pct {
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+  color: #7a6a58;
+}
+
+.advisor-bid-star {
+  font-size: 0.62rem;
+  color: #c9a84c;
+  width: 10px;
+  flex-shrink: 0;
+  text-align: center;
+}
+
 /* ── Inline style replacements ───────────────────────── */
 .heading-glow {
   text-shadow: 0 0 20px var(--color-gold-alpha-40);
