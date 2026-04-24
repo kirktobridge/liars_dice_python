@@ -20,6 +20,7 @@ MOCK_ROLLS_REVEALED = {
         "type": "rolls_revealed",
         "bid_face": 3,
         "bid_count": 2,
+        "bidder_name": "Alice",
         "player_rolls": [
             {"name": "Alice", "dice": [3, 1, 5]},
             {"name": "Bob",   "dice": [3, 2]},
@@ -78,7 +79,8 @@ def test_overlay_shows_bid(page: Page):
     overlay = page.locator("#rolls-reveal-overlay")
     expect(overlay).to_be_visible()
     expect(overlay).to_contain_text("CUPS LIFTED")
-    expect(overlay).to_contain_text("BID: 2 ×")
+    expect(overlay).to_contain_text("bid by:")
+    expect(overlay).to_contain_text("Alice")
 
 
 def test_overlay_shows_correct_call_outcome(page: Page):
@@ -89,8 +91,9 @@ def test_overlay_shows_correct_call_outcome(page: Page):
     page.evaluate("(msg) => handleMessage(msg)", MOCK_CHALLENGE_RESOLVED_WIN)
 
     overlay = page.locator("#rolls-reveal-overlay")
-    expect(overlay).to_contain_text("ACTUAL: 2 ×")
+    expect(overlay).to_contain_text("ACTUAL:")
     expect(overlay).to_contain_text("+ 1 ×")          # ones shown
+    expect(overlay).to_contain_text("= 3")             # 2 bid-face + 1 one = 3
     expect(overlay).to_contain_text("CORRECT CALL")
     expect(overlay.get_by_text("Lower Cups")).to_be_visible()
 
@@ -137,6 +140,24 @@ def test_close_button_hides_overlay(page: Page):
     page.get_by_text("Lower Cups").click()
 
     expect(overlay).not_to_be_visible()
+
+
+def test_overlay_auto_dismiss_when_human_eliminated(page: Page):
+    page.goto(BASE_URL)
+    inject_setup(page)
+
+    # Simulate human already eliminated so the flag is set
+    page.evaluate("() => { humanEliminated = true; }")
+
+    page.evaluate("(msg) => handleMessage(msg)", MOCK_ROLLS_REVEALED)
+    page.evaluate("(msg) => handleMessage(msg)", MOCK_CHALLENGE_RESOLVED_WIN)
+
+    overlay = page.locator("#rolls-reveal-overlay")
+    expect(overlay).to_be_visible()
+    # No "Lower Cups" button — auto-dismiss path
+    expect(overlay).not_to_contain_text("Lower Cups")
+    # Overlay auto-closes within 6 seconds (5 s timer + headroom)
+    expect(overlay).not_to_be_visible(timeout=6_000)
 
 
 # ── integration test (live server + real WebSocket) ───────────────────────────

@@ -34,6 +34,7 @@ let currentTurnPlayer = null; // tracks who's about to act, from turn_started
 let totalDiceInGame = 20;
 let advisorData     = null;
 let advisorEnabled  = false;
+let humanEliminated = false;
 
 // ============================================================
 // DOM SHORTHAND
@@ -453,10 +454,14 @@ function showRollsReveal(event) {
 
   if (bidCount != null && bidFace != null) {
     const bidLine = document.createElement('div');
-    bidLine.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:1.2rem;';
+    bidLine.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:1.2rem; flex-wrap:wrap;';
     const bidLabel = document.createElement('span');
     bidLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68; letter-spacing:0.1em;';
-    bidLabel.textContent = `BID: ${bidCount} ×`;
+    if (event.bidder_name) {
+      bidLabel.innerHTML = `bid by: <strong style="color:#d0c0a0;">${escHtml(event.bidder_name)}</strong>&ensp;<strong>${bidCount}</strong> ×`;
+    } else {
+      bidLabel.innerHTML = `BID: <strong>${bidCount}</strong> ×`;
+    }
     bidLine.appendChild(bidLabel);
     const dieWrapper = document.createElement('div');
     dieWrapper.classList.add('die-wrapper');
@@ -473,7 +478,7 @@ function showRollsReveal(event) {
     col.style.cssText = 'display:flex; flex-direction:column; align-items:center; gap:6px;';
 
     const nameEl = document.createElement('div');
-    nameEl.style.cssText = 'font-size:0.78rem; color:#8a7a68; text-align:center; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+    nameEl.style.cssText = 'font-size:0.82rem; font-weight:600; color:#c9b88a; text-align:center; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
     nameEl.textContent = player.name;
     col.appendChild(nameEl);
 
@@ -507,7 +512,7 @@ function resolveRollsReveal(succeeded, outcomeLabel, actualCount, onesCount, bid
 
   const actualLabel = document.createElement('span');
   actualLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68; letter-spacing:0.1em;';
-  actualLabel.textContent = `ACTUAL: ${actualCount} ×`;
+  actualLabel.innerHTML = `ACTUAL: <strong>${actualCount}</strong> ×`;
   actualLine.appendChild(actualLabel);
 
   const dieWrapper2 = document.createElement('div');
@@ -518,13 +523,19 @@ function resolveRollsReveal(succeeded, outcomeLabel, actualCount, onesCount, bid
   if (bidFace !== 1 && onesCount > 0) {
     const plusLabel = document.createElement('span');
     plusLabel.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68;';
-    plusLabel.textContent = `+ ${onesCount} ×`;
+    plusLabel.innerHTML = `+ <strong>${onesCount}</strong> ×`;
     actualLine.appendChild(plusLabel);
     const onesWrapper = document.createElement('div');
     onesWrapper.classList.add('die-wrapper');
     onesWrapper.appendChild(makeDieSVG(1, 32));
     actualLine.appendChild(onesWrapper);
   }
+
+  const effectiveTotal = (bidFace !== 1) ? actualCount + onesCount : actualCount;
+  const eqSpan = document.createElement('span');
+  eqSpan.style.cssText = 'font-family:"Cinzel",serif; font-size:0.85rem; color:#8a7a68;';
+  eqSpan.innerHTML = `= <strong>${effectiveTotal}</strong>`;
+  actualLine.appendChild(eqSpan);
 
   content.appendChild(actualLine);
 
@@ -537,19 +548,26 @@ function resolveRollsReveal(succeeded, outcomeLabel, actualCount, onesCount, bid
   verdict.textContent = outcomeLabel;
   content.appendChild(verdict);
 
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Lower Cups';
-  closeBtn.style.cssText = `
-    display:block; margin:1.5rem auto 0;
-    background:#7c4f1e; color:#f5e6c8; border:1px solid #c9a84c;
-    font-family:'Cinzel',serif; font-size:0.9rem; letter-spacing:0.1em;
-    padding:0.5rem 1.8rem; border-radius:6px; cursor:pointer;
-  `;
-  closeBtn.onclick = () => {
-    overlay.classList.add('hidden');
-    if (ws) ws.send(JSON.stringify({ type: 'rolls_revealed_ack' }));
-  };
-  content.appendChild(closeBtn);
+  if (humanEliminated) {
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      if (ws) ws.send(JSON.stringify({ type: 'rolls_revealed_ack' }));
+    }, 5000);
+  } else {
+    const closeBtn = document.createElement('button');
+    closeBtn.textContent = 'Lower Cups';
+    closeBtn.style.cssText = `
+      display:block; margin:1.5rem auto 0;
+      background:#7c4f1e; color:#f5e6c8; border:1px solid #c9a84c;
+      font-family:'Cinzel',serif; font-size:0.9rem; letter-spacing:0.1em;
+      padding:0.5rem 1.8rem; border-radius:6px; cursor:pointer;
+    `;
+    closeBtn.onclick = () => {
+      overlay.classList.add('hidden');
+      if (ws) ws.send(JSON.stringify({ type: 'rolls_revealed_ack' }));
+    };
+    content.appendChild(closeBtn);
+  }
 }
 
 // ============================================================
@@ -656,6 +674,16 @@ function handleMessage(data) {
   // ── Eliminations ─────────────────────────────────────────
   if (t === 'player_eliminated') {
     addFeedEntry(`☠ <b style="color:#8a6060;">${escHtml(event.player_name)}</b> has fallen.`);
+    if (event.player_type === 'HUMAN') {
+      humanEliminated = true;
+      const elOverlay = $('rolls-reveal-overlay');
+      if (elOverlay && !elOverlay.classList.contains('hidden')) {
+        setTimeout(() => {
+          elOverlay.classList.add('hidden');
+          if (ws) ws.send(JSON.stringify({ type: 'rolls_revealed_ack' }));
+        }, 2000);
+      }
+    }
     return;
   }
 
@@ -791,6 +819,7 @@ function startGame() {
   currentTurnPlayer = null;
   eventLog          = [];
   lastSnapshot      = null;
+  humanEliminated   = false;
   totalDiceInGame   = storedNumPlayers * 5;
   const slider = $('bid-count');
   if (slider) { slider.max = totalDiceInGame; slider.value = 2; }
