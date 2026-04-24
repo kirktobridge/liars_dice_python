@@ -8,3 +8,7 @@ AI players using a Bayesian binomial probability model, personality traits (risk
 CLI game mode with pirate-themed flavor text
 Tournament/simulation mode with multiprocessing and a Plotly analytics dashboard
 Event-driven architecture — the game emits events; a renderer, stats collector, and logger subscribe independently
+
+To change the Google Fonts URL (i.e. swap to entirely different fonts), edit web/static/fonts.css — one @import line.
+
+To update Tailwind's font utility classes (e.g. font-display), edit web/static/tailwind-config.js.
