@@ -12,6 +12,7 @@ import pandas as pd
 from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 from stats_collector import GameStatsCollector
+from stats_schema import rounds_to_df, eliminations_to_df
 import constants as Constants
 
 # Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score)
@@ -183,7 +184,7 @@ def run_tournament(
 
     round_rows = [row for r in results for row in r.pop('_round_rows', [])]
     elim_rows  = [row for r in results for row in r.pop('_elim_rows', [])]
-    return pd.DataFrame(results), pd.DataFrame(round_rows), pd.DataFrame(elim_rows)
+    return pd.DataFrame(results), rounds_to_df(round_rows), eliminations_to_df(elim_rows)
 
 
 if __name__ == '__main__':

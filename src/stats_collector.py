@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from stats_schema import EliminationRow, RoundRow
+
 
 class GameStatsCollector:
     """Collects per-round and per-elimination statistics from LiarsDiceGame _emit events."""
@@ -7,8 +9,8 @@ class GameStatsCollector:
     def __init__(self, seed: int, num_players: int) -> None:
         self.seed = seed
         self.num_players = num_players
-        self.round_rows: list[dict] = []
-        self.elimination_rows: list[dict] = []
+        self.round_rows: list[RoundRow] = []
+        self.elimination_rows: list[EliminationRow] = []
 
         self._cur_round = 0
         self._bid_count = 0
@@ -86,20 +88,20 @@ class GameStatsCollector:
 
         elif t == 'player_eliminated':
             self._elim_counter += 1
-            self.elimination_rows.append({
-                'seed': self.seed,
-                'player_name': event.get('player_name'),
-                'finishing_position': self._elim_counter,
-            })
+            self.elimination_rows.append(EliminationRow(
+                seed=self.seed,
+                player_name=event.get('player_name'),
+                finishing_position=self._elim_counter,
+            ))
 
         elif t == 'game_won':
             self._flush_round()
             winner = event.get('winner_name')
-            self.elimination_rows.append({
-                'seed': self.seed,
-                'player_name': winner,
-                'finishing_position': self.num_players,
-            })
+            self.elimination_rows.append(EliminationRow(
+                seed=self.seed,
+                player_name=winner,
+                finishing_position=self.num_players,
+            ))
 
     def _flush_round(self) -> None:
         if self._cur_round == 0:
@@ -110,16 +112,16 @@ class GameStatsCollector:
             action_caller = self._caller_name
         else:
             action_caller = None
-        self.round_rows.append({
-            'seed': self.seed,
-            'round_num': self._cur_round,
-            'total_dice_on_table': self._tot_num_dice,
-            'bid_count': self._bid_count,
-            'action_type': self._action_type,
-            'bid_count_claimed': self._bid_count_claimed,
-            'effective_actual_count': self._effective_actual_count,
-            'challenge_succeeded': self._challenge_succeeded,
-            'round_loser': self._round_loser,
-            'action_caller': action_caller,
-            'bidder_num_dice': self._bidder_num_dice,
-        })
+        self.round_rows.append(RoundRow(
+            seed=self.seed,
+            round_num=self._cur_round,
+            total_dice_on_table=self._tot_num_dice,
+            bid_count=self._bid_count,
+            action_type=self._action_type,
+            bid_count_claimed=self._bid_count_claimed,
+            effective_actual_count=self._effective_actual_count,
+            challenge_succeeded=self._challenge_succeeded,
+            round_loser=self._round_loser,
+            action_caller=action_caller,
+            bidder_num_dice=self._bidder_num_dice,
+        ))

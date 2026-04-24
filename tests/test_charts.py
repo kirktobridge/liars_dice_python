@@ -5,6 +5,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 from charts import compute_tournament_stats
+from stats_schema import RoundRow, rounds_to_df
 
 
 def _make_dfs():
@@ -26,16 +27,32 @@ def _make_dfs():
         f'p_{safe1}_att': [20, 20, 20],
     })
 
-    df_rounds = pd.DataFrame({
-        'action_type': ['bid', 'challenge', 'challenge', 'spot_on', 'bid', 'challenge'],
-        'action_caller': [players[0], players[0], players[1], players[0], players[1], players[1]],
-        'challenge_succeeded': [None, True, False, True, None, True],
-        'bid_count_claimed': [3, 3, 4, 2, 2, 5],
-        'total_dice_on_table': [10, 10, 8, 8, 6, 6],
-        'bid_count': [1, 2, 3, 4, 1, 2],
-        'bidder_num_dice': [5, 5, 4, 4, 3, 3],
-        'effective_actual_count': [None, 2, 5, 2, None, 4],
-    })
+    df_rounds = rounds_to_df([
+        RoundRow(seed=0, round_num=1, total_dice_on_table=10, bid_count=1,
+                 action_type='bid', bid_count_claimed=3, effective_actual_count=None,
+                 challenge_succeeded=None, round_loser=None,
+                 action_caller=players[0], bidder_num_dice=5),
+        RoundRow(seed=0, round_num=2, total_dice_on_table=10, bid_count=2,
+                 action_type='challenge', bid_count_claimed=3, effective_actual_count=2,
+                 challenge_succeeded=True, round_loser=players[1],
+                 action_caller=players[0], bidder_num_dice=5),
+        RoundRow(seed=0, round_num=3, total_dice_on_table=8, bid_count=3,
+                 action_type='challenge', bid_count_claimed=4, effective_actual_count=5,
+                 challenge_succeeded=False, round_loser=players[1],
+                 action_caller=players[1], bidder_num_dice=4),
+        RoundRow(seed=0, round_num=4, total_dice_on_table=8, bid_count=4,
+                 action_type='spot_on', bid_count_claimed=2, effective_actual_count=2,
+                 challenge_succeeded=True, round_loser=None,
+                 action_caller=players[0], bidder_num_dice=4),
+        RoundRow(seed=0, round_num=5, total_dice_on_table=6, bid_count=1,
+                 action_type='bid', bid_count_claimed=2, effective_actual_count=None,
+                 challenge_succeeded=None, round_loser=None,
+                 action_caller=players[1], bidder_num_dice=3),
+        RoundRow(seed=0, round_num=6, total_dice_on_table=6, bid_count=2,
+                 action_type='challenge', bid_count_claimed=5, effective_actual_count=4,
+                 challenge_succeeded=True, round_loser=players[0],
+                 action_caller=players[1], bidder_num_dice=3),
+    ])
 
     df_eliminations = pd.DataFrame({
         'player_name': [players[1], players[0], players[0], players[1], players[1], players[0]],

@@ -92,8 +92,8 @@ def compute_tournament_stats(
 
     # --- Bid scatter data ---
     chall_sc = chall.dropna(subset=['bid_count_claimed', 'effective_actual_count'])
-    sc_succ = chall_sc[chall_sc['challenge_succeeded'] == True]
-    sc_fail = chall_sc[chall_sc['challenge_succeeded'] != True]
+    sc_succ = chall_sc[chall_sc['challenge_succeeded']]
+    sc_fail = chall_sc[chall_sc['challenge_succeeded'] == False]
     scatter_max_val = float(max(
         chall_sc['bid_count_claimed'].max() if len(chall_sc) else 1,
         chall_sc['effective_actual_count'].max() if len(chall_sc) else 1,
