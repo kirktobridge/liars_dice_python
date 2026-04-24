@@ -29,11 +29,14 @@ Run the web server: .venv/bin/uvicorn web.app:app
 
 ## Test Commands
 
-- Run all unit tests: `.venv/bin/pytest tests/ -v`
+- **Run full test suite (unit + E2E) — always use this:**
+  ```bash
+  .venv/bin/uvicorn web.app:app --port 8765 & SERVER_PID=$!; sleep 2; .venv/bin/pytest tests/ web/ -v; kill $SERVER_PID 2>/dev/null
+  ```
+- Run unit tests only: `.venv/bin/pytest tests/ -v`
 - Run single file: `.venv/bin/pytest tests/test_player.py -v`
 - Run single test: `.venv/bin/pytest tests/test_player.py::TestGetNeededCnt::test_bid_on_ones_no_double_count -v`
-- Run Playwright E2E tests (requires server on port 8765): `.venv/bin/pytest web/ -v`
-  - Start server first: `.venv/bin/uvicorn web.app:app --port 8765`
+- Run E2E tests only (requires server already running on port 8765): `.venv/bin/pytest web/ -v`
   - E2E tests live in `web/` (not `tests/`) because they depend on a running server
 
 ## Code Style
@@ -47,5 +50,5 @@ Run the web server: .venv/bin/uvicorn web.app:app
 
 - DO NOT break the existing pirate-voice CLI experience in `main.py`
 - DO NOT add game logic or I/O to `web/app.py` — delegate to `GameSession` and the game engine
-- ALWAYS run the full test suite after changes to `.py` files. All tests must pass green.
+- ALWAYS run the full test suite (unit + E2E, using the combined command above) after changes to `.py` files. All tests must pass green.
 - After completing a logically coherent change and getting all tests green, create a commit summarizing that change.
