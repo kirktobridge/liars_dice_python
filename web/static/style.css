@@ -243,11 +243,10 @@ body {
   background: var(--color-text-base);
   color: var(--color-text-ink);
   border-radius: 3px;
-  padding: 0 4px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  font-family: var(--font-display);
+  padding: 0 3px;
+  font-size: 1.1rem;
   line-height: 1.4;
+  vertical-align: middle;
 }
 
 /* ============================================================
