@@ -18,6 +18,8 @@ const PIP_POSITIONS = {
 
 const DICE_UNICODE = { 1: '⚀', 2: '⚁', 3: '⚂', 4: '⚃', 5: '⚄', 6: '⚅' };
 
+const PLAYER_AVATARS = ['💀', '⚔️', '🗡️', '🔱', '🪝', '🧭', '🏴‍☠️', '⚡'];
+
 // ============================================================
 // STATE
 // ============================================================
@@ -100,66 +102,59 @@ function renderRoster(snap) {
     ? humanName
     : (currentTurnPlayer || snap.current_player);
 
-  for (const p of snap.active_players) {
-    const isHuman     = p.player_type === 'HUMAN';
-    const isCurrent   = p.name === activeTurn;
-    const isElim      = p.is_eliminated;
+  snap.active_players.forEach((p, idx) => {
+    const isHuman   = p.player_type === 'HUMAN';
+    const isCurrent = p.name === activeTurn;
+    const isElim    = p.is_eliminated;
 
-    const row = document.createElement('div');
-    row.className = [
+    const card = document.createElement('div');
+    card.className = [
       'player-row',
       isHuman   ? 'player-row-human'  : '',
       isCurrent ? 'player-row-active' : '',
     ].filter(Boolean).join(' ');
-    row.dataset.playerName = p.name;
+    card.dataset.playerName = p.name;
 
-    // Turn dot
-    const dot = document.createElement('div');
-    dot.style.cssText = `
-      width:8px; height:8px; border-radius:50%; flex-shrink:0;
-      background:${isCurrent ? '#c9a84c' : '#3a3028'};
-    `;
-    if (isCurrent) dot.classList.add('pulse-dot');
-    row.appendChild(dot);
+    // Avatar emoji
+    const avatar = document.createElement('div');
+    avatar.className = 'player-card-avatar';
+    avatar.textContent = isHuman ? '⚓' : PLAYER_AVATARS[idx % PLAYER_AVATARS.length];
+    card.appendChild(avatar);
 
     // Name
-    const nameEl = document.createElement('span');
-    nameEl.style.cssText = 'flex:1; font-size:0.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-    if (isElim) {
-      nameEl.style.textDecoration = 'line-through';
-      nameEl.style.color = '#4a4040';
-    } else if (isHuman) {
-      nameEl.style.color = '#d4b96a';
-      nameEl.style.fontFamily = "'Cinzel', serif";
-      nameEl.style.fontWeight = '600';
-    } else {
-      nameEl.style.color = '#b8a898';
-    }
+    const nameEl = document.createElement('div');
+    nameEl.className = 'player-card-name' +
+      (isHuman && !isElim ? ' player-card-name-human' : '') +
+      (isElim             ? ' player-card-name-elim'  : '');
     nameEl.textContent = p.name;
-    row.appendChild(nameEl);
+    card.appendChild(nameEl);
 
-    // Dice pips
-    const diceEl = document.createElement('div');
-    diceEl.style.cssText = 'display:flex; gap:3px; align-items:center; flex-shrink:0;';
+    // Turn indicator dot (only when active and alive)
+    if (isCurrent && !isElim) {
+      const dot = document.createElement('div');
+      dot.className = 'player-card-turn pulse-dot';
+      card.appendChild(dot);
+    }
+
+    // Pip indicators
+    const pipsEl = document.createElement('div');
+    pipsEl.className = 'player-card-pips';
     if (isElim) {
       const x = document.createElement('span');
-      x.style.cssText = 'color:#4a3a3a; font-size:0.7rem;';
+      x.className = 'player-card-elim-mark';
       x.textContent = '✗';
-      diceEl.appendChild(x);
+      pipsEl.appendChild(x);
     } else {
       for (let i = 0; i < p.num_dice; i++) {
         const pip = document.createElement('div');
-        pip.style.cssText = `
-          width:5px; height:5px; border-radius:1px;
-          background:${isHuman ? '#c9a84c' : '#6a5a48'};
-          opacity:0.85;
-        `;
-        diceEl.appendChild(pip);
+        pip.className = 'player-card-pip' + (isHuman ? ' player-card-pip-human' : '');
+        pipsEl.appendChild(pip);
       }
     }
-    row.appendChild(diceEl);
-    roster.appendChild(row);
-  }
+    card.appendChild(pipsEl);
+
+    roster.appendChild(card);
+  });
 }
 
 // ============================================================
@@ -946,6 +941,7 @@ function updateAdvisorToggle() {
   if (!btn) return;
   btn.setAttribute('aria-pressed', String(advisorEnabled));
   btn.classList.toggle('advisor-toggle-on', advisorEnabled);
+  document.body.classList.toggle('advisor-active', advisorEnabled);
 }
 
 function syncAdvisorBidHighlight() {
@@ -966,16 +962,18 @@ function updateAdvisorBidProb() {
 }
 
 function buildAdvisorPanel() {
-  const panel = $('advisor-panel');
+  const panel       = $('advisor-panel');
+  const actionsNote = $('advisor-actions-note');
   if (!panel) return;
 
-  if (!advisorEnabled || !advisorData || !isHumanTurn || !currentRequest) {
-    panel.style.display = 'none';
+  if (!advisorData || !isHumanTurn || !currentRequest) {
+    panel.innerHTML = '';
+    if (actionsNote) actionsNote.textContent = '';
     return;
   }
 
-  panel.style.display = 'block';
   panel.innerHTML = '';
+  if (actionsNote) actionsNote.textContent = '';
 
   // ── Block 1: Situation Bar ──────────────────────────────────
   const oppDice   = currentRequest.tot_other_dice || 0;
@@ -1034,6 +1032,8 @@ function buildAdvisorPanel() {
     note.className = 'advisor-assessment-note';
     note.textContent = `You hold: ${ownCount} matching · ${neededText}`;
     assess.appendChild(note);
+
+    if (actionsNote) actionsNote.textContent = note.textContent;
 
     const chProb   = advisorData.challenge_prob  || 0;
     const soProb   = advisorData.spot_on_prob     || 0;

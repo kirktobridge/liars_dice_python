@@ -144,6 +144,32 @@ body {
   transition: opacity 0.2s ease;
 }
 
+/* Challenge — filled garnet/red */
+#btn-challenge {
+  background: radial-gradient(ellipse at 40% 28%, #5c1c1c 0%, #3a0c0c 50%, #220606 100%);
+  border-color: rgba(180, 60, 60, 0.55);
+  color: #f0a0a0;
+  box-shadow: inset 0 1px 0 rgba(255, 110, 110, 0.16), inset 0 -2px 6px rgba(0, 0, 0, 0.45);
+}
+#btn-challenge:hover:not(:disabled):not(.btn-disabled) {
+  background: radial-gradient(ellipse at 40% 28%, #721f1f 0%, #4c1010 50%, #2e0808 100%);
+  border-color: rgba(220, 80, 80, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 130, 130, 0.22), 0 0 10px rgba(200, 50, 50, 0.25);
+}
+
+/* Spot On — filled teal/sea-glass */
+#btn-spot-on {
+  background: radial-gradient(ellipse at 40% 28%, #0d3c36 0%, #072820 50%, #031610 100%);
+  border-color: rgba(56, 160, 140, 0.55);
+  color: #80e8d8;
+  box-shadow: inset 0 1px 0 rgba(80, 210, 190, 0.16), inset 0 -2px 6px rgba(0, 0, 0, 0.45);
+}
+#btn-spot-on:hover:not(:disabled):not(.btn-disabled) {
+  background: radial-gradient(ellipse at 40% 28%, #104d45 0%, #093428 50%, #041c14 100%);
+  border-color: rgba(70, 200, 175, 0.7);
+  box-shadow: inset 0 1px 0 rgba(100, 230, 210, 0.22), 0 0 10px rgba(50, 180, 160, 0.25);
+}
+
 #action-panel.disabled {
   opacity: 0.35;
   pointer-events: none;
@@ -354,4 +380,250 @@ body {
 .advisor-toggle-on {
     color: var(--color-gold) !important;
     border-color: var(--color-gold) !important;
+}
+
+/* ============================================================
+   GAME VIEW — BANDED LAYOUT
+   ============================================================ */
+
+/* Band 2: Players row */
+.players-band {
+  flex-shrink: 0;
+  background: #030608;
+  border-bottom: 1px solid rgba(41, 37, 36, 0.9);
+  padding: 8px 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.players-grid {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  min-width: min-content;
+}
+
+/* Band 3: Main area */
+.game-main-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.game-left-rail {
+  width: 196px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border-wood);
+}
+
+.game-center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Band 4: Bottom panel */
+.bottom-panel {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid #1a1008;
+  height: 260px;
+  overflow: hidden;
+}
+
+/* Gem card base */
+.bottom-card {
+  position: relative;
+  padding: 14px 18px 16px;
+  overflow-y: auto;
+  border-right: 1px solid rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-card:last-child {
+  border-right: none;
+}
+
+/* Polished-surface sheen — bright hairline across top edge */
+.bottom-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Card 1 — Your Hand — topaz / amber crystal */
+.bottom-card:nth-child(1) {
+  background: radial-gradient(ellipse at 38% 18%,
+    #3d2c0a 0%,
+    #251808 38%,
+    #180f05 65%,
+    #0e0904 100%);
+  box-shadow:
+    inset 0 2px 6px rgba(255, 200, 60, 0.07),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.5);
+}
+.bottom-card:nth-child(1)::before {
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(255, 210, 90, 0.28) 35%,
+    rgba(255, 220, 100, 0.18) 55%,
+    transparent 100%);
+}
+
+/* Card 2 — Raise To — sea sapphire / labradorite */
+.bottom-card:nth-child(2) {
+  background: radial-gradient(ellipse at 38% 18%,
+    #0d2438 0%,
+    #071826 38%,
+    #040f1c 65%,
+    #020810 100%);
+  box-shadow:
+    inset 0 2px 6px rgba(80, 160, 220, 0.08),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.55);
+}
+.bottom-card:nth-child(2)::before {
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(100, 190, 255, 0.20) 35%,
+    rgba(120, 200, 255, 0.12) 55%,
+    transparent 100%);
+}
+
+/* Card 3 — Actions — garnet / deep crimson */
+.bottom-card:nth-child(3) {
+  background: radial-gradient(ellipse at 38% 18%,
+    #2e0e0e 0%,
+    #1c0808 38%,
+    #110404 65%,
+    #080202 100%);
+  box-shadow:
+    inset 0 2px 6px rgba(200, 60, 60, 0.07),
+    inset 0 -2px 10px rgba(0, 0, 0, 0.55);
+}
+.bottom-card:nth-child(3)::before {
+  background: linear-gradient(to right,
+    transparent 0%,
+    rgba(220, 80, 80, 0.22) 35%,
+    rgba(230, 90, 90, 0.12) 55%,
+    transparent 100%);
+}
+
+/* Advisor assessment note in Actions card — toggled by .advisor-active on body */
+#advisor-actions-note {
+  font-family: 'Crimson Text', serif;
+  font-size: 0.78rem;
+  color: #8a7a68;
+  font-style: italic;
+  margin-bottom: 0.75rem;
+  min-height: 2.5rem;
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+body.advisor-active #advisor-actions-note {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Player cards in roster grid */
+#player-roster .player-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 216px;
+  min-width: 192px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(201, 168, 76, 0.1);
+  border-left: 2px solid transparent;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+
+#player-roster .player-row-active {
+  background: var(--color-gold-alpha-08);
+  border-left-color: var(--color-gold);
+  border-color: rgba(201, 168, 76, 0.25);
+}
+
+#player-roster .player-row-human {
+  background: rgba(0, 0, 0, 0.32);
+  border-color: rgba(201, 168, 76, 0.15);
+}
+
+#player-roster .player-row-human.player-row-active {
+  background: var(--color-gold-alpha-14);
+}
+
+/* Player card sub-elements */
+.player-card-avatar {
+  font-size: 1.25rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+
+.player-card-name {
+  font-size: 0.72rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  font-family: var(--font-display);
+  color: #b8a898;
+}
+
+.player-card-name-human {
+  color: #d4b96a;
+  font-weight: 600;
+}
+
+.player-card-name-elim {
+  text-decoration: line-through;
+  color: #4a4040;
+}
+
+.player-card-turn {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  flex-shrink: 0;
+  align-self: flex-end;
+  margin-bottom: 2px;
+}
+
+.player-card-pips {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.player-card-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #6a5a48;
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.player-card-pip-human {
+  background: #c9a84c;
+}
+
+.player-card-elim-mark {
+  color: #4a3a3a;
+  font-size: 0.7rem;
 }

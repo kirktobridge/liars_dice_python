@@ -169,12 +169,9 @@
   border-radius: 3px;
 }
 
-/* ── ADVISOR PANEL ───────────────────────────────── */
+/* ── ADVISOR PANEL (left rail — always visible) ──── */
 .advisor-panel {
-  display: none;
-  border-top: 1px solid rgba(201, 168, 76, 0.15);
-  margin-top: 1rem;
-  padding-top: 0.85rem;
+  padding: 10px 12px 12px;
 }
 
 .advisor-section-label {
