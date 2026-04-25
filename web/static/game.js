@@ -955,9 +955,27 @@ function syncAdvisorBidHighlight() {
   });
 }
 
+function _selectedBidProb() {
+  if (!advisorData || !advisorData.bid_probs) return null;
+  const faceKey  = String(selectedFace);
+  const countKey = String($('bid-count').value);
+  return advisorData.bid_probs[faceKey]?.[countKey] ?? null;
+}
+
 function updateAdvisorBidProb() {
   const span = $('advisor-bid-prob');
-  if (span) span.textContent = '';
+  if (span) {
+    const prob = _selectedBidProb();
+    if (prob !== null && advisorEnabled && isHumanTurn) {
+      const pct  = Math.round(prob * 100);
+      const tier = prob >= 0.6 ? 'bar-high' : prob >= 0.3 ? 'bar-mid' : 'bar-low';
+      span.textContent = pct + '% TRUE';
+      span.className = `advisor-prob ${tier}`;
+    } else {
+      span.textContent = '';
+      span.className = 'advisor-prob';
+    }
+  }
   syncAdvisorBidHighlight();
 }
 
@@ -1093,8 +1111,50 @@ function buildAdvisorPanel() {
   const currentCount = String($('bid-count').value);
   const currentFace  = String(selectedFace);
 
+  const selInTop5 = entries.slice(0, 5).some(
+    e => String(e.count) === currentCount && String(e.face) === currentFace
+  );
+  const selProb = !selInTop5
+    ? (advisorData.bid_probs?.[currentFace]?.[currentCount] ?? null)
+    : null;
+
   const table = document.createElement('div');
   table.className = 'advisor-bids-table';
+
+  if (selProb !== null) {
+    const pct  = Math.round(selProb * 100);
+    const tier = selProb >= 0.6 ? 'bar-high' : selProb >= 0.3 ? 'bar-mid' : 'bar-low';
+    const row  = document.createElement('div');
+    row.className = 'advisor-bid-row selected pinned';
+    row.dataset.count = currentCount;
+    row.dataset.face  = currentFace;
+
+    const bidLabel = document.createElement('div');
+    bidLabel.className = 'advisor-bid-label';
+    bidLabel.textContent = `${currentCount}× ${DICE_UNICODE[parseInt(currentFace)] || currentFace}`;
+
+    const track = document.createElement('div');
+    track.className = 'advisor-prob-bar-track';
+    track.style.flex = '1';
+    const fill = document.createElement('div');
+    fill.className = `advisor-prob-bar-fill ${tier}`;
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+
+    const pctEl = document.createElement('div');
+    pctEl.className = 'advisor-bid-pct';
+    pctEl.textContent = pct + '%';
+
+    const star = document.createElement('div');
+    star.className = 'advisor-bid-star';
+    star.textContent = '★';
+
+    row.appendChild(bidLabel);
+    row.appendChild(track);
+    row.appendChild(pctEl);
+    row.appendChild(star);
+    table.appendChild(row);
+  }
 
   for (const { face, count, prob } of entries.slice(0, 5)) {
     const pct  = Math.round(prob * 100);

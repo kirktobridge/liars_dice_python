@@ -281,6 +281,16 @@
 .advisor-prob-pct.bar-mid  { color: #7a6a58; }
 .advisor-prob-pct.bar-low  { color: #4a3a30; }
 
+.advisor-prob.bar-high { color: #c9a84c; }
+.advisor-prob.bar-mid  { color: #7a6a58; }
+.advisor-prob.bar-low  { color: #4a3a30; }
+
+.advisor-bid-row.pinned {
+  border-bottom: 1px solid rgba(201, 168, 76, 0.2);
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+}
+
 .advisor-bids-table {
   display: flex;
   flex-direction: column;
