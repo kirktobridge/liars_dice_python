@@ -703,28 +703,67 @@ loadPlayerNames();
 
 // ── 9. Trait vs Win Rate (scatter charts) ────────────────────────────────────
 
+function linearRegression(xs, ys) {
+  const n = xs.length;
+  if (n < 2) return null;
+  const mx = xs.reduce((a, b) => a + b, 0) / n;
+  const my = ys.reduce((a, b) => a + b, 0) / n;
+  const num = xs.reduce((s, x, i) => s + (x - mx) * (ys[i] - my), 0);
+  const den = xs.reduce((s, x) => s + (x - mx) ** 2, 0);
+  if (den === 0) return null;
+  const slope = num / den;
+  const intercept = my - slope * mx;
+  const ssTot = ys.reduce((s, y) => s + (y - my) ** 2, 0);
+  const ssRes = ys.reduce((s, y, i) => s + (y - (slope * xs[i] + intercept)) ** 2, 0);
+  const r2 = ssTot === 0 ? 0 : 1 - ssRes / ssTot;
+  return { slope, intercept, r2 };
+}
+
 function makeTraitChart(canvasId, traitValues, winPcts, playerNames, xLabel, color) {
   destroyChart(canvasId);
+  const reg = linearRegression(traitValues, winPcts);
+  const lineData = reg
+    ? [{ x: 0, y: reg.intercept }, { x: 105, y: reg.slope * 105 + reg.intercept }]
+    : [];
+
   const ctx = document.getElementById(canvasId).getContext('2d');
   charts[canvasId] = new Chart(ctx, {
     type: 'scatter',
     data: {
-      datasets: [{
-        data: traitValues.map((v, i) => ({ x: v, y: winPcts[i] })),
-        backgroundColor: color,
-        pointRadius: 7,
-        pointHoverRadius: 9,
-      }],
+      datasets: [
+        {
+          data: traitValues.map((v, i) => ({ x: v, y: winPcts[i] })),
+          backgroundColor: color,
+          pointRadius: 7,
+          pointHoverRadius: 9,
+          order: 2,
+        },
+        ...(reg ? [{
+          type: 'line',
+          label: `R² = ${reg.r2.toFixed(2)}`,
+          data: lineData,
+          borderColor: 'rgba(255,255,255,0.35)',
+          borderWidth: 1.5,
+          borderDash: [5, 4],
+          pointRadius: 0,
+          fill: false,
+          tension: 0,
+          order: 1,
+        }] : []),
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: baseLegend(false),
+        legend: { display: !!reg, labels: { color: '#8a7e68', font: { size: 10 }, boxWidth: 20 } },
         tooltip: {
           callbacks: {
-            label: ctx => `${playerNames[ctx.dataIndex]}: ${ctx.parsed.y}%`,
+            label: ctx => ctx.dataset.pointRadius === 0
+              ? null
+              : `${playerNames[ctx.dataIndex]}: ${ctx.parsed.y}%`,
           },
+          filter: item => item.dataset.pointRadius !== 0,
         },
       },
       scales: {
