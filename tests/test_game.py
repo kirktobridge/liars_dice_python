@@ -33,6 +33,7 @@ class TestGameInit(unittest.TestCase):
         self.assertTrue(game.game_status)
         self.assertIsNone(game.round_loser)
         self.assertEqual(len(game.players), 0)
+        self.assertEqual(game.start_index, 0)
 
 class TestAddPlayer(unittest.TestCase):
     def test_add_single_player(self):
@@ -582,6 +583,183 @@ class TestSnapshot(unittest.TestCase):
         names = [p.name for p in snap.active_players]
         self.assertIn('P1', names)
         self.assertIn('P2', names)
+
+
+class TestSeatOrderPreservation(unittest.TestCase):
+    """
+    Verify that self.players is never reordered; only start_index shifts.
+
+    Scenarios covered:
+    - _reorder_for_next_round sets start_index, leaves list unchanged
+    - no loser → start_index unchanged
+    - loser/idx fields cleared after reorder
+    - eliminated loser: start_index advances to next surviving seat
+    - eliminated loser at last index: wraps to 0
+    - players list order is stable across multiple real rounds
+    - actual call order in process_round matches start_index (incl. wrap-around)
+    """
+
+    def _three_player_game(self):
+        game = make_game(3)
+        p1 = make_player("P1", num_dice=5, dice=[3] * 5)
+        p2 = make_player("P2", num_dice=5, dice=[3] * 5)
+        p3 = make_player("P3", num_dice=5, dice=[3] * 5)
+        for p in [p1, p2, p3]:
+            game.add_player(p)
+        return game, p1, p2, p3
+
+    # --- _reorder_for_next_round unit tests ---
+
+    def test_reorder_sets_start_index_not_list_position(self):
+        """Loser at index 1: start_index becomes 1; players list is unchanged."""
+        game, p1, p2, p3 = self._three_player_game()
+        game.round_loser = p2
+        game._reorder_for_next_round()
+        self.assertEqual(game.players, [p1, p2, p3])
+        self.assertEqual(game.start_index, 1)
+
+    def test_reorder_last_player_as_loser(self):
+        game, p1, p2, p3 = self._three_player_game()
+        game.round_loser = p3
+        game._reorder_for_next_round()
+        self.assertEqual(game.players, [p1, p2, p3])
+        self.assertEqual(game.start_index, 2)
+
+    def test_reorder_first_player_as_loser_resets_to_zero(self):
+        game, p1, p2, p3 = self._three_player_game()
+        game.start_index = 2  # previously non-zero
+        game.round_loser = p1
+        game._reorder_for_next_round()
+        self.assertEqual(game.start_index, 0)
+
+    def test_no_loser_leaves_start_index_unchanged(self):
+        game, p1, p2, p3 = self._three_player_game()
+        game.start_index = 2
+        game.round_loser = None
+        game._reorder_for_next_round()
+        self.assertEqual(game.start_index, 2)
+
+    def test_round_loser_and_idx_cleared_after_reorder(self):
+        game, p1, p2, p3 = self._three_player_game()
+        game.round_loser = p2
+        game._round_loser_idx = 1
+        game._reorder_for_next_round()
+        self.assertIsNone(game.round_loser)
+        self.assertIsNone(game._round_loser_idx)
+
+    # --- eliminated-loser edge cases ---
+
+    def test_eliminated_loser_advances_to_next_seat(self):
+        """Eliminated loser was at idx 1 in a 3-player list → survivors [p1, p3].
+        Next seat after idx 1 is now idx 1 in the 2-player list (p3)."""
+        game = make_game(2)
+        p1 = make_player("P1")
+        p3 = make_player("P3")
+        game.add_player(p1)   # idx 0
+        game.add_player(p3)   # idx 1 (p2 already removed by _eliminate_players)
+        p2 = make_player("P2", num_dice=0)   # eliminated, not in players
+        game.round_loser = p2
+        game._round_loser_idx = 1
+        game._reorder_for_next_round()   # 1 % 2 = 1 → p3
+        self.assertEqual(game.start_index, 1)
+
+    def test_eliminated_loser_at_last_seat_wraps_to_zero(self):
+        """Eliminated loser was the last player (idx 2 in 3-player list).
+        After removal, survivors = [p1, p2]; idx 2 % 2 = 0 → p1 starts."""
+        game = make_game(2)
+        p1 = make_player("P1")
+        p2 = make_player("P2")
+        game.add_player(p1)
+        game.add_player(p2)
+        p3 = make_player("P3", num_dice=0)
+        game.round_loser = p3
+        game._round_loser_idx = 2
+        game._reorder_for_next_round()   # 2 % 2 = 0 → p1
+        self.assertEqual(game.start_index, 0)
+
+    # --- integration: players list never mutated across real rounds ---
+
+    def test_players_list_never_mutated_across_rounds(self):
+        """Running multiple rounds with different losers must not change
+        the relative order of surviving players in self.players."""
+        game, p1, p2, p3 = self._three_player_game()
+        original_order = list(game.players)
+
+        # P2 repeatedly overbids; P3 challenges each round → P2 loses a die
+        # round_rolls = [3]*15; bid=(16,3); 15<16 → challenge succeeds
+        for _ in range(3):
+            if not game.game_status:
+                break
+            with patch.object(p1, 'roll'), patch.object(p2, 'roll'), patch.object(p3, 'roll'), \
+                 patch.object(p1, 'take_turn', return_value=TurnResult(Bid(1, 3), Action.BID, 'P1')), \
+                 patch.object(p2, 'take_turn', return_value=TurnResult(Bid(16, 3), Action.RAISE, 'P2')), \
+                 patch.object(p3, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P3')):
+                game.process_round()
+
+        surviving_in_original_order = [p for p in original_order if not p.eliminated]
+        self.assertEqual(game.players, surviving_in_original_order)
+
+    # --- integration: actual turn-call order follows start_index ---
+
+    def test_round_starts_from_start_index(self):
+        """After round 1 makes P2 the loser (start_index=1), round 2's
+        first take_turn call goes to P2, then P3 in seat order."""
+        game, p1, p2, p3 = self._three_player_game()
+
+        # Round 1: P1 bids (1,3), P2 raises to (16,3), P3 challenges.
+        # actual 3s = 15 < 16 → challenge succeeds → P2 (bidder) loses.
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), patch.object(p3, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(1, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(Bid(16, 3), Action.RAISE, 'P2')), \
+             patch.object(p3, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P3')):
+            game.process_round()
+
+        self.assertEqual(game.start_index, 1)   # P2 is at index 1
+
+        call_order = []
+
+        def make_recorder(player_obj):
+            def _take_turn(*args, **kwargs):
+                call_order.append(player_obj.name)
+                if len(call_order) == 1:
+                    return TurnResult(Bid(1, 6), Action.BID, player_obj.name)
+                return TurnResult(None, Action.CHALLENGE, player_obj.name)
+            return _take_turn
+
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), patch.object(p3, 'roll'), \
+             patch.object(p1, 'take_turn', side_effect=make_recorder(p1)), \
+             patch.object(p2, 'take_turn', side_effect=make_recorder(p2)), \
+             patch.object(p3, 'take_turn', side_effect=make_recorder(p3)):
+            game.process_round()
+
+        # P2 must be first; P3 second (challenges and ends the round)
+        self.assertEqual(call_order[0], 'P2')
+        self.assertEqual(call_order[1], 'P3')
+
+    def test_start_index_wraps_around_end_of_list(self):
+        """With start_index=2, P3 goes first, then P1 (wrap-around), not P1 first."""
+        game, p1, p2, p3 = self._three_player_game()
+        game.start_index = 2
+
+        call_order = []
+
+        def make_recorder(player_obj):
+            def _take_turn(*args, **kwargs):
+                call_order.append(player_obj.name)
+                if len(call_order) == 1:
+                    return TurnResult(Bid(1, 6), Action.BID, player_obj.name)
+                return TurnResult(None, Action.CHALLENGE, player_obj.name)
+            return _take_turn
+
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), patch.object(p3, 'roll'), \
+             patch.object(p1, 'take_turn', side_effect=make_recorder(p1)), \
+             patch.object(p2, 'take_turn', side_effect=make_recorder(p2)), \
+             patch.object(p3, 'take_turn', side_effect=make_recorder(p3)):
+            game.process_round()
+
+        # start_index=2 → P3 (idx 2) first, then P1 (idx 0, wrap), then P2 (idx 1)
+        self.assertEqual(call_order[0], 'P3')
+        self.assertEqual(call_order[1], 'P1')   # wraps around
 
 
 if __name__ == '__main__':
