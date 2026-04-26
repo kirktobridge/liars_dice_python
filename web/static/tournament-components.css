@@ -123,12 +123,40 @@ body { overflow-y: auto; min-height: 100vh; }
 .profiles-table th:first-child { text-align: left; }
 .profiles-table td {
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(58,40,16,0.5);
   color: var(--color-text-dim);
   text-align: center;
 }
 .profiles-table td:first-child { text-align: left; font-weight: 600; }
-.profiles-table tr:nth-child(even) td { background: rgba(0,0,0,0.15); }
+.profiles-table tbody tr:not(.narrative-row) td { border-bottom: none; }
+.profiles-table .row-alt td { background: rgba(0,0,0,0.15); }
+.profiles-table .narrative-row td {
+  font-style: italic;
+  font-size: 0.82rem;
+  color: #6e6254;
+  padding: 1px 12px 11px 12px;
+  border-bottom: 1px solid rgba(58,40,16,0.5);
+  text-align: left;
+  line-height: 1.6;
+}
+
+/* ── insight badges ── */
+.insight-badge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.insight-item {
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  color: #a08850;
+  background: rgba(201,168,76,0.07);
+  border: 1px solid rgba(201,168,76,0.14);
+  border-radius: 4px;
+  padding: 2px 8px;
+}
 
 /* ── heatmap table ── */
 .heatmap-scroll { overflow-x: auto; }

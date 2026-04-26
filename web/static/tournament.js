@@ -70,6 +70,67 @@ function downsamplePairs(xs, ys, maxN = 4000) {
   return pts;
 }
 
+function addInsightBadge(refId, insights) {
+  const ref = document.getElementById(refId);
+  if (!ref) return;
+  const panel = ref.closest('.chart-panel');
+  if (!panel) return;
+  panel.querySelector('.insight-badge')?.remove();
+  const items = insights.filter(Boolean);
+  if (!items.length) return;
+  const div = document.createElement('div');
+  div.className = 'insight-badge';
+  div.innerHTML = items.map(t => `<span class="insight-item">${t}</span>`).join('');
+  panel.appendChild(div);
+}
+
+function buildNarrative(name, i, s) {
+  const risk = s.profile_risk[i];
+  const peer = s.profile_peer[i];
+  const att  = s.profile_att[i];
+  const winPct   = s.profile_win_pct_float?.[i] ?? parseFloat(s.profile_win_pct[i]);
+  const expected = 100 / (s.num_players || s.profile_players.length);
+  const diff     = winPct - expected;
+
+  const bidStyle = risk <= 33 ? 'cautious bidder'
+    : risk <= 66 ? 'measured bidder'
+    : 'aggressive bidder';
+  const socialStyle = peer <= 33 ? 'sticks to their own read'
+    : peer <= 66 ? 'susceptible to the crowd'
+    : 'easily swayed by others';
+  const attStyle = att <= 33 ? 'oblivious to opponents\' dice'
+    : att <= 66 ? 'keeps a reasonable eye on the table'
+    : 'hawk-eyed at the table';
+
+  const parts = [bidStyle, socialStyle, attStyle];
+
+  const si = s.sorted_players.indexOf(name);
+  if (si >= 0) {
+    const cp   = s.chall_win_pct[si];
+    const avgC = s.chall_win_pct.reduce((a, b) => a + b, 0) / s.chall_win_pct.length;
+    parts.push(cp - avgC > 5  ? `sharp challenger (${cp}%)`
+      : cp - avgC < -5         ? `poor challenger (${cp}%)`
+      : `average challenger (${cp}%)`);
+
+    const sa = s.spot_attempts[si];
+    if (sa > 0) {
+      const sp = s.spot_win_pct[si];
+      parts.push(sp >= 50 ? `spot-ons pay off (${sp}%)` : `spot-ons rarely land (${sp}%)`);
+    }
+  }
+
+  const winDesc = Math.abs(diff) < 1  ? 'right at expectation'
+    : diff >= 10  ? `dominates &mdash; ${diff.toFixed(0)}pp above expected`
+    : diff >= 3   ? `outperforms by ${diff.toFixed(0)}pp`
+    : diff <= -10 ? `struggles &mdash; ${Math.abs(diff).toFixed(0)}pp below expected`
+    : diff <= -3  ? `underperforms by ${Math.abs(diff).toFixed(0)}pp`
+    : diff > 0    ? 'marginally ahead of expected'
+    : 'marginally behind expected';
+  parts.push(winDesc);
+
+  return parts.join(' &middot; ');
+}
+
 function heatColor(v) {
   if (v === null || v === undefined) return '#111';
   const hue = Math.round(v * 120); // 0=red, 120=green
@@ -205,6 +266,7 @@ function renderDashboard(s) {
   renderCorrelationCharts(s);
   renderEscalation(s);
   renderHeatmap(s);
+  renderInsightBadges(s);
 }
 
 // ── 0. Summary chips ─────────────────────────────────────────────────────────
@@ -484,7 +546,7 @@ function renderBidRatio(s) {
   });
 }
 
-// ── 7. Player Profiles (HTML table) ──────────────────────────────────────────
+// ── 7. Player Profiles (HTML table with narrative rows) ──────────────────────
 
 function renderProfiles(s) {
   const headers = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness'];
@@ -493,13 +555,17 @@ function renderProfiles(s) {
   }</tr></thead><tbody>`;
 
   s.profile_players.forEach((name, i) => {
-    html += `<tr>
+    const alt = i % 2 === 1 ? ' row-alt' : '';
+    html += `<tr class="${alt}">
       <td>${name}</td>
       <td>${s.profile_wins[i]}</td>
       <td>${s.profile_win_pct[i]}</td>
       <td>${riskLabel(s.profile_risk[i])}</td>
       <td>${s.profile_peer[i]}</td>
       <td>${attLabel(s.profile_att[i])}</td>
+    </tr>
+    <tr class="narrative-row${alt}">
+      <td colspan="6">${buildNarrative(name, i, s)}</td>
     </tr>`;
   });
 
@@ -534,6 +600,83 @@ function renderEscalation(s) {
       scales: baseScales('Bids in Round', 'Avg Claimed Count'),
     },
   });
+}
+
+// ── 11. Insight badges ────────────────────────────────────────────────────────
+
+function renderInsightBadges(s) {
+  // Win Rate
+  const expected = 100 / s.num_players;
+  const leadDiff = (parseFloat(s.win_pct[0]) - expected).toFixed(1);
+  const lastIdx  = s.sorted_players.length - 1;
+  const lastDiff = (parseFloat(s.win_pct[lastIdx]) - expected).toFixed(1);
+  addInsightBadge('chart-win-rate', [
+    `Expected: ${expected.toFixed(1)}% each`,
+    `${s.sorted_players[0]}: ${leadDiff >= 0 ? '+' : ''}${leadDiff}pp vs expected`,
+    lastIdx > 0 ? `${s.sorted_players[lastIdx]}: ${lastDiff}pp vs expected` : null,
+  ]);
+
+  // Game Length
+  if (s.rounds_series?.length) {
+    const sorted   = [...s.rounds_series].sort((a, b) => a - b);
+    const median   = sorted[Math.floor(sorted.length / 2)];
+    const belowPct = Math.round(sorted.filter(v => v <= s.mean_rounds).length / sorted.length * 100);
+    addInsightBadge('chart-game-length', [
+      `Median: ${median} rounds`,
+      `${belowPct}% of games end at or below the mean`,
+    ]);
+  }
+
+  // Spot On
+  const maxSpotPct = Math.max(...s.spot_win_pct);
+  const maxSpotIdx = s.spot_win_pct.indexOf(maxSpotPct);
+  const totalSpot  = s.spot_attempts.reduce((a, b) => a + b, 0);
+  addInsightBadge('chart-spot-on', [
+    `Best: ${s.sorted_players[maxSpotIdx]} at ${maxSpotPct}%`,
+    `${totalSpot.toLocaleString()} spot-ons attempted total`,
+  ]);
+
+  // Challenge Accuracy
+  const maxChallPct = Math.max(...s.chall_win_pct);
+  const maxChallIdx = s.chall_win_pct.indexOf(maxChallPct);
+  const avgChall    = (s.chall_win_pct.reduce((a, b) => a + b, 0) / s.chall_win_pct.length).toFixed(1);
+  const totalChall  = s.chall_called.reduce((a, b) => a + b, 0);
+  addInsightBadge('chart-challenge-acc', [
+    `Best: ${s.sorted_players[maxChallIdx]} at ${maxChallPct}%`,
+    `Tournament avg: ${avgChall}%`,
+    `${totalChall.toLocaleString()} challenges called`,
+  ]);
+
+  // Bid Scatter — avg overstatement at moment of challenge
+  const allClaimed = [...s.scatter_success_claimed, ...s.scatter_fail_claimed];
+  const allActual  = [...s.scatter_success_actual,  ...s.scatter_fail_actual];
+  if (allClaimed.length) {
+    const avgOver = (allClaimed.reduce((acc, v, i) => acc + v - allActual[i], 0) / allClaimed.length).toFixed(1);
+    addInsightBadge('chart-bid-scatter', [
+      `${totalChall.toLocaleString()} total challenges`,
+      `At challenge, bid exceeds actual by ~${avgOver} dice on average`,
+    ]);
+  }
+
+  // Bid Ratio
+  let bestChalIdx = -1, bestChalVal = -Infinity;
+  let bestBluffIdx = -1, bestBluffVal = -Infinity;
+  s.bucket_success.forEach((v, i) => { if (v !== null && v > bestChalVal)  { bestChalVal  = v; bestChalIdx  = i; } });
+  s.bucket_fail.forEach(   (v, i) => { if (v !== null && v > bestBluffVal) { bestBluffVal = v; bestBluffIdx = i; } });
+  addInsightBadge('chart-bid-ratio', [
+    bestChalIdx  >= 0 ? `Best to challenge: ${s.bucket_labels[bestChalIdx]} ratio (${Math.round(bestChalVal * 100)}% accuracy)` : null,
+    bestBluffIdx >= 0 ? `Safest bluff: ${s.bucket_labels[bestBluffIdx]} ratio (challengers win only ${Math.round(s.bucket_success[bestBluffIdx] * 100)}%)` : null,
+  ]);
+
+  // Escalation
+  if (s.escalation_avg_claimed?.length) {
+    const peak    = Math.max(...s.escalation_avg_claimed);
+    const peakBid = s.escalation_bid_count[s.escalation_avg_claimed.indexOf(peak)];
+    const first   = s.escalation_avg_claimed[0];
+    addInsightBadge('chart-escalation', [
+      `Opens at ~${first.toFixed(1)} claimed &middot; peaks at ~${peak.toFixed(1)} by bid #${peakBid}`,
+    ]);
+  }
 }
 
 // ── custom tournament ─────────────────────────────────────────────────────────
