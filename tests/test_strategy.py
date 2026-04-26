@@ -306,5 +306,74 @@ class TestDecideAction(unittest.TestCase):
         self.assertEqual(result.player_name, "T")
 
 
+class TestBlindAggressionBoost(unittest.TestCase):
+    """High blind_aggression_score boosts challenge prob for cunning CPUs, not for zero-cunning ones."""
+
+    def _ctx_with_aggression(self, score: float, challenge_prob: float = 0.55,
+                             effective_threshold: float = 0.50) -> ResponseContext:
+        return ResponseContext(
+            prev_bid=Bid(3, 4),
+            challenge_prob=challenge_prob,
+            effective_threshold=effective_threshold,
+            spot_on_prob=0.01,
+            best_bid=Bid(4, 4),
+            best_bid_prob=0.40,
+            blind_aggression_score=score,
+            pressure_opportunity_score=0.0,
+        )
+
+    def test_high_cunning_boosts_challenge_above_threshold(self):
+        s = make_cpu_strategy()
+        s.positional_cunning = Constants.MAX_POSITIONAL_CUNNING_SCORE
+        s.challenge_threshold = 0.70  # raw prob (0.55) is below this threshold
+        # score=3.0 → boost = min(0.15, (3.0-1.4)*0.1*1.0) = 0.15
+        # effective_challenge_prob = 0.70, effective_threshold = 0.625 → challenge fires
+        ctx = self._ctx_with_aggression(score=3.0, challenge_prob=0.55, effective_threshold=0.70)
+        result = s._decide_action("T", ctx)
+        self.assertEqual(result.action, Action.CHALLENGE)
+
+    def test_zero_cunning_no_boost_challenge_suppressed(self):
+        s = make_cpu_strategy()
+        s.positional_cunning = 1  # near-zero cunning: boost ≈ 0.0016, insufficient
+        s.challenge_threshold = 0.70
+        ctx = self._ctx_with_aggression(score=3.0, challenge_prob=0.55, effective_threshold=0.70)
+        result = s._decide_action("T", ctx)
+        self.assertNotEqual(result.action, Action.CHALLENGE)
+
+
+class TestPressureOpportunityBidSelection(unittest.TestCase):
+    """High pressure_opportunity_score shifts bid selection toward higher counts when cunning is high."""
+
+    def _make_with_cunning(self, cunning: int) -> CPUStrategy:
+        s = make_cpu_strategy()
+        s.peer_pressure_score = 1  # suppress crowd-following
+        s.positional_cunning = cunning
+        return s
+
+    def test_high_cunning_picks_higher_count_bid(self):
+        from scipy.stats import binom as _binom
+        s = self._make_with_cunning(Constants.MAX_POSITIONAL_CUNNING_SCORE)
+        dice = [3, 3, 3, -1, -1, -1]
+        num_dice = 3
+        model = _binom(n=5, p=2 / 6)
+        # Both Bid(2,3) and Bid(3,3) have prob=1.0 since player holds 3 threes.
+        # pressure_hint > threshold should break the tie in favour of Bid(3,3).
+        pressure_hint = 1.0  # well above _PRESSURE_OPP_THRESHOLD
+        bid, _ = s._rank_and_select_bid(dice, num_dice, [Bid(2, 3), Bid(3, 3)], model, set(),
+                                        pressure_hint=pressure_hint)
+        self.assertEqual(bid, Bid(3, 3))
+
+    def test_zero_cunning_picks_lower_count_bid(self):
+        from scipy.stats import binom as _binom
+        s = self._make_with_cunning(1)
+        dice = [3, 3, 3, -1, -1, -1]
+        num_dice = 3
+        model = _binom(n=5, p=2 / 6)
+        # pressure_hint = 0 (zero cunning × score) → normal path → first bid wins
+        bid, _ = s._rank_and_select_bid(dice, num_dice, [Bid(2, 3), Bid(3, 3)], model, set(),
+                                        pressure_hint=0.0)
+        self.assertEqual(bid, Bid(2, 3))
+
+
 if __name__ == '__main__':
     unittest.main()

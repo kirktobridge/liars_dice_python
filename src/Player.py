@@ -82,10 +82,10 @@ class Player:
     def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
         self._strategy.observe_outcome(bidder_name, challenge_succeeded)
 
-    def take_turn(self, prev_events, tot_other_dice: int, bidder_num_dice: int = 0) -> TurnResult:
+    def take_turn(self, prev_events, tot_other_dice: int, bidder_num_dice: int = 0, next_player_num_dice: int = 0) -> TurnResult:
         return self._strategy.decide(
             self.name, self.dice, self.num_dice,
-            prev_events, tot_other_dice, bidder_num_dice,
+            prev_events, tot_other_dice, bidder_num_dice, next_player_num_dice,
         )
 
     def get_needed_cnt(self, bid: Bid) -> int:
@@ -150,4 +150,13 @@ class Player:
     def opponent_profiles(self, value: dict) -> None:
         if isinstance(self._strategy, CPUStrategy):
             self._strategy.opponent_profiles = value
+
+    @property
+    def positional_cunning(self) -> int:
+        return self._strategy.positional_cunning if isinstance(self._strategy, CPUStrategy) else 0
+
+    @positional_cunning.setter
+    def positional_cunning(self, value: int) -> None:
+        if isinstance(self._strategy, CPUStrategy):
+            self._strategy.positional_cunning = value
 

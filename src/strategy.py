@@ -9,6 +9,10 @@ from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext, In
 
 logger = logging.getLogger('liars_dice.strategy')
 
+_BLIND_AGGRESSION_THRESHOLD = 1.4
+_CHALLENGE_BOOST_MAX = 0.15
+_PRESSURE_OPP_THRESHOLD = 0.45
+
 
 @runtime_checkable
 class Strategy(Protocol):
@@ -22,6 +26,7 @@ class Strategy(Protocol):
         prev_events: deque,
         tot_other_dice: int,
         bidder_num_dice: int,
+        next_player_num_dice: int,
     ) -> TurnResult: ...
 
     def observe_action(
@@ -51,6 +56,7 @@ class CPUStrategy:
         self.challenge_threshold: float = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
         self.peer_pressure_score: int = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
         self.attentiveness_score: int = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
+        self.positional_cunning: int = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
         self.opponent_profiles: dict[str, OpponentProfile] = {}
         self._rolls_mode: int = 0
         self._mode_count: int = 0
@@ -83,6 +89,7 @@ class CPUStrategy:
         prev_events: deque,
         tot_other_dice: int,
         bidder_num_dice: int,
+        next_player_num_dice: int = 0,
     ) -> TurnResult:
         prev_event = prev_events[0]
         prev_action = prev_event.action
@@ -101,7 +108,9 @@ class CPUStrategy:
                 for event in prev_events
                 if isinstance(event, TurnResult) and event.action in (Action.BID, Action.RAISE)
             }
-            ctx = self._build_response_context(dice, num_dice, prev_event, tot_other_dice, bidder_num_dice, all_prev_bids)
+            ctx = self._build_response_context(
+                dice, num_dice, prev_event, tot_other_dice, bidder_num_dice,
+                all_prev_bids, next_player_num_dice)
             return self._decide_action(player_name, ctx)
 
         logger.error('prev_action behavior missing. Previous Event: %s', prev_event)
@@ -135,12 +144,19 @@ class CPUStrategy:
         tot_other_dice: int,
         bidder_num_dice: int,
         all_prev_bids: set[Bid],
+        next_player_num_dice: int = 0,
     ) -> ResponseContext:
         prev_bid = prev_event.bid
         nc = needed_cnt(dice[:num_dice], prev_bid)
         model = get_binom(tot_other_dice)
+        total_dice = num_dice + tot_other_dice
+        bas = self._blind_aggression_score(bidder_num_dice, total_dice, prev_bid.count)
+        pos = self._pressure_opportunity_score(next_player_num_dice, total_dice, prev_bid.count)
+        cunning = self.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
         permissible = self._get_permissible_bids(prev_bid.count, tot_other_dice, all_prev_bids)
-        best_bid, best_bid_prob = self._rank_and_select_bid(dice, num_dice, permissible, model, all_prev_bids)
+        best_bid, best_bid_prob = self._rank_and_select_bid(
+            dice, num_dice, permissible, model, all_prev_bids,
+            pressure_hint=pos * cunning)
         return ResponseContext(
             prev_bid=prev_bid,
             challenge_prob=self._compute_challenge_probability(
@@ -149,6 +165,8 @@ class CPUStrategy:
             spot_on_prob=float(model.pmf(nc)),
             best_bid=best_bid,
             best_bid_prob=best_bid_prob,
+            blind_aggression_score=bas,
+            pressure_opportunity_score=pos,
         )
 
     def _compute_challenge_probability(
@@ -191,6 +209,36 @@ class CPUStrategy:
             effective_threshold = max(0.10, self.challenge_threshold - bluff_adjustment)
         return effective_threshold
 
+    def _blind_aggression_score(
+        self,
+        bidder_num_dice: int,
+        total_dice: int,
+        bid_count: int,
+    ) -> float:
+        """Returns the ratio of the bid's claim (as a fraction of total dice) to the
+        bidder's information window (their dice / total dice). A score > 1.0 means
+        the bidder claimed more than their window justifies. Higher = more likely
+        they are bluffing or estimating blindly."""
+        info_ratio = bidder_num_dice / total_dice if total_dice > 0 else 0.01
+        bid_ratio = bid_count / total_dice if total_dice > 0 else 0.0
+        return bid_ratio / max(info_ratio, 0.01)
+
+    def _pressure_opportunity_score(
+        self,
+        next_player_num_dice: int,
+        total_dice: int,
+        current_bid_count: int,
+    ) -> float:
+        """Returns a score 0.0–1.0 representing how much pressure can be applied to
+        the next player. High when: next player has few dice (low info window, high
+        personal stakes) AND there is room to escalate the current bid count."""
+        if total_dice == 0:
+            return 0.0
+        next_info_ratio = next_player_num_dice / total_dice
+        next_blind_stake = 1.0 - next_info_ratio
+        room_to_escalate = 1.0 - (current_bid_count / total_dice)
+        return next_blind_stake * room_to_escalate
+
     def _get_permissible_bids(self, prev_bid_cnt: int, tot_other_dice: int, all_prev_bids: set[Bid]) -> list[Bid]:
         permissible = [Bid(prev_bid_cnt, face) for face in range(1, 7)
                        if Bid(prev_bid_cnt, face) not in all_prev_bids]
@@ -206,6 +254,7 @@ class CPUStrategy:
         permissible: list[Bid],
         model,
         all_prev_bids: set[Bid],
+        pressure_hint: float = 0.0,
     ) -> 'tuple[Bid | None, float]':
         if not permissible:
             return None, 0.0
@@ -215,6 +264,16 @@ class CPUStrategy:
             bid_probability = 1.0 if nc <= 0 else 1.0 - model.cdf(nc - 1)
             risk_ranking.append([bid_probability, legal_bid])
         risk_ranking.sort(key=lambda x: x[0], reverse=True)
+        if pressure_hint > _PRESSURE_OPP_THRESHOLD:
+            best_prob = risk_ranking[0][0]
+            near_best = [row for row in risk_ranking if row[0] >= best_prob - 0.05]
+            near_best.sort(key=lambda x: (x[0], x[1].count), reverse=True)
+            best_bid_probability = near_best[0][0]
+            best_bids = [row[1] for row in near_best if row[0] == best_bid_probability]
+            crowd_pick = self._apply_crowd_preference(best_bids, all_prev_bids)
+            if crowd_pick is not None:
+                return crowd_pick, best_bid_probability
+            return near_best[0][1], best_bid_probability
         best_bid_probability = risk_ranking[0][0]
         best_bids: list[Bid] = [row[1] for row in risk_ranking if row[0] == best_bid_probability]
         crowd_pick = self._apply_crowd_preference(best_bids, all_prev_bids)
@@ -238,7 +297,18 @@ class CPUStrategy:
         return None
 
     def _decide_action(self, player_name: str, ctx: ResponseContext) -> TurnResult:
-        effective_challenge_prob = ctx.challenge_prob if ctx.challenge_prob >= ctx.effective_threshold else 0.0
+        cunning = self.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
+        if ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD:
+            boost_magnitude = min(
+                _CHALLENGE_BOOST_MAX,
+                (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
+            )
+            effective_challenge_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
+            effective_threshold = max(0.10, ctx.effective_threshold - boost_magnitude * 0.5)
+        else:
+            effective_challenge_prob = ctx.challenge_prob
+            effective_threshold = ctx.effective_threshold
+        effective_challenge_prob = effective_challenge_prob if effective_challenge_prob >= effective_threshold else 0.0
         best_probability = max(effective_challenge_prob, ctx.spot_on_prob, ctx.best_bid_prob)
 
         if best_probability == 0:
@@ -283,6 +353,7 @@ class HumanStrategy:
         prev_events: deque,
         tot_other_dice: int,
         bidder_num_dice: int,
+        next_player_num_dice: int = 0,
     ) -> TurnResult:
         prev_event = prev_events[0]
         if prev_event.action == Action.START:

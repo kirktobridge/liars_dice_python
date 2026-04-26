@@ -98,3 +98,5 @@ class ResponseContext:
     spot_on_prob: float
     best_bid: 'Bid | None'
     best_bid_prob: float
+    blind_aggression_score: float = 0.0
+    pressure_opportunity_score: float = 0.0

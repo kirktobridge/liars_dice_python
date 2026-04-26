@@ -103,6 +103,7 @@ class LiarsDiceGame:
                                      getattr(self.round_events[0], 'bid', None),
                                      self._dice_snapshot())
                     bidder_num_dice = self.players[p - 1].num_dice
+                    next_player_num_dice = self.players[(p + 1) % self.num_players].num_dice
                     if self.players[p].player_type == 'HUMAN':
                         active = [pl for pl in self.players if pl.num_dice > 0]
                         idx = next((i for i, pl in enumerate(active) if pl is self.players[p]), None)
@@ -116,7 +117,8 @@ class LiarsDiceGame:
                                    current_player=self.players[p].name,
                                    prev_bidder=prev_player_nm if prev_player_nm else None)
                     cur_event = self.players[p].take_turn(
-                        self.round_events, tot_dice-self.players[p].num_dice, bidder_num_dice)
+                        self.round_events, tot_dice-self.players[p].num_dice,
+                        bidder_num_dice, next_player_num_dice)
                     self.log_event(cur_event)
                     for observer in self.players:
                         if observer is not self.players[p]:
