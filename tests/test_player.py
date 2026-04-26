@@ -24,6 +24,13 @@ class TestPlayerInit(unittest.TestCase):
         p = Player("Bob", player_type="HUMAN")
         self.assertEqual(p.player_type, "HUMAN")
 
+    def test_human_player_none_input_handler_raises_on_take_turn(self):
+        from collections import deque
+        p = Player("Human", player_type="HUMAN", input_handler=None)
+        prev_events = deque([TurnResult(None, Action.START, 'SYS')])
+        with self.assertRaises(TypeError):
+            p.take_turn(prev_events, tot_other_dice=5)
+
     def test_risk_appetite_in_distribution(self):
         p = Player("Test")
         self.assertIn(p.risk_appetite, Constants.RISK_APPETITE_DISTRIBUTION)

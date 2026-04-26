@@ -216,6 +216,99 @@ def test_weigh_anchor_returns_to_lobby(page: Page):
     expect(page.locator("#gameover-overlay")).to_be_hidden()
 
 
+# ── RAISE ACTION ─────────────────────────────────────────────────────────────
+
+def test_raise_adds_feed_entry(page: Page):
+    """raise_made event is handled and adds a feed entry (raise_made was an untested event type)."""
+    page.goto(BASE_URL)
+    _inject_game_view(page)
+    # First enable decision mode (RAISE is valid after an existing bid)
+    page.evaluate("(msg) => handleMessage(msg)", {
+        "event": {
+            "type": "input_request",
+            "request": {
+                "type": "decision",
+                "dice": [3, 4, 5],
+                "prev_bid": {"count": 2, "face": 3},
+            },
+            "advisor": None,
+        },
+        "snapshot": _SNAP_WITH_BID,
+    })
+    # Inject a raise_made event (simulates server confirming the raise)
+    _send(page, "raise_made", {"player_name": "Bot", "count": 3, "face": 4})
+    feed = page.locator("#event-feed")
+    expect(feed).to_contain_text("raises to")
+
+
+# ── TOURNAMENT API (live server) ──────────────────────────────────────────────
+
+def test_tournament_player_names_returns_list():
+    import requests
+    r = requests.get(f"{BASE_URL}/tournament/player-names", timeout=5)
+    assert r.status_code == 200
+    data = r.json()
+    assert "names" in data
+    assert isinstance(data["names"], list)
+    assert len(data["names"]) > 0
+
+
+def test_tournament_status_returns_state():
+    import requests
+    r = requests.post(
+        f"{BASE_URL}/tournament/run",
+        json={"n": 3, "num_players": 2},
+        timeout=5,
+    )
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+    r2 = requests.get(f"{BASE_URL}/tournament/status/{job_id}", timeout=5)
+    assert r2.status_code == 200
+    data = r2.json()
+    assert "status" in data
+    assert data["status"] in ("running", "complete")
+    assert "progress" in data
+
+
+def test_tournament_results_returns_data():
+    import requests
+    import time
+    r = requests.post(
+        f"{BASE_URL}/tournament/run",
+        json={"n": 3, "num_players": 2},
+        timeout=5,
+    )
+    assert r.status_code == 200
+    job_id = r.json()["job_id"]
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        r2 = requests.get(f"{BASE_URL}/tournament/status/{job_id}", timeout=5)
+        if r2.json()["status"] == "complete":
+            break
+        time.sleep(0.5)
+    r3 = requests.get(f"{BASE_URL}/tournament/results/{job_id}", timeout=5)
+    assert r3.status_code == 200
+    assert isinstance(r3.json(), dict)
+
+
+# ── WEBSOCKET BAD HANDSHAKE (live server) ─────────────────────────────────────
+
+def test_websocket_bad_handshake_closes():
+    """Server closes with code 1008 when the first message is not a join."""
+    from websockets.sync.client import connect
+    import websockets.exceptions
+
+    with connect("ws://localhost:8765/ws/test-bad-handshake-session") as ws:
+        ws.send('{"type": "not_join"}')
+        try:
+            ws.recv(timeout=5.0)
+        except websockets.exceptions.ConnectionClosed as exc:
+            code = exc.rcvd.code if exc.rcvd is not None else None
+            assert code == 1008, f"Expected close code 1008, got {code}"
+        else:
+            pytest.fail("Expected WebSocket connection to be closed with code 1008")
+
+
 # ── FULL WEBSOCKET TURN CYCLE (live server) ───────────────────────────────────
 
 def test_opening_bid_submitted_advances_game(page: Page):

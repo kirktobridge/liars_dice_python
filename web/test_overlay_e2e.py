@@ -142,6 +142,28 @@ def test_close_button_hides_overlay(page: Page):
     expect(overlay).not_to_be_visible()
 
 
+def test_overlay_shows_spot_on_success_outcome(page: Page):
+    page.goto(BASE_URL)
+    inject_setup(page)
+
+    page.evaluate("(msg) => handleMessage(msg)", MOCK_ROLLS_REVEALED)
+    page.evaluate("(msg) => handleMessage(msg)", {
+        "event": {
+            "type": "spot_on_resolved",
+            "succeeded": True,
+            "actual_count": 2,
+            "ones_count": 0,
+            "bid_face": 3,
+            "loser_names": ["Alice"],
+        },
+        "snapshot": None,
+    })
+
+    overlay = page.locator("#rolls-reveal-overlay")
+    expect(overlay).to_contain_text("CORRECT CALL")
+    expect(overlay.get_by_text("Lower Cups")).to_be_visible()
+
+
 def test_overlay_auto_dismiss_when_human_eliminated(page: Page):
     page.goto(BASE_URL)
     inject_setup(page)

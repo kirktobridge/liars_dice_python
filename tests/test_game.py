@@ -35,6 +35,10 @@ class TestGameInit(unittest.TestCase):
         self.assertEqual(len(game.players), 0)
         self.assertEqual(game.start_index, 0)
 
+    def test_init_rejects_fewer_than_two_players(self):
+        with self.assertRaises(ValueError):
+            LiarsDiceGame(1)
+
 class TestAddPlayer(unittest.TestCase):
     def test_add_single_player(self):
         game = make_game(2)
@@ -274,6 +278,30 @@ class TestFullRoundIntegration(unittest.TestCase):
         self.assertIn('player_dice', rs)
         self.assertIsInstance(rs['player_dice'], list)
         self.assertTrue(all('name' in entry and 'dice' in entry for entry in rs['player_dice']))
+
+
+    def test_max_rounds_terminates_game(self):
+        game = LiarsDiceGame(2, max_rounds=1)
+        p1 = make_player("P1", num_dice=5, dice=[3, 3, 3, 3, 3])
+        p2 = make_player("P2", num_dice=5, dice=[6, 6, 6, 6, 6])
+        game.add_player(p1)
+        game.add_player(p2)
+        # Round 1: P1 bids (2,3), P2 challenges → 3s=5 >= 2 → fails → P2 loses die
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(2, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P2')):
+            status1 = game.process_round()
+        self.assertTrue(status1)
+        self.assertEqual(game.round_num, 1)
+        # Round 2: force start_index=0 so P1 bids first again, P2 challenges;
+        # round_num becomes 2, 2 > max_rounds=1 → game_status=False → returns False
+        game.start_index = 0
+        with patch.object(p1, 'roll'), patch.object(p2, 'roll'), \
+             patch.object(p1, 'take_turn', return_value=TurnResult(Bid(2, 3), Action.BID, 'P1')), \
+             patch.object(p2, 'take_turn', return_value=TurnResult(None, Action.CHALLENGE, 'P2')):
+            status2 = game.process_round()
+        self.assertFalse(status2)
+        self.assertEqual(game.round_num, 2)
 
 
 class TestRunGame(unittest.TestCase):
