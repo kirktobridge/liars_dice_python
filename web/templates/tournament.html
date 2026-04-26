@@ -142,41 +142,20 @@
 
     <div class="dashboard-grid">
 
-      <!-- Row 1: Win Rate | Game Length | Spot On -->
+      <!-- ── Player Profiles ───────────────────────────────────────── -->
+      <div class="section-heading">Player Profiles</div>
+
+      <div class="chart-panel panel-full">
+        <div class="panel-title">Roster &amp; Traits</div>
+        <div id="table-profiles"></div>
+      </div>
+
       <div class="chart-panel">
         <div class="panel-title">Win Rate</div>
         <div class="chart-wrap chart-wrap-sm"><canvas id="chart-win-rate"></canvas></div>
       </div>
-      <div class="chart-panel">
-        <div class="panel-title">Game Length Distribution</div>
-        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-game-length"></canvas></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-title">Spot On Accuracy by Player</div>
-        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-spot-on"></canvas></div>
-      </div>
 
-      <!-- Row 2: Challenge Acc | Bid Scatter | Bid Ratio -->
-      <div class="chart-panel">
-        <div class="panel-title">Challenge Accuracy by Player</div>
-        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-challenge-acc"></canvas></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-title">Bid vs. Actual Count at Challenge</div>
-        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-scatter"></canvas></div>
-      </div>
-      <div class="chart-panel">
-        <div class="panel-title">Challenge Accuracy by Bid Ratio</div>
-        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-ratio"></canvas></div>
-      </div>
-
-      <!-- Row 3: Player Profiles (full width) -->
-      <div class="chart-panel panel-full">
-        <div class="panel-title">Player Profiles</div>
-        <div id="table-profiles"></div>
-      </div>
-
-      <!-- Row 3b: Trait vs Win Rate (full width) -->
+      <!-- Trait vs Win Rate spans remaining 2 cols; JS shows/hides whole section -->
       <div id="correlation-section" class="chart-panel panel-full" style="display:none">
         <div class="panel-title">Trait vs Win Rate</div>
         <div class="correlation-grid">
@@ -195,13 +174,39 @@
         </div>
       </div>
 
-      <!-- Row 4: Bid Escalation (full width) -->
+      <!-- ── Game Dynamics ──────────────────────────────────────────── -->
+      <div class="section-heading">Game Dynamics</div>
+
+      <div class="chart-panel">
+        <div class="panel-title">Game Length Distribution</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-game-length"></canvas></div>
+      </div>
+
       <div class="chart-panel panel-full">
         <div class="panel-title">Bid Escalation Curve</div>
         <div class="chart-wrap chart-wrap-xl"><canvas id="chart-escalation"></canvas></div>
       </div>
 
-      <!-- Row 5: Challenge Heatmap (full width) -->
+      <!-- ── Decision Quality ───────────────────────────────────────── -->
+      <div class="section-heading">Decision Quality</div>
+
+      <div class="chart-panel">
+        <div class="panel-title">Spot On Accuracy by Player</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-spot-on"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Challenge Accuracy by Player</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-challenge-acc"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Bid vs. Actual Count at Challenge</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-scatter"></canvas></div>
+      </div>
+      <div class="chart-panel">
+        <div class="panel-title">Challenge Accuracy by Bid Ratio</div>
+        <div class="chart-wrap chart-wrap-sm"><canvas id="chart-bid-ratio"></canvas></div>
+      </div>
+
       <div class="chart-panel panel-full">
         <div class="panel-title">Challenge Success Rate — Bidder Dice × Bid Amount</div>
         <div class="heatmap-scroll">

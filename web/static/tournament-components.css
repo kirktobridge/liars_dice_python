@@ -43,6 +43,21 @@ body { overflow-y: auto; min-height: 100vh; }
 }
 .panel-full { grid-column: 1 / -1; }
 
+/* ── section headings within dashboard grid ── */
+.section-heading {
+  grid-column: 1 / -1;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--color-gold-bright);
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(201,168,76,0.25);
+  padding-bottom: 6px;
+  margin-top: 12px;
+  opacity: 0.75;
+}
+.section-heading:first-child { margin-top: 0; }
+
 /* ── chart panels ── */
 .chart-panel {
   background: linear-gradient(160deg, var(--color-wood-darker) 0%, var(--color-wood-dark) 60%, var(--color-wood-mid) 100%);
