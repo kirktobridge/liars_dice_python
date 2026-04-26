@@ -193,7 +193,9 @@ class TestRoundLoserReorder(unittest.TestCase):
         game.round_loser = p3
         game._reorder_for_next_round()
 
-        self.assertEqual(game.players[0], p3)
+        # Seat order is preserved; start_index now points at p3 (index 2)
+        self.assertEqual(game.players, [p1, p2, p3])
+        self.assertEqual(game.start_index, 2)
         self.assertIsNone(game.round_loser)
 
     def test_eliminated_loser_not_reinserted(self):

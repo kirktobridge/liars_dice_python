@@ -44,6 +44,8 @@ class LiarsDiceGame:
         self.event_counter = 0
         self.round_events = deque()
         self.round_loser = None
+        self._round_loser_idx = None
+        self.start_index = 0
 
     def _emit(self, event_type: str, **data) -> None:
         self._on_event({'type': event_type, **data})
@@ -71,7 +73,8 @@ class LiarsDiceGame:
         round_cont = True
         tot_dice = self.count_dice()
         while round_cont:
-            for p in range(0, self.num_players):
+            for i in range(self.num_players):
+                p = (self.start_index + i) % self.num_players
                 if logger.isEnabledFor(logging.DEBUG):
                     logger.debug('turn start | %s | hands: %s', self.players[p].name, self._dice_snapshot())
                 self._emit('turn_started',
@@ -188,6 +191,7 @@ class LiarsDiceGame:
                     inner_event = ['SUCCESS' if succeeded else 'FAILURE', Action.CHALLENGE, self.players[p].name]
                     self.log_event(inner_event)
                     self.round_loser = loser
+                    self._round_loser_idx = self.players.index(loser)
                     loser.lose_die()
                     break
 
@@ -235,6 +239,7 @@ class LiarsDiceGame:
                         self.log_event(inner_event)
                         losers[0].lose_die()
                         self.round_loser = losers[0]
+                        self._round_loser_idx = self.players.index(losers[0])
                         round_cont = False
                         break
             logger.debug('End of for loop in process_round')
@@ -399,8 +404,12 @@ class LiarsDiceGame:
         )
 
     def _reorder_for_next_round(self) -> None:
-        """Moves self.round_loser to front of self.players if they are still in the game."""
-        if self.round_loser is not None and self.round_loser in self.players:
-            self.players.remove(self.round_loser)
-            self.players.insert(0, self.round_loser)
-            self.round_loser = None
+        """Rotates start_index so the round loser goes first next round, preserving seat order."""
+        if self.round_loser is not None:
+            if self.round_loser in self.players:
+                self.start_index = self.players.index(self.round_loser)
+            elif self._round_loser_idx is not None and self.num_players > 0:
+                # loser was eliminated; next player in seat order starts
+                self.start_index = self._round_loser_idx % self.num_players
+        self.round_loser = None
+        self._round_loser_idx = None
