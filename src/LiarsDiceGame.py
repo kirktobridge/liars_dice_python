@@ -52,7 +52,9 @@ class LiarsDiceGame:
         self._game_event_logger = None
         self.tot_num_dice = 0
         self.event_counter = 0
-        self.round_events = deque()
+        # Newest-first event log for the current round. recent_events[0] is the
+        # last action taken; iteration walks back through history.
+        self.recent_events: deque[TurnResult] = deque()
         self.round_loser = None
         self._round_loser_idx = None
         self.start_index = 0
@@ -102,8 +104,8 @@ class LiarsDiceGame:
     def _open_round(self) -> None:
         self.round_num += 1
         self._emit('round_started', round_num=self.round_num)
-        self.round_events.clear()
-        self.log_event([[-1, -1], f'RND{self.round_num}', 'SYS'])
+        self.recent_events.clear()
+        self._write_log_text(etype=f'RND{self.round_num}', actor='SYS', data='[-1, -1]')
         self._emit('dice_rolling')
         self.round_rolls.clear()
         for p in self.players:
@@ -131,8 +133,8 @@ class LiarsDiceGame:
         try:
             if logger.isEnabledFor(logging.DEBUG):
                 logger.debug('calling take_turn | player=%s | prev_action=%s | prev_bid=%s | hands: %s',
-                             player.name, self.round_events[0].action,
-                             getattr(self.round_events[0], 'bid', None),
+                             player.name, self.recent_events[0].action,
+                             self.recent_events[0].bid,
                              self._dice_snapshot())
             bidder_num_dice = self.players[player_idx - 1].num_dice
             next_player_num_dice = self.players[(player_idx + 1) % self.num_players].num_dice
@@ -140,7 +142,7 @@ class LiarsDiceGame:
                 if not self._emit_human_turn_start(player, prev_bidder_name):
                     return None
             cur_event = player.take_turn(
-                self.round_events, tot_dice - player.num_dice,
+                self.recent_events, tot_dice - player.num_dice,
                 bidder_num_dice, next_player_num_dice)
             self.log_event(cur_event)
             for observer in self.players:
@@ -152,7 +154,7 @@ class LiarsDiceGame:
             logger.exception('Exception in process_round: take_turn call')
             self._emit('error', func_name='process_round: take_turn call', message=str(e))
             self.log_event(TurnResult(None, Action.NONE, player.name))
-            self.log_events(self.round_events)
+            self.log_events(self.recent_events)
             return None
 
         return _TurnState(
@@ -164,14 +166,14 @@ class LiarsDiceGame:
         )
 
     def _read_prev_for_turn(self) -> 'tuple[str | None, Bid | None]':
-        """Inspect round_events[0]; insert START marker on round opening; return (prev_bidder_name, prev_bid)."""
-        prev_event = self.round_events[0]
-        if prev_event.action == Action.DICE_ROLL:
+        """Inspect recent_events[0] (newest-first); insert START marker on round opening; return (prev_bidder_name, prev_bid)."""
+        last = self.recent_events[0]
+        if last.action == Action.DICE_ROLL:
             self.log_event(TurnResult(None, Action.START, 'SYS'))
             return None, None
-        if prev_event.action in (Action.BID, Action.RAISE):
-            return prev_event.player_name, prev_event.bid
-        return prev_event.player_name, None
+        if last.action in (Action.BID, Action.RAISE):
+            return last.player_name, last.bid
+        return last.player_name, None
 
     def _emit_human_turn_start(self, player: 'Player', prev_bidder_name: 'str | None') -> bool:
         active = [pl for pl in self.players if pl.num_dice > 0]
@@ -236,7 +238,11 @@ class LiarsDiceGame:
                    loser_name=loser.name)
         for observer in self.players:
             observer.observe_outcome(ts.prev_bidder_name, succeeded)
-        self.log_event(['SUCCESS' if succeeded else 'FAILURE', Action.CHALLENGE, challenger.name])
+        self._write_log_text(
+            etype=str(Action.CHALLENGE),
+            actor=challenger.name,
+            data='SUCCESS' if succeeded else 'FAILURE',
+        )
         self.round_loser = loser
         self._round_loser_idx = self.players.index(loser)
         loser.lose_die()
@@ -277,11 +283,11 @@ class LiarsDiceGame:
                    loser_names=[l.name for l in losers])
 
         if succeeded:
-            self.log_event(['SUCCESS', Action.SPOT_ON, caller.name])
+            self._write_log_text(etype=str(Action.SPOT_ON), actor=caller.name, data='SUCCESS')
             for loser in losers:
                 loser.lose_die()
         else:
-            self.log_event(['FAILURE', Action.SPOT_ON, caller.name])
+            self._write_log_text(etype=str(Action.SPOT_ON), actor=caller.name, data='FAILURE')
             losers[0].lose_die()
             self.round_loser = losers[0]
             self._round_loser_idx = self.players.index(losers[0])
@@ -314,38 +320,41 @@ class LiarsDiceGame:
             f'{p.name}({p.num_dice}):{p.dice[:p.num_dice]}' for p in self.players
         )
 
-    def log_events(self, events):
-        '''log_event for multiple events.'''
+    def log_events(self, events: 'deque[TurnResult]') -> None:
+        """Drain the given deque, re-recording each event (debug-only)."""
         try:
             log_stop = len(events)
-            if len(events) < 1:
-                raise Exception(
-                    f'event log failure: no events for round {self.round_num}')
-            for event in range(0, log_stop):
+            if log_stop < 1:
+                raise Exception(f'event log failure: no events for round {self.round_num}')
+            for _ in range(log_stop):
                 self.log_event(events.popleft())
-        except Exception as e:
+        except Exception:
             logger.exception('Exception in log_events')
 
-    def log_event(self, event):
-        '''Adds entry to game log for analysis by developer.'''
-        self.round_events.appendleft(event)
+    def log_event(self, event: TurnResult) -> None:
+        """Append a turn event to recent_events (newest-first) and the log file."""
+        self.recent_events.appendleft(event)
         self.event_counter += 1
         if not self._logging:
             return
         try:
-            snap = self._dice_snapshot()
-            if isinstance(event, TurnResult):
-                msg = f'#{self.event_counter} | {event.action} | {event.player_name} | bid={event.bid} | {snap}'
-            elif isinstance(event, list):
-                data, etype, actor = event[0], event[1], event[2]
-                msg = f'#{self.event_counter} | {etype} | {actor} | {data} | {snap}'
-            elif isinstance(event, str):
-                msg = f'#{self.event_counter} | ERROR | SYS | {event} | {snap}'
-            else:
-                return
+            msg = f'#{self.event_counter} | {event.action} | {event.player_name} | bid={event.bid} | {self._dice_snapshot()}'
             self._game_event_logger.info(msg)
-        except Exception as e:
+        except Exception:
             logger.exception('Exception in log_event')
+
+    def _write_log_text(self, etype: str, actor: str, data: str = '') -> None:
+        """Write a free-form line to the game log file. Bumps event_counter
+        but does NOT append to recent_events (use for round-divider and
+        challenge/spot-on outcome markers)."""
+        self.event_counter += 1
+        if not self._logging:
+            return
+        try:
+            msg = f'#{self.event_counter} | {etype} | {actor} | {data} | {self._dice_snapshot()}'
+            self._game_event_logger.info(msg)
+        except Exception:
+            logger.exception('Exception in _write_log_text')
 
     def close(self) -> None:
         """Remove the file handler and close the log file if one was opened."""
@@ -413,13 +422,12 @@ class LiarsDiceGame:
         current_player: str | None = None
         _system_actions = (Action.DICE_ROLL, Action.START, Action.NONE)
 
-        for event in self.round_events:
-            if isinstance(event, TurnResult):
-                if current_player is None and event.action not in _system_actions:
-                    current_player = event.player_name
-                if prev_bid is None and event.action in (Action.BID, Action.RAISE):
-                    prev_bid = event.bid
-                    prev_bidder = event.player_name
+        for event in self.recent_events:
+            if current_player is None and event.action not in _system_actions:
+                current_player = event.player_name
+            if prev_bid is None and event.action in (Action.BID, Action.RAISE):
+                prev_bid = event.bid
+                prev_bidder = event.player_name
             if current_player is not None and prev_bid is not None:
                 break
 

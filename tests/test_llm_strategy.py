@@ -16,12 +16,12 @@ def _bid_events(bid: Bid = Bid(2, 4)) -> deque:
     return deque([TurnResult(bid, Action.BID, 'opponent')])
 
 
-def _decide(strategy: LLMStrategy, prev_events: deque) -> TurnResult:
+def _decide(strategy: LLMStrategy, recent_events: deque) -> TurnResult:
     return strategy.decide(
         player_name=PLAYER,
         dice=[3, 5, 2, 1, 4],
         num_dice=3,
-        prev_events=prev_events,
+        recent_events=recent_events,
         tot_other_dice=10,
         bidder_num_dice=3,
     )
@@ -231,7 +231,7 @@ class TestLLMStrategyTemperature(unittest.TestCase):
             player_name=PLAYER,
             dice=[1, 2, 3, 4, 5],
             num_dice=3,
-            prev_events=self._start_prev(),
+            recent_events=self._start_prev(),
             tot_other_dice=10,
             bidder_num_dice=3,
         )

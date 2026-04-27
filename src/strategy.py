@@ -77,7 +77,7 @@ class Strategy(Protocol):
         player_name: str,
         dice: list[int],
         num_dice: int,
-        prev_events: deque,
+        recent_events: 'deque[TurnResult]',
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int,
@@ -197,35 +197,34 @@ class CPUStrategy:
         player_name: str,
         dice: list[int],
         num_dice: int,
-        prev_events: deque,
+        recent_events: 'deque[TurnResult]',
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
     ) -> TurnResult:
-        prev_event = prev_events[0]
-        prev_action = prev_event.action
+        last = recent_events[0]
+        last_action = last.action
         self._compute_dice_stats(dice, num_dice)
 
-        if prev_action == Action.START:
+        if last_action == Action.START:
             return self._make_opening_bid(player_name, dice, num_dice)
 
-        if prev_action == Action.BID or prev_action == Action.RAISE:
-            prev_bid = prev_event.bid
+        if last_action == Action.BID or last_action == Action.RAISE:
+            prev_bid = last.bid
             if needed_cnt(dice[:num_dice], prev_bid) < 0:
                 return TurnResult(Bid(prev_bid.count + 1, prev_bid.face), Action.RAISE, player_name)
 
             all_prev_bids: set[Bid] = {
-                event.bid
-                for event in prev_events
-                if isinstance(event, TurnResult) and event.action in (Action.BID, Action.RAISE)
+                ev.bid for ev in recent_events
+                if ev.action in (Action.BID, Action.RAISE)
             }
             ctx = self._build_response_context(
-                dice, num_dice, prev_event, tot_other_dice, bidder_num_dice,
+                dice, num_dice, last, tot_other_dice, bidder_num_dice,
                 all_prev_bids, next_player_num_dice)
             return self._decide_action(player_name, ctx)
 
-        logger.error('prev_action behavior missing. Previous Event: %s', prev_event)
-        raise Exception(f'CPUStrategy: prev_action behavior missing. Previous Event: {prev_event}')
+        logger.error('last_action behavior missing. Last event: %s', last)
+        raise Exception(f'CPUStrategy: last_action behavior missing. Last event: {last}')
 
     def _compute_dice_stats(self, dice: list[int], num_dice: int) -> None:
         active = dice[:num_dice]
@@ -479,24 +478,24 @@ class LLMStrategy:
         player_name: str,
         dice: list[int],
         num_dice: int,
-        prev_events: deque,
+        recent_events: 'deque[TurnResult]',
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
     ) -> TurnResult:
-        prev_event = prev_events[0]
-        prompt = self._build_prompt(dice[:num_dice], tot_other_dice, prev_event)
+        last = recent_events[0]
+        prompt = self._build_prompt(dice[:num_dice], tot_other_dice, last)
         raw = query_llm(self._model, prompt, temperature=self._temperature)
         result = self._parse_response(raw, player_name)
-        if prev_event.action == Action.START:
+        if last.action == Action.START:
             return result if result is not None else TurnResult(Bid(2, 3), Action.BID, player_name)
         return result if result is not None else TurnResult(None, Action.CHALLENGE, player_name)
 
-    def _build_prompt(self, dice: list[int], tot_other_dice: int, prev_event: TurnResult) -> str:
+    def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:
         prev_desc = (
-            f"action={prev_event.action.value}, bid={prev_event.bid}"
-            if prev_event.bid
-            else f"action={prev_event.action.value}"
+            f"action={last.action.value}, bid={last.bid}"
+            if last.bid
+            else f"action={last.action.value}"
         )
         rules = (
             "Rules: A bid claims that AT LEAST <count> dice across all players show <face>. "
@@ -570,13 +569,13 @@ class HumanStrategy:
         player_name: str,
         dice: list[int],
         num_dice: int,
-        prev_events: deque,
+        recent_events: 'deque[TurnResult]',
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
     ) -> TurnResult:
-        prev_event = prev_events[0]
-        if prev_event.action == Action.START:
+        last = recent_events[0]
+        if last.action == Action.START:
             resp = self._input_handler({
                 'type': 'opening_bid',
                 'dice': dice[:num_dice],
@@ -587,7 +586,7 @@ class HumanStrategy:
                 'type': 'decision',
                 'dice': dice[:num_dice],
                 'tot_other_dice': tot_other_dice,
-                'prev_bid': prev_event.bid,
-                'prev_player': prev_event.player_name,
+                'prev_bid': last.bid,
+                'prev_player': last.player_name,
             })
         return TurnResult(resp.get('bid'), resp['action'], player_name)

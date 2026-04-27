@@ -84,28 +84,28 @@ class TestLogEvent(unittest.TestCase):
     def setUp(self):
         self.game = make_game(2)
 
-    def test_log_list_event(self):
+    def test_log_turn_event(self):
         event = TurnResult(Bid(2, 3), Action.BID, 'Alice')
         self.game.log_event(event)
         self.assertEqual(self.game.event_counter, 1)
-        self.assertEqual(len(self.game.round_events), 1)
-
-    def test_log_string_event(self):
-        game = LiarsDiceGame(2, on_event=lambda e: None)
-        game.log_event("test event")
-        self.assertEqual(game.event_counter, 1)
-        self.assertEqual(len(game.round_events), 1)
+        self.assertEqual(len(self.game.recent_events), 1)
 
     def test_log_increments_counter(self):
         self.game.log_event(TurnResult(Bid(1, 2), Action.BID, 'Alice'))
         self.game.log_event(TurnResult(Bid(2, 3), Action.RAISE, 'Bob'))
         self.assertEqual(self.game.event_counter, 2)
 
-    def test_round_events_is_deque_stack(self):
-        """Most recent event is at index 0 (appendleft)."""
+    def test_recent_events_is_newest_first(self):
+        """recent_events[0] is the most recent action (appendleft)."""
         self.game.log_event(TurnResult(Bid(1, 2), Action.BID, 'Alice'))
         self.game.log_event(TurnResult(Bid(2, 3), Action.RAISE, 'Bob'))
-        self.assertEqual(self.game.round_events[0].action, Action.RAISE)
+        self.assertEqual(self.game.recent_events[0].action, Action.RAISE)
+
+    def test_write_log_text_does_not_touch_deque(self):
+        """Free-form log lines bump the counter but don't enter recent_events."""
+        self.game._write_log_text(etype='RND1', actor='SYS', data='[-1, -1]')
+        self.assertEqual(self.game.event_counter, 1)
+        self.assertEqual(len(self.game.recent_events), 0)
 
 
 class TestChallengeResolution(unittest.TestCase):
@@ -480,7 +480,7 @@ class TestLogEvents(unittest.TestCase):
         ])
         game.log_events(evts)
         self.assertEqual(game.event_counter, 2)
-        self.assertEqual(len(game.round_events), 2)
+        self.assertEqual(len(game.recent_events), 2)
 
     def test_empty_deque_does_not_raise(self):
         game = make_game(2)
