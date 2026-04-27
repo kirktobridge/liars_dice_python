@@ -3,7 +3,7 @@ import random
 import constants as Constants
 from dice_math import needed_cnt
 from models import Action, Bid, TurnResult, InputHandler
-from strategy import Strategy, CPUStrategy, HumanStrategy
+from strategy import Strategy, CPUStrategy, HumanStrategy, LLMStrategy
 
 logger = logging.getLogger('liars_dice.player')
 
@@ -18,6 +18,7 @@ class Player:
         num_dice: int = Constants.MAX_NUM_DICE,
         rng: 'random.Random | None' = None,
         input_handler: 'InputHandler | None' = None,
+        llm_model: str | None = None,
     ):
         self.name = name
         self.num_dice = num_dice
@@ -29,6 +30,8 @@ class Player:
         self._rng_ref: random.Random = rng if rng is not None else random.Random()
         if player_type == 'HUMAN':
             self._strategy: Strategy = HumanStrategy(input_handler)
+        elif player_type == 'LLM':
+            self._strategy = LLMStrategy(model=llm_model or "gemma3:4b")
         else:
             self._strategy = CPUStrategy(self._rng_ref)
         self.player_type: str = self._strategy.player_type

@@ -523,5 +523,21 @@ class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
         self.assertGreater(effective, p.challenge_threshold)
 
 
+class TestLLMPlayerInstantiation(unittest.TestCase):
+    def test_default_model(self):
+        p = Player("Bot", player_type='LLM')
+        self.assertEqual(p.player_type, 'LLM')
+
+    def test_custom_model(self):
+        p = Player("Bot", player_type='LLM', llm_model="llama3:8b")
+        self.assertEqual(p.player_type, 'LLM')
+
+    def test_personality_traits_return_zero(self):
+        p = Player("Bot", player_type='LLM')
+        self.assertEqual(p.risk_appetite, 0)
+        self.assertEqual(p.peer_pressure_score, 0)
+        self.assertEqual(p.attentiveness_score, 0)
+
+
 if __name__ == '__main__':
     unittest.main()
