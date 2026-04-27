@@ -46,6 +46,12 @@ function attLabel(v) {
   return `${v} (Eagle-eyed)`;
 }
 
+function cunnLabel(v) {
+  if (v <= 33) return `${v} (Blinkered)`;
+  if (v <= 66) return `${v} (Tactical)`;
+  return `${v} (Masterful)`;
+}
+
 function buildHistogram(values, numBins = 28) {
   if (!values.length) return { labels: [], counts: [] };
   const min = Math.min(...values);
@@ -88,6 +94,7 @@ function buildNarrative(name, i, s) {
   const risk = s.profile_risk[i];
   const peer = s.profile_peer[i];
   const att  = s.profile_att[i];
+  const cun  = s.profile_cun?.[i] ?? 50;
   const winPct   = s.profile_win_pct_float?.[i] ?? parseFloat(s.profile_win_pct[i]);
   const expected = 100 / (s.num_players || s.profile_players.length);
   const diff     = winPct - expected;
@@ -101,8 +108,11 @@ function buildNarrative(name, i, s) {
   const attStyle = att <= 33 ? 'oblivious to opponents\' dice'
     : att <= 66 ? 'keeps a reasonable eye on the table'
     : 'hawk-eyed at the table';
+  const cunStyle = cun <= 33 ? 'ignores seat position'
+    : cun <= 66 ? 'reads the table order'
+    : 'exploits seat position masterfully';
 
-  const parts = [bidStyle, socialStyle, attStyle];
+  const parts = [bidStyle, socialStyle, attStyle, cunStyle];
 
   const si = s.sorted_players.indexOf(name);
   if (si >= 0) {
@@ -549,7 +559,7 @@ function renderBidRatio(s) {
 // ── 7. Player Profiles (HTML table with narrative rows) ──────────────────────
 
 function renderProfiles(s) {
-  const headers = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness'];
+  const headers = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness', 'Positional Cunning'];
   let html = `<table class="profiles-table"><thead><tr>${
     headers.map(h => `<th>${h}</th>`).join('')
   }</tr></thead><tbody>`;
@@ -563,9 +573,10 @@ function renderProfiles(s) {
       <td>${riskLabel(s.profile_risk[i])}</td>
       <td>${s.profile_peer[i]}</td>
       <td>${attLabel(s.profile_att[i])}</td>
+      <td>${cunnLabel(s.profile_cun?.[i] ?? 50)}</td>
     </tr>
     <tr class="narrative-row${alt}">
-      <td colspan="6">${buildNarrative(name, i, s)}</td>
+      <td colspan="7">${buildNarrative(name, i, s)}</td>
     </tr>`;
   });
 
@@ -712,10 +723,11 @@ function refreshCustomControls() {
 function traitDisplayLabel(type, v) {
   if (type === 'risk') return riskLabel(v);
   if (type === 'att')  return attLabel(v);
+  if (type === 'cun')  return cunnLabel(v);
   return String(v);
 }
 
-function addPlayerRow(name, risk = 50, peer = 50, att = 50) {
+function addPlayerRow(name, risk = 50, peer = 50, att = 50, cun = 50) {
   const list = document.getElementById('custom-player-list');
   const row  = document.createElement('div');
   row.className = 'custom-player-row';
@@ -741,6 +753,11 @@ function addPlayerRow(name, risk = 50, peer = 50, att = 50) {
         <label>Attentiveness</label>
         <input type="range" class="trait-slider" min="1" max="100" value="${att}" data-trait="att">
         <span class="trait-value">${traitDisplayLabel('att', att)}</span>
+      </div>
+      <div class="trait-group">
+        <label>Positional Cunning</label>
+        <input type="range" class="trait-slider" min="1" max="100" value="${cun}" data-trait="cun">
+        <span class="trait-value">${traitDisplayLabel('cun', cun)}</span>
       </div>
     </div>
     <button class="btn-remove-player" type="button" title="Remove player">✕</button>
@@ -811,6 +828,7 @@ document.getElementById('custom-run-form').addEventListener('submit', async e =>
     risk_appetite:       parseInt(row.querySelector('[data-trait="risk"]').value, 10),
     peer_pressure_score: parseInt(row.querySelector('[data-trait="peer"]').value, 10),
     attentiveness_score: parseInt(row.querySelector('[data-trait="att"]').value, 10),
+    positional_cunning:  parseInt(row.querySelector('[data-trait="cun"]').value, 10),
   }));
 
   stopPolling();
@@ -936,9 +954,10 @@ function renderCorrelationCharts(s) {
   section.style.display = '';
   const names   = s.profile_players;
   const winPcts = s.profile_win_pct_float;
-  makeTraitChart('corrRiskChart', s.profile_risk, winPcts, names, 'Risk Appetite (1–100)', '#c9a84c');
-  makeTraitChart('corrPeerChart', s.profile_peer, winPcts, names, 'Peer Pressure (1–100)', '#5B8DB8');
-  makeTraitChart('corrAttChart',  s.profile_att,  winPcts, names, 'Attentiveness (1–100)', '#7ecf86');
+  makeTraitChart('corrRiskChart', s.profile_risk,              winPcts, names, 'Risk Appetite (1–100)',      '#c9a84c');
+  makeTraitChart('corrPeerChart', s.profile_peer,              winPcts, names, 'Peer Pressure (1–100)',      '#5B8DB8');
+  makeTraitChart('corrAttChart',  s.profile_att,               winPcts, names, 'Attentiveness (1–100)',      '#7ecf86');
+  makeTraitChart('corrCunChart',  s.profile_cun ?? [],         winPcts, names, 'Positional Cunning (1–100)', '#b07ecf');
 }
 
 // ── 10. Challenge Success Heatmap (HTML table) ────────────────────────────────

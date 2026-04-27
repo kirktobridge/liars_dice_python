@@ -137,6 +137,7 @@ class _PlayerConfig(BaseModel):
     risk_appetite: int
     peer_pressure_score: int
     attentiveness_score: int
+    positional_cunning: int = 50
 
 
 class _CustomTournamentRunBody(BaseModel):
@@ -210,6 +211,8 @@ async def tournament_run_custom(body: _CustomTournamentRunBody):
             raise HTTPException(status_code=422, detail=f'peer_pressure_score out of range for {pc.name}')
         if not (1 <= pc.attentiveness_score <= 100):
             raise HTTPException(status_code=422, detail=f'attentiveness_score out of range for {pc.name}')
+        if not (1 <= pc.positional_cunning <= 100):
+            raise HTTPException(status_code=422, detail=f'positional_cunning out of range for {pc.name}')
     job_id = str(uuid.uuid4())
     _jobs[job_id] = {'status': 'running', 'progress': 0.0, 'result': None, 'error': None}
     player_configs = [pc.model_dump() for pc in body.players]

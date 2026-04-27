@@ -307,9 +307,9 @@ class TestFullRoundIntegration(unittest.TestCase):
 class TestRunGame(unittest.TestCase):
     def test_returns_expected_keys(self):
         result = run_game(seed=0, num_players=3)
-        base_keys = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure', 'winner_attentiveness',
+        base_keys = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure', 'winner_attentiveness', 'winner_positional_cunning',
                      '_round_rows', '_elim_rows'}
-        player_keys = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer', 'att')}
+        player_keys = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer', 'att', 'cun')}
         self.assertSetEqual(set(result.keys()), base_keys | player_keys)
 
     def test_seed_echoed_in_result(self):
@@ -353,8 +353,8 @@ class TestRunTournament(unittest.TestCase):
 
     def test_columns_present(self):
         df, _, _ = run_tournament(n=5, num_players=3)
-        base_cols = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure', 'winner_attentiveness'}
-        player_cols = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer', 'att')}
+        base_cols = {'seed', 'winner', 'rounds', 'num_players', 'winner_risk_appetite', 'winner_peer_pressure', 'winner_attentiveness', 'winner_positional_cunning'}
+        player_cols = {f'p_{n.replace(" ", "_")}_{attr}' for n in Constants.PLAYER_NAMES[:3] for attr in ('risk', 'peer', 'att', 'cun')}
         self.assertSetEqual(set(df.columns), base_cols | player_cols)
 
     def test_seeds_are_range_n(self):

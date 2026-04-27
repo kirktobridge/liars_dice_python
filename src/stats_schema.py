@@ -37,6 +37,7 @@ class GameRow:
     winner_risk_appetite: int
     winner_peer_pressure: int
     winner_attentiveness: int
+    winner_positional_cunning: int
 
 
 _ROUND_NULLABLE_INT_COLS = ('total_dice_on_table', 'bid_count_claimed', 'effective_actual_count', 'bidder_num_dice')

@@ -113,6 +113,7 @@ def compute_tournament_stats(
     profile_risk: list[int] = []
     profile_peer: list[int] = []
     profile_att: list[int] = []
+    profile_cun: list[int] = []
     for player in all_players:
         safe = player.replace(' ', '_')
         wins = int((df['winner'] == player).sum())
@@ -121,6 +122,7 @@ def compute_tournament_stats(
         profile_risk.append(int(df[f'p_{safe}_risk'].iloc[0]))
         profile_peer.append(int(df[f'p_{safe}_peer'].iloc[0]))
         profile_att.append(int(df[f'p_{safe}_att'].iloc[0]))
+        profile_cun.append(int(df[f'p_{safe}_cun'].iloc[0]) if f'p_{safe}_cun' in df.columns else 50)
 
     return {
         # Metadata
@@ -181,6 +183,7 @@ def compute_tournament_stats(
         "profile_risk": profile_risk,
         "profile_peer": profile_peer,
         "profile_att": profile_att,
+        "profile_cun": profile_cun,
         "profile_win_pct_float": [round(w / n_games * 100, 1) for w in profile_wins],
     }
 
@@ -303,7 +306,14 @@ def show_tournament_stats(
         else:
             return f'{v} (Eagle-eyed)'
 
-    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness']
+    def _cun_label(v: int) -> str:
+        if v <= 33:
+            return f'{v} (Blinkered)'
+        elif v <= 66:
+            return f'{v} (Tactical)'
+        else:
+            return f'{v} (Masterful)'
+    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness', 'Positional Cunning']
     profile_values = [
         s['profile_players'],
         [str(w) for w in s['profile_wins']],
@@ -311,6 +321,7 @@ def show_tournament_stats(
         [_risk_label(v) for v in s['profile_risk']],
         [str(v) for v in s['profile_peer']],
         [_att_label(v) for v in s['profile_att']],
+        [_cun_label(v) for v in s['profile_cun']],
     ]
     row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(s['num_players'])]
     profile_table = go.Table(

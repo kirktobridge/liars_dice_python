@@ -15,8 +15,8 @@ from stats_collector import GameStatsCollector
 from stats_schema import rounds_to_df, eliminations_to_df
 import constants as Constants
 
-# Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score)
-_Personalities = dict[str, tuple[int, int, int]]
+# Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score, positional_cunning)
+_Personalities = dict[str, tuple[int, int, int, int]]
 
 
 def _build_result(
@@ -36,6 +36,7 @@ def _build_result(
         player_data[f'p_{safe}_risk'] = p.risk_appetite
         player_data[f'p_{safe}_peer'] = p.peer_pressure_score
         player_data[f'p_{safe}_att'] = p.attentiveness_score
+        player_data[f'p_{safe}_cun'] = p.positional_cunning
     return {
         'seed': seed,
         'winner': winner_name,
@@ -44,6 +45,7 @@ def _build_result(
         'winner_risk_appetite': winner.risk_appetite,
         'winner_peer_pressure': winner.peer_pressure_score,
         'winner_attentiveness': winner.attentiveness_score,
+        'winner_positional_cunning': winner.positional_cunning,
         **player_data,
         '_round_rows': collector.round_rows,
         '_elim_rows': collector.elimination_rows,
@@ -87,7 +89,7 @@ def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personal
     players = {}
     for name in names:
         p = Player(name, rng=dummy_rng)
-        p.risk_appetite, p.peer_pressure_score, p.attentiveness_score = personalities[name]
+        p.risk_appetite, p.peer_pressure_score, p.attentiveness_score, p.positional_cunning = personalities[name]
         p._rng = game_rng  # bind game RNG so dice rolls are deterministic per seed
         players[name] = p
     collector = GameStatsCollector(seed, num_players)
@@ -134,6 +136,8 @@ def run_tournament(
             p.risk_appetite = c['risk_appetite']
             p.peer_pressure_score = c['peer_pressure_score']
             p.attentiveness_score = c['attentiveness_score']
+            if 'positional_cunning' in c:
+                p.positional_cunning = c['positional_cunning']
             persistent_players[c['name']] = p
     else:
         personality_rng = random.Random()
@@ -164,7 +168,7 @@ def run_tournament(
     else:
         # Parallel path — snapshot personalities so workers can reconstruct players safely
         personalities: _Personalities = {
-            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score, persistent_players[name].attentiveness_score)
+            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score, persistent_players[name].attentiveness_score, persistent_players[name].positional_cunning)
             for name in names
         }
         chunk = max(1, n // (num_workers * 4))
