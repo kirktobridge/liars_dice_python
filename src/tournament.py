@@ -128,13 +128,16 @@ def run_tournament(
     if not (2 <= num_players <= Constants.MAX_PLAYERS):
         raise ValueError(f"num_players must be between 2 and {Constants.MAX_PLAYERS}, got {num_players}")
     if player_configs is not None:
+        has_llm = any(c.get('player_type', 'CPU') == 'LLM' for c in player_configs)
+        if parallel and has_llm:
+            raise ValueError("LLM players are not supported with parallel=True")
         dummy_rng = random.Random()
         persistent_players = {}
         for c in player_configs:
-            p = Player(c['name'], rng=dummy_rng)
-            p.risk_appetite = c['risk_appetite']
-            p.peer_pressure_score = c['peer_pressure_score']
-            p.attentiveness_score = c['attentiveness_score']
+            p = Player(c['name'], player_type=c.get('player_type', 'CPU'), rng=dummy_rng, llm_model=c.get('llm_model'))
+            p.risk_appetite = c.get('risk_appetite', 0)
+            p.peer_pressure_score = c.get('peer_pressure_score', 0)
+            p.attentiveness_score = c.get('attentiveness_score', 0)
             if 'positional_cunning' in c:
                 p.positional_cunning = c['positional_cunning']
             persistent_players[c['name']] = p

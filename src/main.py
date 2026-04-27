@@ -295,7 +295,9 @@ def main():
             game.add_player(Player(player_name, player_type='HUMAN', input_handler=human_input_handler))
             break
 
-        sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 1)
+        # TODO: temporary test wiring — remove once LLM strategy is validated
+        game.add_player(Player("Gemma", player_type='LLM'))
+        sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 2)
         for idx in sampled_indices:
             game.add_player(Player(Constants.PLAYER_NAMES[idx]))
 
