@@ -25,7 +25,12 @@ class TestQueryLlm(unittest.TestCase):
         self.assertEqual(result, 'Hello there!')
         mock_post.assert_called_once_with(
             'http://localhost:11434/api/generate',
-            json={'model': 'gemma3:4b', 'prompt': 'Say hello.', 'stream': False},
+            json={
+                'model': 'gemma3:4b',
+                'prompt': 'Say hello.',
+                'stream': False,
+                'options': {'temperature': 0.7},
+            },
             timeout=15,
         )
 

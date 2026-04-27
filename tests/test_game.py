@@ -798,7 +798,7 @@ class TestLLMPlayerInGame(unittest.TestCase):
     query_llm is patched so no Ollama server is required.
     """
 
-    _LLM_PATCH = patch('strategy.query_llm', side_effect=lambda model, prompt: (
+    _LLM_PATCH = patch('strategy.query_llm', side_effect=lambda model, prompt, **kwargs: (
         '{"action": "bid", "count": 2, "face": 3}' if 'action=START' in prompt
         else '{"action": "challenge"}'
     ))

@@ -333,17 +333,35 @@ class CPUStrategy:
         return TurnResult(ctx.best_bid, action, player_name)
 
 
+_FACE_WORDS = {1: 'ones', 2: 'twos', 3: 'threes', 4: 'fours', 5: 'fives', 6: 'sixes'}
+_HISTORY_MAX = 10
+
+
 class LLMStrategy:
     player_type: str = 'LLM'
 
-    def __init__(self, model: str = "gemma3:4b") -> None:
+    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.3) -> None:
         self._model = model
+        self._temperature = temperature
+        self._history: list[str] = []
 
     def reset(self) -> None:
-        pass
+        self._history = []
 
     def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
-        pass
+        if action == Action.BID and bid is not None:
+            entry = f"{player_name} bid {bid.count} {_FACE_WORDS.get(bid.face, bid.face)}"
+        elif action == Action.RAISE and bid is not None:
+            entry = f"{player_name} raised to {bid.count} {_FACE_WORDS.get(bid.face, bid.face)}"
+        elif action == Action.CHALLENGE:
+            entry = f"{player_name} challenged"
+        elif action == Action.SPOT_ON:
+            entry = f"{player_name} called spot on"
+        else:
+            return
+        self._history.append(entry)
+        if len(self._history) > _HISTORY_MAX:
+            del self._history[: len(self._history) - _HISTORY_MAX]
 
     def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
         pass
@@ -360,7 +378,7 @@ class LLMStrategy:
     ) -> TurnResult:
         prev_event = prev_events[0]
         prompt = self._build_prompt(dice[:num_dice], tot_other_dice, prev_event)
-        raw = query_llm(self._model, prompt)
+        raw = query_llm(self._model, prompt, temperature=self._temperature)
         result = self._parse_response(raw, player_name)
         if prev_event.action == Action.START:
             return result if result is not None else TurnResult(Bid(2, 3), Action.BID, player_name)
@@ -372,12 +390,24 @@ class LLMStrategy:
             if prev_event.bid
             else f"action={prev_event.action.value}"
         )
+        rules = (
+            "Rules: A bid claims that AT LEAST <count> dice across all players show <face>. "
+            "Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. "
+            "Ones (1s) are wild and count as any face."
+        )
+        history_section = ""
+        if self._history:
+            recent = self._history[-_HISTORY_MAX:]
+            history_section = "Recent history:\n" + "\n".join(f"  - {line}" for line in recent) + "\n"
         return (
             f"You are playing Liar's Dice.\n"
+            f"{rules}\n"
             f"Your dice: {dice}\n"
             f"Total dice held by other players: {tot_other_dice}\n"
+            f"{history_section}"
             f"Previous action: {prev_desc}\n"
-            f"Respond with ONLY valid JSON in this exact format:\n"
+            f"Respond with only valid JSON, no markdown, no explanation.\n"
+            f"Use this exact format:\n"
             f'  {{"action": "bid|raise|challenge|spot_on", "count": <int>, "face": <int>}}\n'
             f"count and face are only required when action is bid or raise."
         )

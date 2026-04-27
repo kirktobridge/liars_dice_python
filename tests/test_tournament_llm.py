@@ -34,7 +34,7 @@ _CPU_B = {
 # 'action=START' appears in the prompt when the previous action is START.
 # ---------------------------------------------------------------------------
 
-def _fake_query_llm(model: str, prompt: str) -> str:
+def _fake_query_llm(model: str, prompt: str, **kwargs) -> str:
     if 'action=START' in prompt:
         return '{"action": "bid", "count": 2, "face": 3}'
     return '{"action": "challenge"}'
