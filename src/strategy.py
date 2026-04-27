@@ -1,11 +1,14 @@
 from statistics import mode, StatisticsError
 from collections import deque
 from typing import Protocol, runtime_checkable
+import json
 import logging
 import random
+import re
 import constants as Constants
 from dice_math import get_binom, needed_cnt
 from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext, InputHandler
+from llm_client import query_llm
 
 logger = logging.getLogger('liars_dice.strategy')
 
@@ -328,6 +331,81 @@ class CPUStrategy:
 
         action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
         return TurnResult(ctx.best_bid, action, player_name)
+
+
+class LLMStrategy:
+    player_type: str = 'LLM'
+
+    def __init__(self, model: str = "gemma3:4b") -> None:
+        self._model = model
+
+    def reset(self) -> None:
+        pass
+
+    def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
+        pass
+
+    def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
+        pass
+
+    def decide(
+        self,
+        player_name: str,
+        dice: list[int],
+        num_dice: int,
+        prev_events: deque,
+        tot_other_dice: int,
+        bidder_num_dice: int,
+        next_player_num_dice: int = 0,
+    ) -> TurnResult:
+        prev_event = prev_events[0]
+        prompt = self._build_prompt(dice[:num_dice], tot_other_dice, prev_event)
+        raw = query_llm(self._model, prompt)
+        result = self._parse_response(raw, player_name)
+        if prev_event.action == Action.START:
+            return result if result is not None else TurnResult(Bid(2, 3), Action.BID, player_name)
+        return result if result is not None else TurnResult(None, Action.CHALLENGE, player_name)
+
+    def _build_prompt(self, dice: list[int], tot_other_dice: int, prev_event: TurnResult) -> str:
+        prev_desc = (
+            f"action={prev_event.action.value}, bid={prev_event.bid}"
+            if prev_event.bid
+            else f"action={prev_event.action.value}"
+        )
+        return (
+            f"You are playing Liar's Dice.\n"
+            f"Your dice: {dice}\n"
+            f"Total dice held by other players: {tot_other_dice}\n"
+            f"Previous action: {prev_desc}\n"
+            f"Respond with ONLY valid JSON in this exact format:\n"
+            f'  {{"action": "bid|raise|challenge|spot_on", "count": <int>, "face": <int>}}\n'
+            f"count and face are only required when action is bid or raise."
+        )
+
+    def _parse_response(self, raw: 'str | None', player_name: str) -> 'TurnResult | None':
+        if raw is None:
+            logger.warning('LLMStrategy: received None response from LLM')
+            return None
+        try:
+            match = re.search(r'\{[^}]+\}', raw)
+            if not match:
+                raise ValueError('no JSON object found in response')
+            data = json.loads(match.group())
+            action_str = data['action'].lower().replace(' ', '_')
+            action_map = {
+                'bid': Action.BID,
+                'raise': Action.RAISE,
+                'challenge': Action.CHALLENGE,
+                'spot_on': Action.SPOT_ON,
+            }
+            action = action_map[action_str]
+            bid = None
+            if action in (Action.BID, Action.RAISE):
+                bid = Bid(int(data['count']), int(data['face']))
+            return TurnResult(bid, action, player_name)
+        except Exception as exc:
+            logger.warning('LLMStrategy: failed to parse LLM response %r: %s', raw, exc)
+            return None
 
 
 class HumanStrategy:
