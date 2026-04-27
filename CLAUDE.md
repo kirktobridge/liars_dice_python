@@ -4,14 +4,18 @@
 
 All source files live under `src/`:
 
-- `src/models.py` — core dataclasses/enums: `Action`, `Bid`, `TurnResult`
+- `src/models.py` — core dataclasses/enums: `Action`, `Bid`, `TurnResult`, `OpponentProfile`, `ResponseContext`, `PlayerState`, `GameState`, `InputHandler`/`InputRequest`/`InputResponse`
 - `src/constants.py` — game constants: thresholds, player counts, debug flag
 - `src/presentation.py` — pirate flavor strings (`INSULTS`, `GAME_RULES`, `TITLE_CARD`), pause durations; imported by `main.py`
 - `src/LiarsDiceGame.py` — game engine: round orchestration, challenge/spot-on resolution, elimination, event emission. Supports context manager. Decoupled from output via `on_event(event_type, **data)` callback.
-- `src/Player.py` — player agent: dice ops, probability model (scipy binomial), turn decision logic, personality traits (`risk_appetite`, `peer_pressure_score`)
+- `src/dice_math.py` — shared binomial math utilities: `get_binom()` (cached scipy binom), `needed_cnt()`; extracted from Player/advisor
+- `src/advisor.py` — probability advisor for the human player: `AdvisorData` TypedDict, `advisor_probs()` function used by the web UI
+- `src/strategy.py` — AI strategy layer: `Strategy` Protocol, `CPUStrategy` implementation with opponent modelling and personality traits; imports from `dice_math` and `models`
+- `src/Player.py` — player agent: dice ops, turn decision logic; delegates probability math to `dice_math` and strategy to `strategy.py`
 - `src/main.py` — CLI entry point: setup, human I/O, pirate-flavored output via `pirate_renderer(event)` event handler
 - `src/tournament.py` — runs individual games (`run_game`) and parallel tournament batches (`run_tournament`)
 - `src/stats_collector.py` — `GameStatsCollector` class: accumulates per-game results into stats
+- `src/stats_schema.py` — structured stats dataclasses: `RoundRow`, `EliminationRow`, `GameRow`; DataFrame converters used by charts
 - `src/charts.py` — `show_tournament_stats()`: renders plotly charts from tournament data
 
 ## Web Layer
@@ -20,6 +24,8 @@ A Flask web interface lives under `web/`:
 
 - `web/app.py` — Flask application: HTTP routes, SSE event streaming, game lifecycle endpoints
 - `web/game_session.py` — `GameSession` class: bridges the game engine to the web layer, manages per-session state
+- `web/timing.py` — `EVENT_DELAYS` dict controlling SSE pacing (seconds to pause before forwarding each event type to the browser)
+- `web/web_logging.py` — `setup_web_logging()`, `get_logger()`: rotating file-based logging for the web layer; call once at app startup
 - `web/templates/` — Jinja2 HTML templates
 - `web/static/` — CSS, JS, and static assets
 - `web/test_overlay_e2e.py` — Playwright E2E tests for the cups-lifted overlay
@@ -44,7 +50,7 @@ Run the web server: .venv/bin/uvicorn web.app:app
 - Python 3.10+. Use dataclasses and Enum from stdlib. Type hints on all new functions.
 - No `print()`, `input()`, or `time.sleep()` inside `LiarsDiceGame` or `Player` — CLI only belongs in `main.py`
 - Colorama is allowed in `src/presentation.py` (pirate flavor strings) and in `src/Player.py` (debug-only output, guarded by debug flag); avoid it in game-logic paths
-- All new tests go in the existing test files. `make_game()` helper lives in `tests/test_game.py`; `make_player()` helper lives in `tests/test_player.py`
+- Add new tests to the most relevant existing file in `tests/`. `make_game()` helper lives in `tests/test_game.py`; `make_player()` helper lives in `tests/test_player.py`. Current test files: `test_game`, `test_player`, `test_advisor`, `test_strategy`, `test_stats_collector`, `test_charts`, `test_main`, `test_smoke`
 
 ## Important Constraints
 
