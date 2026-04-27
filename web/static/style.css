@@ -433,15 +433,15 @@ body {
   display: grid;
   grid-template-columns: 1fr 2fr 1fr;
   border-top: 1px solid #1a1008;
-  height: 130px;
+  height: 152px;
   overflow: hidden;
 }
 
 /* Gem card base */
 .bottom-card {
   position: relative;
-  padding: 10px 14px 10px;
-  overflow-y: auto;
+  padding: 10px 14px 14px;
+  overflow: hidden;
   border-right: 1px solid rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
@@ -470,6 +470,17 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* Actions card prob spans never show content — collapse their reserved height */
+#advisor-challenge-prob,
+#advisor-spot-on-prob {
+  height: 0;
+}
+
+/* Slider needs clearance above confirm button */
+#bid-count {
+  margin-bottom: 8px;
 }
 
 /* Face selector — 3 per row */
@@ -576,7 +587,7 @@ body {
   color: #8a7a68;
   font-style: italic;
   margin-bottom: 0.5rem;
-  min-height: 1.6rem;
+  min-height: 0;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.15s ease;
