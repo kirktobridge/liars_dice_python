@@ -3,7 +3,7 @@ import random
 import constants as Constants
 from dice_math import needed_cnt
 from models import Action, Bid, TurnResult, InputHandler
-from strategy import Strategy, CPUStrategy, HumanStrategy, LLMStrategy
+from strategy import Strategy, CPUStrategy, HumanStrategy, LLMStrategy, Personality
 
 logger = logging.getLogger('liars_dice.player')
 
@@ -19,6 +19,7 @@ class Player:
         rng: 'random.Random | None' = None,
         input_handler: 'InputHandler | None' = None,
         llm_model: str | None = None,
+        personality: 'Personality | None' = None,
     ):
         self.name = name
         self.num_dice = num_dice
@@ -33,7 +34,7 @@ class Player:
         elif player_type == 'LLM':
             self._strategy = LLMStrategy(model=llm_model or "gemma3:4b")
         else:
-            self._strategy = CPUStrategy(self._rng_ref)
+            self._strategy = CPUStrategy(self._rng_ref, personality=personality)
         self.player_type: str = self._strategy.player_type
         logger.debug('Player %s created (player_type=%s)', name, player_type)
 
@@ -98,68 +99,13 @@ class Player:
         self.wild_count = self.dice.count(1)
         return self.wild_count
 
-    # ── Personality trait forwarding (tournament.py backward compat) ──────────
-
     @property
-    def risk_appetite(self) -> int:
-        return self._strategy.risk_appetite if isinstance(self._strategy, CPUStrategy) else 0
-
-    @risk_appetite.setter
-    def risk_appetite(self, value: int) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.risk_appetite = value
-
-    @property
-    def peer_pressure_score(self) -> int:
-        return self._strategy.peer_pressure_score if isinstance(self._strategy, CPUStrategy) else 0
-
-    @peer_pressure_score.setter
-    def peer_pressure_score(self, value: int) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.peer_pressure_score = value
-
-    @property
-    def attentiveness_score(self) -> int:
-        return self._strategy.attentiveness_score if isinstance(self._strategy, CPUStrategy) else 0
-
-    @attentiveness_score.setter
-    def attentiveness_score(self, value: int) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.attentiveness_score = value
-
-    @property
-    def challenge_threshold(self) -> float:
-        return self._strategy.challenge_threshold if isinstance(self._strategy, CPUStrategy) else 0.5
-
-    @challenge_threshold.setter
-    def challenge_threshold(self, value: float) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.challenge_threshold = value
-
-    @property
-    def spot_on_threshold(self) -> float:
-        return self._strategy.spot_on_threshold if isinstance(self._strategy, CPUStrategy) else 0.6
-
-    @spot_on_threshold.setter
-    def spot_on_threshold(self, value: float) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.spot_on_threshold = value
+    def personality(self) -> 'Personality | None':
+        """Personality dataclass for CPU players; None for HUMAN/LLM."""
+        return self._strategy.personality if isinstance(self._strategy, CPUStrategy) else None
 
     @property
     def opponent_profiles(self) -> dict:
+        """Per-game opponent observation state. Empty dict for non-CPU players."""
         return self._strategy.opponent_profiles if isinstance(self._strategy, CPUStrategy) else {}
-
-    @opponent_profiles.setter
-    def opponent_profiles(self, value: dict) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.opponent_profiles = value
-
-    @property
-    def positional_cunning(self) -> int:
-        return self._strategy.positional_cunning if isinstance(self._strategy, CPUStrategy) else 0
-
-    @positional_cunning.setter
-    def positional_cunning(self, value: int) -> None:
-        if isinstance(self._strategy, CPUStrategy):
-            self._strategy.positional_cunning = value
 

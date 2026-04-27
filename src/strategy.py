@@ -1,5 +1,6 @@
 from statistics import mode, StatisticsError
 from collections import deque
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 import json
 import logging
@@ -15,6 +16,56 @@ logger = logging.getLogger('liars_dice.strategy')
 _BLIND_AGGRESSION_THRESHOLD = 1.4
 _CHALLENGE_BOOST_MAX = 0.15
 _PRESSURE_OPP_THRESHOLD = 0.45
+
+
+@dataclass
+class Personality:
+    risk_appetite: int
+    peer_pressure_score: int
+    attentiveness_score: int
+    positional_cunning: int
+    spot_on_threshold: float
+    challenge_threshold: float
+
+    @classmethod
+    def from_traits(
+        cls,
+        *,
+        risk_appetite: int,
+        peer_pressure_score: int,
+        attentiveness_score: int,
+        positional_cunning: int,
+        spot_on_jitter: float = 0.0,
+        challenge_jitter: float = 0.0,
+    ) -> 'Personality':
+        risk_fraction = risk_appetite / Constants.MAX_RISK_SCORE
+        spot_on_threshold = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_fraction * 0.06 + spot_on_jitter)
+        challenge_threshold = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
+        return cls(
+            risk_appetite=risk_appetite,
+            peer_pressure_score=peer_pressure_score,
+            attentiveness_score=attentiveness_score,
+            positional_cunning=positional_cunning,
+            spot_on_threshold=spot_on_threshold,
+            challenge_threshold=challenge_threshold,
+        )
+
+    @classmethod
+    def random(cls, rng: random.Random) -> 'Personality':
+        risk_appetite = rng.choice(Constants.RISK_APPETITE_DISTRIBUTION)
+        spot_on_jitter = rng.uniform(-0.03, 0.03)
+        challenge_jitter = rng.uniform(-0.03, 0.03)
+        peer_pressure_score = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
+        attentiveness_score = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
+        positional_cunning = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
+        return cls.from_traits(
+            risk_appetite=risk_appetite,
+            peer_pressure_score=peer_pressure_score,
+            attentiveness_score=attentiveness_score,
+            positional_cunning=positional_cunning,
+            spot_on_jitter=spot_on_jitter,
+            challenge_jitter=challenge_jitter,
+        )
 
 
 @runtime_checkable
@@ -48,25 +99,60 @@ class Strategy(Protocol):
 class CPUStrategy:
     player_type: str = 'CPU'
 
-    def __init__(self, rng: random.Random) -> None:
+    def __init__(self, rng: random.Random, personality: 'Personality | None' = None) -> None:
         self._rng = rng
-        risk_appetite = rng.choice(Constants.RISK_APPETITE_DISTRIBUTION)
-        spot_on_jitter = rng.uniform(-0.03, 0.03)
-        challenge_jitter = rng.uniform(-0.03, 0.03)
-        peer_pressure_score = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
-        attentiveness_score = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
-        positional_cunning = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
-        self._set_personality(
-            risk_appetite=risk_appetite,
-            peer_pressure_score=peer_pressure_score,
-            attentiveness_score=attentiveness_score,
-            positional_cunning=positional_cunning,
-            spot_on_jitter=spot_on_jitter,
-            challenge_jitter=challenge_jitter,
-        )
+        self.personality: Personality = personality if personality is not None else Personality.random(rng)
         self.opponent_profiles: dict[str, OpponentProfile] = {}
         self._rolls_mode: int = 0
         self._mode_count: int = 0
+
+    @property
+    def risk_appetite(self) -> int:
+        return self.personality.risk_appetite
+
+    @risk_appetite.setter
+    def risk_appetite(self, value: int) -> None:
+        self.personality.risk_appetite = value
+
+    @property
+    def peer_pressure_score(self) -> int:
+        return self.personality.peer_pressure_score
+
+    @peer_pressure_score.setter
+    def peer_pressure_score(self, value: int) -> None:
+        self.personality.peer_pressure_score = value
+
+    @property
+    def attentiveness_score(self) -> int:
+        return self.personality.attentiveness_score
+
+    @attentiveness_score.setter
+    def attentiveness_score(self, value: int) -> None:
+        self.personality.attentiveness_score = value
+
+    @property
+    def positional_cunning(self) -> int:
+        return self.personality.positional_cunning
+
+    @positional_cunning.setter
+    def positional_cunning(self, value: int) -> None:
+        self.personality.positional_cunning = value
+
+    @property
+    def spot_on_threshold(self) -> float:
+        return self.personality.spot_on_threshold
+
+    @spot_on_threshold.setter
+    def spot_on_threshold(self, value: float) -> None:
+        self.personality.spot_on_threshold = value
+
+    @property
+    def challenge_threshold(self) -> float:
+        return self.personality.challenge_threshold
+
+    @challenge_threshold.setter
+    def challenge_threshold(self, value: float) -> None:
+        self.personality.challenge_threshold = value
 
     def _set_personality(
         self,
@@ -77,14 +163,14 @@ class CPUStrategy:
         spot_on_jitter: float = 0.0,
         challenge_jitter: float = 0.0,
     ) -> None:
-        self.risk_appetite = risk_appetite
-        self.peer_pressure_score = peer_pressure_score
-        self.attentiveness_score = attentiveness_score
-        self.positional_cunning = positional_cunning
-        risk_fraction = risk_appetite / Constants.MAX_RISK_SCORE
-        risk_shift = risk_fraction * 0.06
-        self.spot_on_threshold: float = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_shift + spot_on_jitter)
-        self.challenge_threshold: float = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
+        self.personality = Personality.from_traits(
+            risk_appetite=risk_appetite,
+            peer_pressure_score=peer_pressure_score,
+            attentiveness_score=attentiveness_score,
+            positional_cunning=positional_cunning,
+            spot_on_jitter=spot_on_jitter,
+            challenge_jitter=challenge_jitter,
+        )
 
     def reset(self) -> None:
         self.opponent_profiles = {}

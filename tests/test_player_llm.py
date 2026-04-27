@@ -135,50 +135,17 @@ class TestLLMTakeTurn(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
-# Non-CPU trait forwarders for LLM player
+# Personality is None for non-CPU strategies
 # ---------------------------------------------------------------------------
 
-class TestLLMTraitForwarders(unittest.TestCase):
-    """Trait properties must return correct non-CPU defaults and not crash."""
+class TestLLMNoPersonality(unittest.TestCase):
+    def test_personality_is_none(self):
+        p = Player("Bot", player_type="LLM")
+        self.assertIsNone(p.personality)
 
-    def setUp(self):
-        self.p = Player("Bot", player_type="LLM")
-
-    def test_risk_appetite_default(self):
-        self.assertEqual(self.p.risk_appetite, 0)
-
-    def test_peer_pressure_score_default(self):
-        self.assertEqual(self.p.peer_pressure_score, 0)
-
-    def test_attentiveness_score_default(self):
-        self.assertEqual(self.p.attentiveness_score, 0)
-
-    def test_challenge_threshold_default(self):
-        self.assertEqual(self.p.challenge_threshold, 0.5)
-
-    def test_spot_on_threshold_default(self):
-        self.assertEqual(self.p.spot_on_threshold, 0.6)
-
-    def test_opponent_profiles_default(self):
-        self.assertEqual(self.p.opponent_profiles, {})
-
-    def test_positional_cunning_default(self):
-        self.assertEqual(self.p.positional_cunning, 0)
-
-    def test_setters_do_not_crash(self):
-        # Silently ignored for non-CPU strategies — must not raise
-        self.p.risk_appetite = 99
-        self.p.peer_pressure_score = 50
-        self.p.attentiveness_score = 10
-        self.p.challenge_threshold = 0.9
-        self.p.spot_on_threshold = 0.8
-        self.p.opponent_profiles = {"X": object()}
-        self.p.positional_cunning = 7
-
-    def test_setters_do_not_mutate_reads(self):
-        # After a silently-ignored set, reads still return the defaults
-        self.p.risk_appetite = 99
-        self.assertEqual(self.p.risk_appetite, 0)
+    def test_opponent_profiles_is_empty_dict(self):
+        p = Player("Bot", player_type="LLM")
+        self.assertEqual(p.opponent_profiles, {})
 
 
 if __name__ == "__main__":

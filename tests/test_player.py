@@ -33,17 +33,17 @@ class TestPlayerInit(unittest.TestCase):
 
     def test_risk_appetite_in_distribution(self):
         p = Player("Test")
-        self.assertIn(p.risk_appetite, Constants.RISK_APPETITE_DISTRIBUTION)
-        self.assertGreaterEqual(p.risk_appetite, 1)
-        self.assertLessEqual(p.risk_appetite, 100)
+        self.assertIn(p.personality.risk_appetite, Constants.RISK_APPETITE_DISTRIBUTION)
+        self.assertGreaterEqual(p.personality.risk_appetite, 1)
+        self.assertLessEqual(p.personality.risk_appetite, 100)
 
     def test_peer_pressure_score_in_distribution(self):
         p = Player("Test")
-        self.assertIn(p.peer_pressure_score, Constants.PEER_PRESSURE_DISTRIBUTION)
+        self.assertIn(p.personality.peer_pressure_score, Constants.PEER_PRESSURE_DISTRIBUTION)
 
     def test_attentiveness_score_in_distribution(self):
         p = Player("Test")
-        self.assertIn(p.attentiveness_score, Constants.ATTENTIVENESS_DISTRIBUTION)
+        self.assertIn(p.personality.attentiveness_score, Constants.ATTENTIVENESS_DISTRIBUTION)
 
 
 class TestDiceOperations(unittest.TestCase):
@@ -306,18 +306,20 @@ class TestPlayerReset(unittest.TestCase):
 
     def test_preserves_personality(self):
         p = Player("Test")
-        ra, pp, att = p.risk_appetite, p.peer_pressure_score, p.attentiveness_score
+        ra = p.personality.risk_appetite
+        pp = p.personality.peer_pressure_score
+        att = p.personality.attentiveness_score
         p.reset()
-        self.assertEqual(p.risk_appetite, ra)
-        self.assertEqual(p.peer_pressure_score, pp)
-        self.assertEqual(p.attentiveness_score, att)
+        self.assertEqual(p.personality.risk_appetite, ra)
+        self.assertEqual(p.personality.peer_pressure_score, pp)
+        self.assertEqual(p.personality.attentiveness_score, att)
 
 
 class TestChallengeThreshold(unittest.TestCase):
     def test_challenge_threshold_in_range(self):
         p = Player("Test")
-        self.assertGreaterEqual(p.challenge_threshold, 0.20)
-        self.assertLessEqual(p.challenge_threshold, 0.71)
+        self.assertGreaterEqual(p.personality.challenge_threshold, 0.20)
+        self.assertLessEqual(p.personality.challenge_threshold, 0.71)
 
     def test_challenge_threshold_conservative_higher(self):
         import random as _r
@@ -325,8 +327,8 @@ class TestChallengeThreshold(unittest.TestCase):
         for seed in range(200):
             rng = _r.Random(seed)
             p = Player("T", rng=rng)
-            if p.risk_appetite <= 10:
-                self.assertGreater(p.challenge_threshold, 0.50)
+            if p.personality.risk_appetite <= 10:
+                self.assertGreater(p.personality.challenge_threshold, 0.50)
                 return
         self.fail("Could not find a low risk_appetite player in 200 seeds")
 
@@ -335,8 +337,8 @@ class TestChallengeThreshold(unittest.TestCase):
         for seed in range(200):
             rng = _r.Random(seed)
             p = Player("T", rng=rng)
-            if p.risk_appetite >= 90:
-                self.assertLess(p.challenge_threshold, 0.50)
+            if p.personality.risk_appetite >= 90:
+                self.assertLess(p.personality.challenge_threshold, 0.50)
                 return
         self.fail("Could not find a high risk_appetite player in 200 seeds")
 
@@ -344,8 +346,8 @@ class TestChallengeThreshold(unittest.TestCase):
         """Build a player and forcibly set personality traits for deterministic tests."""
         import random as _r
         p = Player("T", rng=_r.Random(0))
-        p.risk_appetite = risk_appetite
-        p.challenge_threshold = challenge_threshold
+        p.personality.risk_appetite = risk_appetite
+        p.personality.challenge_threshold = challenge_threshold
         p.num_dice = 5
         p.dice = [3, 3, 3, 3, 3]
         return p
@@ -488,9 +490,9 @@ class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
     def _player_with_bluff_profile(self, bidder: str, bluff_rate_approx: float) -> Player:
         import random as _r
         p = Player("Watcher", rng=_r.Random(0))
-        p.risk_appetite = 50
-        p.challenge_threshold = 0.50
-        p.attentiveness_score = Constants.MAX_ATTENTIVENESS_SCORE  # full attention for test clarity
+        p.personality.risk_appetite = 50
+        p.personality.challenge_threshold = 0.50
+        p.personality.attentiveness_score = Constants.MAX_ATTENTIVENESS_SCORE  # full attention for test clarity
         p.num_dice = 5
         p.dice = [2, 2, 2, 2, 2]
         # Build profile: 4 challenges, bluff_rate_approx of them succeeded
@@ -515,12 +517,12 @@ class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
     def test_honest_bidder_raises_effective_threshold(self):
         bidder = "HonestHank"
         p = self._player_with_bluff_profile(bidder, bluff_rate_approx=0.0)
-        p.challenge_threshold = 0.30
+        p.personality.challenge_threshold = 0.30
         profile = p.opponent_profiles[bidder]
         # bluff_adjustment = (0.0 - 0.5) * 0.4 = -0.2 → threshold goes up
         bluff_adjustment = (profile.bluff_rate - 0.5) * 0.4
-        effective = max(0.10, p.challenge_threshold - bluff_adjustment)
-        self.assertGreater(effective, p.challenge_threshold)
+        effective = max(0.10, p.personality.challenge_threshold - bluff_adjustment)
+        self.assertGreater(effective, p.personality.challenge_threshold)
 
 
 class TestLLMPlayerInstantiation(unittest.TestCase):
@@ -532,11 +534,9 @@ class TestLLMPlayerInstantiation(unittest.TestCase):
         p = Player("Bot", player_type='LLM', llm_model="llama3:8b")
         self.assertEqual(p.player_type, 'LLM')
 
-    def test_personality_traits_return_zero(self):
+    def test_personality_is_none_for_llm(self):
         p = Player("Bot", player_type='LLM')
-        self.assertEqual(p.risk_appetite, 0)
-        self.assertEqual(p.peer_pressure_score, 0)
-        self.assertEqual(p.attentiveness_score, 0)
+        self.assertIsNone(p.personality)
 
 
 if __name__ == '__main__':

@@ -13,10 +13,23 @@ from LiarsDiceGame import LiarsDiceGame
 from Player import Player
 from stats_collector import GameStatsCollector
 from stats_schema import rounds_to_df, eliminations_to_df
+from strategy import Personality
 import constants as Constants
 
-# Personality snapshot type: name -> (risk_appetite, peer_pressure_score, attentiveness_score, positional_cunning)
-_Personalities = dict[str, tuple[int, int, int, int]]
+# name -> Personality (one per CPU player). LLM/HUMAN players are absent from this map.
+_Personalities = dict[str, Personality]
+
+
+def _trait_columns(name: str, personality: 'Personality | None') -> dict:
+    safe = name.replace(' ', '_')
+    if personality is None:
+        return {f'p_{safe}_risk': 0, f'p_{safe}_peer': 0, f'p_{safe}_att': 0, f'p_{safe}_cun': 0}
+    return {
+        f'p_{safe}_risk': personality.risk_appetite,
+        f'p_{safe}_peer': personality.peer_pressure_score,
+        f'p_{safe}_att':  personality.attentiveness_score,
+        f'p_{safe}_cun':  personality.positional_cunning,
+    }
 
 
 def _build_result(
@@ -29,23 +42,19 @@ def _build_result(
     collector: GameStatsCollector,
 ) -> dict:
     winner = players[winner_name]
-    player_data = {}
+    winner_pers = winner.personality
+    player_data: dict = {}
     for name in names:
-        p = players[name]
-        safe = name.replace(' ', '_')
-        player_data[f'p_{safe}_risk'] = p.risk_appetite
-        player_data[f'p_{safe}_peer'] = p.peer_pressure_score
-        player_data[f'p_{safe}_att'] = p.attentiveness_score
-        player_data[f'p_{safe}_cun'] = p.positional_cunning
+        player_data.update(_trait_columns(name, players[name].personality))
     return {
         'seed': seed,
         'winner': winner_name,
         'rounds': game.round_num,
         'num_players': num_players,
-        'winner_risk_appetite': winner.risk_appetite,
-        'winner_peer_pressure': winner.peer_pressure_score,
-        'winner_attentiveness': winner.attentiveness_score,
-        'winner_positional_cunning': winner.positional_cunning,
+        'winner_risk_appetite': winner_pers.risk_appetite if winner_pers else 0,
+        'winner_peer_pressure': winner_pers.peer_pressure_score if winner_pers else 0,
+        'winner_attentiveness': winner_pers.attentiveness_score if winner_pers else 0,
+        'winner_positional_cunning': winner_pers.positional_cunning if winner_pers else 0,
         **player_data,
         '_round_rows': collector.round_rows,
         '_elim_rows': collector.elimination_rows,
@@ -85,11 +94,10 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
 def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personalities) -> dict:
     game_rng = random.Random(seed)
     names = list(personalities.keys())
-    players = {}
-    for name in names:
-        p = Player(name, rng=game_rng)
-        p.risk_appetite, p.peer_pressure_score, p.attentiveness_score, p.positional_cunning = personalities[name]
-        players[name] = p
+    players = {
+        name: Player(name, rng=game_rng, personality=personalities[name])
+        for name in names
+    }
     collector = GameStatsCollector(seed, num_players)
     with LiarsDiceGame(num_players, rng=game_rng, on_event=collector.on_event) as game:
         for name in names:
@@ -132,13 +140,22 @@ def run_tournament(
         dummy_rng = random.Random()
         persistent_players = {}
         for c in player_configs:
-            p = Player(c['name'], player_type=c.get('player_type', 'CPU'), rng=dummy_rng, llm_model=c.get('llm_model'))
-            p.risk_appetite = c.get('risk_appetite', 0)
-            p.peer_pressure_score = c.get('peer_pressure_score', 0)
-            p.attentiveness_score = c.get('attentiveness_score', 0)
-            if 'positional_cunning' in c:
-                p.positional_cunning = c['positional_cunning']
-            persistent_players[c['name']] = p
+            ptype = c.get('player_type', 'CPU')
+            personality = None
+            if ptype == 'CPU':
+                personality = Personality.from_traits(
+                    risk_appetite=c.get('risk_appetite', 0),
+                    peer_pressure_score=c.get('peer_pressure_score', 0),
+                    attentiveness_score=c.get('attentiveness_score', 0),
+                    positional_cunning=c.get('positional_cunning', 50),
+                )
+            persistent_players[c['name']] = Player(
+                c['name'],
+                player_type=ptype,
+                rng=dummy_rng,
+                llm_model=c.get('llm_model'),
+                personality=personality,
+            )
     else:
         personality_rng = random.Random()
         persistent_players = {name: Player(name, rng=personality_rng) for name in names}
@@ -166,10 +183,10 @@ def run_tournament(
                 if on_progress and (i % update_interval == 0):
                     on_progress((i + 1) / n)
     else:
-        # Parallel path — snapshot personalities so workers can reconstruct players safely
+        # Parallel path — snapshot Personalities so workers can reconstruct players safely.
+        # Guarded above: parallel implies all-CPU, so every player has a personality.
         personalities: _Personalities = {
-            name: (persistent_players[name].risk_appetite, persistent_players[name].peer_pressure_score, persistent_players[name].attentiveness_score, persistent_players[name].positional_cunning)
-            for name in names
+            name: persistent_players[name].personality for name in names
         }
         chunk = max(1, n // (num_workers * 4))
         args_iter = ((i, num_players, personalities) for i in range(n))
