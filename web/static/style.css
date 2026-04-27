@@ -188,6 +188,7 @@ body {
 
 #waiting-indicator {
   transition: opacity 0.3s ease;
+  margin-top: 0.5rem;
 }
 
 /* ============================================================
@@ -430,16 +431,16 @@ body {
 .bottom-panel {
   flex-shrink: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 2fr 1fr;
   border-top: 1px solid #1a1008;
-  height: 260px;
+  height: 130px;
   overflow: hidden;
 }
 
 /* Gem card base */
 .bottom-card {
   position: relative;
-  padding: 14px 18px 16px;
+  padding: 10px 14px 10px;
   overflow-y: auto;
   border-right: 1px solid rgba(0, 0, 0, 0.55);
   display: flex;
@@ -449,6 +450,57 @@ body {
 .bottom-card:last-child {
   border-right: none;
 }
+
+/* Raise To — two-column internal layout */
+.raise-to-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+}
+
+.raise-to-bid {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.raise-to-face {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* Face selector — 3 per row */
+#face-selector {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 4px;
+}
+
+#face-selector .die-face {
+  width: 26px;
+  height: 26px;
+}
+
+.face-btn {
+  padding: 2px;
+}
+
+/* Your Hand dice — 3-per-row grid, smaller size */
+#human-dice {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 6px;
+  align-content: start;
+}
+
+#human-dice .die-face {
+  width: 32px;
+  height: 32px;
+}
+
 
 /* Polished-surface sheen — bright hairline across top edge */
 .bottom-card::before {
@@ -520,11 +572,11 @@ body {
 /* Advisor assessment note in Actions card — toggled by .advisor-active on body */
 #advisor-actions-note {
   font-family: 'Crimson Text', serif;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: #8a7a68;
   font-style: italic;
-  margin-bottom: 0.75rem;
-  min-height: 2.5rem;
+  margin-bottom: 0.5rem;
+  min-height: 1.6rem;
   visibility: hidden;
   opacity: 0;
   transition: opacity 0.15s ease;

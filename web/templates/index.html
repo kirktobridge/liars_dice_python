@@ -141,28 +141,34 @@
 
       <!-- Card 2: Raise To -->
       <div class="bottom-card">
-        <div id="bid-action-label" class="text-xs font-display tracking-widest text-stone-500 mb-3">MAKE YOUR BID</div>
+        <div class="raise-to-cols">
 
-        <div class="mb-3">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-stone-400 text-sm">Count</label>
-            <span id="bid-count-display"
-              class="font-display font-bold text-xl text-amber-400 bid-count-display">2</span>
+          <!-- Left: count + slider + confirm -->
+          <div class="raise-to-bid">
+            <div id="bid-action-label" class="text-xs font-display tracking-widest text-stone-500 mb-2">MAKE YOUR BID</div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-stone-400 text-xs">Count</label>
+              <span id="bid-count-display"
+                class="font-display font-bold text-lg text-amber-400 bid-count-display">2</span>
+            </div>
+            <input id="bid-count" type="range" min="1" max="20" value="2">
+            <button id="btn-confirm-bid"
+              class="action-btn w-full bg-amber-700 hover:bg-amber-600 text-stone-100 font-display
+                     font-bold py-1 rounded-lg tracking-wider transition-colors mt-2">
+              CONFIRM BID
+            </button>
+            <span id="advisor-bid-prob" class="advisor-prob"></span>
           </div>
-          <input id="bid-count" type="range" min="1" max="20" value="2">
-        </div>
 
-        <div class="text-stone-500 text-xs font-display tracking-wide mb-2">FACE VALUE</div>
-        <div id="face-selector" class="flex gap-1 flex-wrap mb-3">
-          <!-- Populated by JS -->
-        </div>
+          <!-- Right: face value selector -->
+          <div class="raise-to-face">
+            <div class="text-stone-500 text-xs font-display tracking-wide mb-2">FACE VALUE</div>
+            <div id="face-selector">
+              <!-- Populated by JS -->
+            </div>
+          </div>
 
-        <button id="btn-confirm-bid"
-          class="action-btn w-full bg-amber-700 hover:bg-amber-600 text-stone-100 font-display
-                 font-bold py-2 rounded-lg tracking-wider transition-colors">
-          CONFIRM BID
-        </button>
-        <span id="advisor-bid-prob" class="advisor-prob"></span>
+        </div>
       </div>
 
       <!-- Card 3: Actions -->
