@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Liar's Dice — CPU Logic Explainer</title>
+  <link rel="stylesheet" href="/static/fonts.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/static/tailwind-config.js"></script>
+  <link rel="stylesheet" href="/static/theme.css">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/explainer-components.css">
+</head>
+<body class="text-stone-100">
+
+  <!-- ── PAGE HEADER ───────────────────────────────────────────── -->
+  <div class="page-header px-8 py-5 flex items-center gap-6">
+    <a href="/" class="font-display text-xs tracking-widest text-stone-500 hover:text-amber-400 transition-colors">
+      ← BACK TO GAME
+    </a>
+    <div class="flex-1 text-center">
+      <span class="text-2xl">📚</span>
+      <h1 class="font-decorative text-2xl text-amber-400 inline ml-3 tracking-wider">
+        CPU LOGIC EXPLAINER
+      </h1>
+    </div>
+    <div class="w-32"></div>
+  </div>
+
+  <!-- ── SCENARIO PICKER ───────────────────────────────────────── -->
+  <div id="picker-section" class="explainer-section">
+    <p class="font-body italic text-stone-400 text-center mb-6 text-lg">
+      Five turns where the CPU faces a standing bid. Pick one to walk through how it thinks.
+    </p>
+    <div id="picker-cards" class="picker-grid"></div>
+  </div>
+
+  <!-- ── STEP VIEW ─────────────────────────────────────────────── -->
+  <div id="step-section" class="explainer-section hidden">
+    <div class="step-header">
+      <button id="btn-back-to-picker" class="font-display text-xs tracking-widest text-stone-500 hover:text-amber-400 transition-colors">
+        ← CHOOSE ANOTHER SCENARIO
+      </button>
+      <h2 id="step-scenario-title" class="font-decorative text-3xl text-amber-400 mt-2 mb-1"></h2>
+      <p id="step-scenario-intro" class="font-body italic text-stone-400 mb-6"></p>
+      <div id="progress-dots" class="progress-dots"></div>
+    </div>
+
+    <div class="step-card wood-panel">
+      <div class="step-title-row">
+        <span id="step-title" class="font-display text-lg text-amber-400 tracking-wider"></span>
+      </div>
+      <p id="step-narrative" class="step-narrative font-body"></p>
+      <div id="step-data" class="step-data"></div>
+    </div>
+
+    <div class="step-nav">
+      <button id="btn-prev" class="step-nav-btn">← PREV</button>
+      <span id="step-counter" class="font-display text-xs tracking-widest text-stone-500"></span>
+      <button id="btn-next" class="step-nav-btn step-nav-btn-primary">NEXT →</button>
+    </div>
+  </div>
+
+  <script src="/static/dice.js"></script>
+  <script src="/static/explainer.js"></script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+/* ============================================================
+   CPU LOGIC EXPLAINER — page-specific components
+   ============================================================ */
+
+body { overflow-y: auto; min-height: 100vh; }
+
+.page-header {
+  background: linear-gradient(180deg, var(--color-header-bg-1) 0%, var(--color-header-bg-2) 100%);
+  border-bottom: 1px solid var(--color-border-wood);
+}
+
+.explainer-section {
+  max-width: 60rem;
+  margin: 2.5rem auto;
+  padding: 0 1.5rem;
+}
+
+.hidden { display: none !important; }
+
+/* ── Scenario picker ─────────────────────────────────────── */
+.picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  gap: 1rem;
+}
+
+.picker-card {
+  text-align: left;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(160deg, var(--color-wood-1), var(--color-wood-3));
+  border: 1px solid var(--color-border-wood);
+  border-radius: 12px;
+  color: var(--color-text-base);
+  cursor: pointer;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.picker-card:hover {
+  border-color: var(--color-gold);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+}
+
+.picker-card-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-gold);
+  margin-bottom: 0.5rem;
+}
+
+.picker-card-summary {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+/* ── Step view ───────────────────────────────────────────── */
+.step-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.progress-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.progress-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: var(--color-wood-mid);
+  border: 1px solid var(--color-border-wood);
+  transition: background 200ms ease, border-color 200ms ease, transform 200ms ease;
+}
+
+.progress-dot-done {
+  background: var(--color-gold-dim);
+  border-color: var(--color-gold-dim);
+}
+
+.progress-dot-active {
+  background: var(--color-gold);
+  border-color: var(--color-gold-bright);
+  transform: scale(1.25);
+  box-shadow: 0 0 8px var(--color-gold-alpha-40);
+}
+
+.step-card {
+  padding: 1.75rem 2rem;
+  border-radius: 14px;
+  animation: stepFade 240ms ease;
+}
+
+@keyframes stepFade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.step-title-row {
+  margin-bottom: 1rem;
+}
+
+.step-narrative {
+  color: var(--color-text-base);
+  font-size: 1.05rem;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-gold-alpha-04);
+  border-left: 3px solid var(--color-gold);
+  border-radius: 0 6px 6px 0;
+}
+
+.step-data {
+  margin-top: 1rem;
+}
+
+.step-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.5rem;
+  padding: 0 0.5rem;
+}
+
+.step-nav-btn {
+  font-family: var(--font-display);
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-wood);
+  background: var(--color-wood-mid);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease, background 160ms ease;
+}
+
+.step-nav-btn:hover:not(:disabled) {
+  border-color: var(--color-gold);
+  color: var(--color-gold);
+}
+
+.step-nav-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.step-nav-btn-primary {
+  background: var(--color-gold-dim);
+  color: var(--color-text-base);
+  border-color: var(--color-gold);
+}
+
+.step-nav-btn-primary:hover:not(:disabled) {
+  background: var(--color-gold);
+  color: var(--color-text-ink);
+}
+
+/* ── Reusable widgets ────────────────────────────────────── */
+.stat-box {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.6rem 1rem;
+  background: var(--color-gold-alpha-08);
+  border: 1px solid var(--color-border-wood);
+  border-radius: 8px;
+  min-width: 7rem;
+}
+
+.stat-box-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dark);
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.stat-box-value {
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+/* ── Probability bars ────────────────────────────────────── */
+.prob-bar-wrap {
+  margin-bottom: 1rem;
+}
+
+.prob-bar-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 0.35rem;
+}
+
+.prob-bar-label {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  color: var(--color-text-base);
+}
+
+.prob-bar-value {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+.prob-bar-track {
+  height: 0.6rem;
+  background: var(--color-slider-track);
+  border-radius: 999px;
+  border: 1px solid var(--color-border-wood);
+  overflow: hidden;
+}
+
+.prob-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-gold-dim), var(--color-gold), var(--color-gold-bright));
+  border-radius: 999px;
+  transition: width 360ms ease;
+}
+
+.prob-bar-caption {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--color-text-dark);
+  margin-top: 0.25rem;
+}
+
+/* ── Score cards (situation scores) ──────────────────────── */
+.score-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.score-card {
+  padding: 0.75rem 1rem;
+  background: var(--color-gold-alpha-04);
+  border: 1px solid var(--color-border-wood);
+  border-radius: 8px;
+}
+
+.score-card-label {
+  font-family: var(--font-display);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dark);
+  text-transform: uppercase;
+}
+
+.score-card-value {
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  color: var(--color-gold);
+  font-weight: 700;
+  margin: 0.25rem 0;
+}
+
+.score-card-caption {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+/* ── Step 1: Roll ────────────────────────────────────────── */
+.roll-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.dice-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.roll-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Step 2: Stats ───────────────────────────────────────── */
+.stats-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.mode-die {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mode-label {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.stats-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* ── Step 3: Evaluate Bid ────────────────────────────────── */
+.eval-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.bid-display-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bid-label {
+  font-family: var(--font-body);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.bid-show {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bid-count {
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+.eval-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Step 4: Context ─────────────────────────────────────── */
+.context-wrap {}
+
+/* ── Step 5: Personality ─────────────────────────────────── */
+.personality-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.character-card {
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(160deg, var(--color-wood-2), var(--color-wood-4));
+  border: 1px solid var(--color-border-gold);
+  border-radius: 12px;
+}
+
+.character-card-title {
+  font-family: var(--font-display);
+  letter-spacing: 0.15em;
+  font-size: 0.8rem;
+  color: var(--color-gold);
+  text-align: center;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.character-traits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.trait-row {
+  display: grid;
+  grid-template-columns: 12rem 1fr 4rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.trait-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--color-text-base);
+}
+
+.trait-pips {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.trait-pip {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: var(--color-slider-track);
+  border: 1px solid var(--color-border-wood);
+}
+
+.trait-pip-filled {
+  background: var(--color-gold);
+  border-color: var(--color-gold-bright);
+  box-shadow: 0 0 4px var(--color-gold-alpha-40);
+}
+
+.trait-value {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  color: var(--color-gold);
+  text-align: right;
+}
+
+.derived-wrap {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* ── Step 6: Decision ────────────────────────────────────── */
+.decision-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.decision-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 2.5rem;
+  border: 2px solid var(--color-advisor-good);
+  border-radius: 16px;
+  background: rgba(109, 168, 112, 0.08);
+  box-shadow: 0 0 18px rgba(109, 168, 112, 0.25);
+}
+
+.decision-action {
+  font-family: var(--font-decorative);
+  font-size: 2rem;
+  color: var(--color-advisor-good);
+  letter-spacing: 0.08em;
+  font-weight: 700;
+}
+
+.decision-bid-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.decision-bid-count {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--color-gold);
+  font-weight: 700;
+}
+
+.decision-reason {
+  text-align: center;
+  max-width: 40rem;
+  color: var(--color-text-base);
+  line-height: 1.55;
+  font-size: 1rem;
+}
+
+.decision-meta {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}

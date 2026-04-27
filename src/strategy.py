@@ -50,19 +50,41 @@ class CPUStrategy:
 
     def __init__(self, rng: random.Random) -> None:
         self._rng = rng
-        self.risk_appetite: int = rng.choice(Constants.RISK_APPETITE_DISTRIBUTION)
-        jitter = rng.uniform(-0.03, 0.03)
-        risk_shift = (self.risk_appetite / Constants.MAX_RISK_SCORE) * 0.06
-        self.spot_on_threshold: float = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_shift + jitter)
-        risk_fraction = self.risk_appetite / Constants.MAX_RISK_SCORE
+        risk_appetite = rng.choice(Constants.RISK_APPETITE_DISTRIBUTION)
+        spot_on_jitter = rng.uniform(-0.03, 0.03)
         challenge_jitter = rng.uniform(-0.03, 0.03)
-        self.challenge_threshold: float = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
-        self.peer_pressure_score: int = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
-        self.attentiveness_score: int = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
-        self.positional_cunning: int = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
+        peer_pressure_score = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
+        attentiveness_score = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
+        positional_cunning = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
+        self._set_personality(
+            risk_appetite=risk_appetite,
+            peer_pressure_score=peer_pressure_score,
+            attentiveness_score=attentiveness_score,
+            positional_cunning=positional_cunning,
+            spot_on_jitter=spot_on_jitter,
+            challenge_jitter=challenge_jitter,
+        )
         self.opponent_profiles: dict[str, OpponentProfile] = {}
         self._rolls_mode: int = 0
         self._mode_count: int = 0
+
+    def _set_personality(
+        self,
+        risk_appetite: int,
+        peer_pressure_score: int,
+        attentiveness_score: int,
+        positional_cunning: int,
+        spot_on_jitter: float = 0.0,
+        challenge_jitter: float = 0.0,
+    ) -> None:
+        self.risk_appetite = risk_appetite
+        self.peer_pressure_score = peer_pressure_score
+        self.attentiveness_score = attentiveness_score
+        self.positional_cunning = positional_cunning
+        risk_fraction = risk_appetite / Constants.MAX_RISK_SCORE
+        risk_shift = risk_fraction * 0.06
+        self.spot_on_threshold: float = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_shift + spot_on_jitter)
+        self.challenge_threshold: float = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
 
     def reset(self) -> None:
         self.opponent_profiles = {}

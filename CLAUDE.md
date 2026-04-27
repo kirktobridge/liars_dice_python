@@ -20,16 +20,18 @@ All source files live under `src/`:
 
 ## Web Layer
 
-A Flask web interface lives under `web/`:
+A FastAPI web interface lives under `web/`:
 
-- `web/app.py` — Flask application: HTTP routes, SSE event streaming, game lifecycle endpoints
+- `web/app.py` — FastAPI application: HTTP routes, WebSocket game streaming, tournament + explainer endpoints
 - `web/game_session.py` — `GameSession` class: bridges the game engine to the web layer, manages per-session state
 - `web/timing.py` — `EVENT_DELAYS` dict controlling SSE pacing (seconds to pause before forwarding each event type to the browser)
 - `web/web_logging.py` — `setup_web_logging()`, `get_logger()`: rotating file-based logging for the web layer; call once at app startup
-- `web/templates/` — Jinja2 HTML templates
-- `web/static/` — CSS, JS, and static assets
+- `web/explainer_logic.py` — CPU Logic Explainer scenario engine: `ExplainerScenario`, `ExplainerStep`, `ExplainerResult` dataclasses; `SCENARIOS` dict; `run_scenario()` and `list_scenarios()`. Re-walks `CPUStrategy.decide()` phases to capture intermediate state for the `/explainer` UI. Response-to-bid scenarios only (opening bids out of scope for v1). Future: `POST /explainer/custom` for user-defined scenarios; Pydantic validation should mirror the trait range checks in `_PlayerConfig`. Not built in v1.
+- `web/templates/` — HTML templates served via `FileResponse` (not Jinja-rendered)
+- `web/static/` — CSS, JS, and static assets. `dice.js` defines the shared `makeDieSVG()` and `PIP_POSITIONS`; load it before `game.js` or `explainer.js`.
 - `web/test_overlay_e2e.py` — Playwright E2E tests for the cups-lifted overlay
 - `web/test_game_e2e.py` — Playwright E2E tests for lobby, bidding, game-over, and tournament flows
+- `web/test_explainer_e2e.py` — Playwright E2E tests for the CPU Logic Explainer
 
 Run the web server: .venv/bin/uvicorn web.app:app
 
@@ -50,7 +52,7 @@ Run the web server: .venv/bin/uvicorn web.app:app
 - Python 3.10+. Use dataclasses and Enum from stdlib. Type hints on all new functions.
 - No `print()`, `input()`, or `time.sleep()` inside `LiarsDiceGame` or `Player` — CLI only belongs in `main.py`
 - Colorama is allowed in `src/presentation.py` (pirate flavor strings) and in `src/Player.py` (debug-only output, guarded by debug flag); avoid it in game-logic paths
-- Add new tests to the most relevant existing file in `tests/`. `make_game()` helper lives in `tests/test_game.py`; `make_player()` helper lives in `tests/test_player.py`. Current test files: `test_game`, `test_player`, `test_advisor`, `test_strategy`, `test_stats_collector`, `test_charts`, `test_main`, `test_smoke`
+- Add new tests to the most relevant existing file in `tests/`. `make_game()` helper lives in `tests/test_game.py`; `make_player()` helper lives in `tests/test_player.py`. Current test files: `test_game`, `test_player`, `test_advisor`, `test_strategy`, `test_stats_collector`, `test_charts`, `test_main`, `test_smoke`, `test_explainer_logic`
 
 ## Important Constraints
 

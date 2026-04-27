@@ -248,6 +248,28 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
         _log.exception('TOURNAMENT_ERROR job=%s', job_id[:8])
 
 
+# ── explainer routes ──────────────────────────────────────────────────────────
+
+@app.get('/explainer', response_class=HTMLResponse)
+async def explainer_page():
+    return FileResponse(str(BASE / 'templates' / 'explainer.html'))
+
+
+@app.get('/explainer/scenarios')
+async def explainer_scenarios():
+    from web.explainer_logic import list_scenarios
+    return {'scenarios': list_scenarios()}
+
+
+@app.get('/explainer/scenario/{scenario_id}')
+async def explainer_scenario(scenario_id: str):
+    from web.explainer_logic import SCENARIOS, run_scenario
+    if scenario_id not in SCENARIOS:
+        raise HTTPException(status_code=404, detail='Unknown scenario')
+    result = run_scenario(scenario_id)
+    return json.loads(json.dumps(result, default=_default))
+
+
 def _custom_tournament_worker(job_id: str, n: int, player_configs: list[dict]) -> None:
     _log.info('CUSTOM_TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, len(player_configs))
     try:
