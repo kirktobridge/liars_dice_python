@@ -12,6 +12,7 @@ import random
 from collections import Counter
 
 _fast = False
+_LLM_OPPONENT_NAME = "Gemma"
 
 logger = logging.getLogger(__name__)
 
@@ -295,8 +296,7 @@ def main():
             game.add_player(Player(player_name, player_type='HUMAN', input_handler=human_input_handler))
             break
 
-        # TODO: temporary test wiring — remove once LLM strategy is validated
-        game.add_player(Player("Gemma", player_type='LLM'))
+        game.add_player(Player(_LLM_OPPONENT_NAME, player_type='LLM'))
         sampled_indices = random.sample(range(len(Constants.PLAYER_NAMES)), num_players - 2)
         for idx in sampled_indices:
             game.add_player(Player(Constants.PLAYER_NAMES[idx]))
@@ -308,8 +308,8 @@ def main():
 
         print(Fore.BLUE + Style.BRIGHT +
               '<!> Thanks fer playing! Now gimme all yer\' coins or ye\'ll be swimmin\' with the fishes!')
-        if game._log_path:
-            print(Fore.CYAN + f'<i> Game log saved to: {game._log_path}')
+        if game.log_path:
+            print(Fore.CYAN + f'<i> Game log saved to: {game.log_path}')
 
 
 if __name__ == '__main__':

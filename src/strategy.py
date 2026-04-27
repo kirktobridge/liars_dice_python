@@ -417,10 +417,14 @@ class LLMStrategy:
             logger.warning('LLMStrategy: received None response from LLM')
             return None
         try:
-            match = re.search(r'\{[^}]+\}', raw)
-            if not match:
-                raise ValueError('no JSON object found in response')
-            data = json.loads(match.group())
+            stripped = raw.strip()
+            try:
+                data = json.loads(stripped)
+            except json.JSONDecodeError:
+                match = re.search(r'\{.*\}', stripped, re.DOTALL)
+                if not match:
+                    raise ValueError('no JSON object found in response')
+                data = json.loads(match.group())
             action_str = data['action'].lower().replace(' ', '_')
             action_map = {
                 'bid': Action.BID,

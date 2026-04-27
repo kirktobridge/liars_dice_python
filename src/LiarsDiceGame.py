@@ -50,6 +50,10 @@ class LiarsDiceGame:
     def _emit(self, event_type: str, **data) -> None:
         self._on_event({'type': event_type, **data})
 
+    @property
+    def log_path(self) -> 'Path | None':
+        return self._log_path
+
     def add_player(self, p):
         self.players.append(p)
         logger.debug('Player %s appended to game player list', p.name)
@@ -351,7 +355,7 @@ class LiarsDiceGame:
         actual     = actual_cnt + ones_cnt if prev_bid.face != 1 else actual_cnt
         succeeded  = (actual == prev_bid.count)
         if succeeded:
-            return (True, [p for p in self.players if p.name != caller.name])
+            return (True, [p for p in self.players if p is not caller])
         return (False, [caller])
 
     def _eliminate_players(self) -> list:

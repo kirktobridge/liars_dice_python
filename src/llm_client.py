@@ -1,15 +1,20 @@
 import logging
+import os
 import requests
 
 logger = logging.getLogger('liars_dice.llm_client')
 
-_OLLAMA_URL = 'http://localhost:11434/api/generate'
+_DEFAULT_OLLAMA_URL = 'http://localhost:11434/api/generate'
+
+
+def _ollama_url() -> str:
+    return os.environ.get('OLLAMA_URL', _DEFAULT_OLLAMA_URL)
 
 
 def query_llm(model: str, prompt: str, timeout: int = 15, temperature: float = 0.7) -> str | None:
     try:
         response = requests.post(
-            _OLLAMA_URL,
+            _ollama_url(),
             json={
                 'model': model,
                 'prompt': prompt,

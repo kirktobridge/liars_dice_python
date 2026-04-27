@@ -3,6 +3,7 @@
 *LiarsDiceGame_Log.txt
 *.png
 logs/
+tournament_stats.html
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

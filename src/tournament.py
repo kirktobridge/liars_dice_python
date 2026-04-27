@@ -84,13 +84,11 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
 
 def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personalities) -> dict:
     game_rng = random.Random(seed)
-    dummy_rng = random.Random()  # throwaway — only used to satisfy Player.__init__
     names = list(personalities.keys())
     players = {}
     for name in names:
-        p = Player(name, rng=dummy_rng)
+        p = Player(name, rng=game_rng)
         p.risk_appetite, p.peer_pressure_score, p.attentiveness_score, p.positional_cunning = personalities[name]
-        p._rng = game_rng  # bind game RNG so dice rolls are deterministic per seed
         players[name] = p
     collector = GameStatsCollector(seed, num_players)
     with LiarsDiceGame(num_players, rng=game_rng, on_event=collector.on_event) as game:
