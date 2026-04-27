@@ -85,7 +85,7 @@ def _run_game_worker(args: tuple[int, int, _Personalities]) -> dict:
 def _run_game_worker_inner(seed: int, num_players: int, personalities: _Personalities) -> dict:
     game_rng = random.Random(seed)
     dummy_rng = random.Random()  # throwaway — only used to satisfy Player.__init__
-    names = Constants.PLAYER_NAMES[:num_players]
+    names = list(personalities.keys())
     players = {}
     for name in names:
         p = Player(name, rng=dummy_rng)
