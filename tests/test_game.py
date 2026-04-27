@@ -790,5 +790,47 @@ class TestSeatOrderPreservation(unittest.TestCase):
         self.assertEqual(call_order[1], 'P1')   # wraps around
 
 
+class TestLLMPlayerInGame(unittest.TestCase):
+    """Integration smoke tests: LLM player wired into LiarsDiceGame directly.
+
+    Covers the seam that main.py uses (game.add_player / game.process_round)
+    at the LiarsDiceGame level — not via the tournament layer.
+    query_llm is patched so no Ollama server is required.
+    """
+
+    _LLM_PATCH = patch('strategy.query_llm', side_effect=lambda model, prompt: (
+        '{"action": "bid", "count": 2, "face": 3}' if 'action=START' in prompt
+        else '{"action": "challenge"}'
+    ))
+
+    def _make_two_player_game(self):
+        game = LiarsDiceGame(2)
+        game.add_player(Player("Gemma", player_type="LLM"))
+        game.add_player(Player("Alice"))
+        return game
+
+    def test_llm_player_add_to_game_no_crash(self):
+        game = LiarsDiceGame(2)
+        llm = Player("Gemma", player_type="LLM")
+        game.add_player(llm)
+        self.assertEqual(len(game.players), 1)
+        self.assertEqual(game.players[0].player_type, "LLM")
+
+    def test_llm_player_process_round_returns_bool(self):
+        game = self._make_two_player_game()
+        with self._LLM_PATCH:
+            result = game.process_round()
+        self.assertIsInstance(result, bool)
+
+    def test_llm_cpu_game_completes(self):
+        game = self._make_two_player_game()
+        steps = 0
+        with self._LLM_PATCH:
+            while game.process_round():
+                steps += 1
+                self.assertLess(steps, 10_000, "game did not terminate")
+        self.assertEqual(len(game.players), 1)
+
+
 if __name__ == '__main__':
     unittest.main()
