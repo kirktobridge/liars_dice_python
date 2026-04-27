@@ -113,9 +113,8 @@ def run_tournament(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Run n games and return (df_games, df_rounds, df_eliminations).
 
-    parallel=True uses ProcessPoolExecutor and is intended for CLI/offline use only.
-    Web callers must use the default parallel=False (serial path) to avoid spawning
-    subprocesses inside a request handler or async event loop.
+    parallel=True uses ProcessPoolExecutor. Safe for web callers running inside
+    daemon threads (e.g. threading.Thread), but not directly inside an async event loop.
 
     player_configs: optional list of dicts with keys name, risk_appetite,
         peer_pressure_score, attentiveness_score. When provided, these players
@@ -175,7 +174,8 @@ def run_tournament(
         args_iter = ((i, num_players, personalities) for i in range(n))
 
         with ProcessPoolExecutor(max_workers=num_workers) as executor:
-            results = list(tqdm(
+            results = []
+            for i, result in enumerate(tqdm(
                 executor.map(_run_game_worker, args_iter, chunksize=chunk),
                 total=n,
                 desc=f"Simulating games ({num_workers} workers)",
@@ -184,7 +184,10 @@ def run_tournament(
                 dynamic_ncols=True,
                 colour="green",
                 disable=not show_progress,
-            ))
+            )):
+                results.append(result)
+                if on_progress and (i % update_interval == 0):
+                    on_progress((i + 1) / n)
 
     round_rows = [row for r in results for row in r.pop('_round_rows', [])]
     elim_rows  = [row for r in results for row in r.pop('_elim_rows', [])]

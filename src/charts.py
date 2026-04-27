@@ -1,7 +1,18 @@
+import math
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import constants as Constants
+
+MAX_SCATTER = 4000
+
+
+def _downsample_df(df_subset: pd.DataFrame, max_n: int) -> pd.DataFrame:
+    if len(df_subset) <= max_n:
+        return df_subset
+    return df_subset.sample(n=max_n, random_state=42)
 
 
 def compute_tournament_stats(
@@ -27,6 +38,20 @@ def compute_tournament_stats(
     avg_bids_per_round = float(df_rounds['bid_count'].mean())
     fastest_row = df.loc[df['rounds'].idxmin()]
     longest_row = df.loc[df['rounds'].idxmax()]
+
+    rounds_arr = df['rounds'].values
+    r_min, r_max = int(rounds_arr.min()), int(rounds_arr.max())
+    if r_min == r_max:
+        hist_labels = [r_min]
+        hist_counts = [len(rounds_arr)]
+    else:
+        bin_width = max(1, math.ceil((r_max - r_min) / 28))
+        bins = range(r_min, r_max + bin_width + 1, bin_width)
+        counts, edges = np.histogram(rounds_arr, bins=list(bins))
+        hist_labels = [int(e) for e in edges[:-1]]
+        hist_counts = counts.tolist()
+    hist_median = float(np.median(rounds_arr))
+    hist_below_mean_pct = int((rounds_arr <= mean_rounds).mean() * 100)
 
     # --- Challenge stats ---
     chall = df_rounds[df_rounds['action_type'] == 'challenge']
@@ -94,6 +119,8 @@ def compute_tournament_stats(
     chall_sc = chall.dropna(subset=['bid_count_claimed', 'effective_actual_count'])
     sc_succ = chall_sc[chall_sc['challenge_succeeded']]
     sc_fail = chall_sc[chall_sc['challenge_succeeded'] == False]
+    sc_succ_ds = _downsample_df(sc_succ, MAX_SCATTER)
+    sc_fail_ds = _downsample_df(sc_fail, MAX_SCATTER)
     scatter_max_val = float(max(
         chall_sc['bid_count_claimed'].max() if len(chall_sc) else 1,
         chall_sc['effective_actual_count'].max() if len(chall_sc) else 1,
@@ -138,8 +165,11 @@ def compute_tournament_stats(
         # Win rate (parallel to sorted_players)
         "win_counts": win_counts.tolist(),
         "win_pct": win_pct_series[sorted_players].tolist(),
-        # Game length series (for histogram)
-        "rounds_series": df['rounds'].tolist(),
+        # Game length histogram (pre-binned, 28 bins)
+        "hist_labels": hist_labels,
+        "hist_counts": hist_counts,
+        "hist_median": hist_median,
+        "hist_below_mean_pct": hist_below_mean_pct,
         # Challenge stats (parallel to sorted_players)
         "chall_called": chall_stats['called'].tolist(),
         "chall_won": chall_stats['won'].tolist(),
@@ -150,11 +180,11 @@ def compute_tournament_stats(
         "spot_win_pct": spot_stats['win_pct'].tolist(),
         # Violin data: player -> list of dice counts at challenge
         "violin_data": violin_data,
-        # Bid scatter
-        "scatter_success_claimed": sc_succ['bid_count_claimed'].tolist(),
-        "scatter_success_actual": sc_succ['effective_actual_count'].tolist(),
-        "scatter_fail_claimed": sc_fail['bid_count_claimed'].tolist(),
-        "scatter_fail_actual": sc_fail['effective_actual_count'].tolist(),
+        # Bid scatter (pre-downsampled to ≤MAX_SCATTER points each)
+        "scatter_success_claimed": sc_succ_ds['bid_count_claimed'].tolist(),
+        "scatter_success_actual": sc_succ_ds['effective_actual_count'].tolist(),
+        "scatter_fail_claimed": sc_fail_ds['bid_count_claimed'].tolist(),
+        "scatter_fail_actual": sc_fail_ds['effective_actual_count'].tolist(),
         "scatter_max_val": scatter_max_val,
         # Escalation curve
         "escalation_bid_count": escalation['bid_count'].tolist(),
@@ -214,9 +244,9 @@ def show_tournament_stats(
     )
 
     # --- 2. Game Length Histogram ---
-    hist = go.Histogram(
-        x=s['rounds_series'],
-        nbinsx=30,
+    hist = go.Bar(
+        x=s['hist_labels'],
+        y=s['hist_counts'],
         marker_color='#5B8DB8',
         name='Game Length',
         showlegend=False,
@@ -407,7 +437,7 @@ def show_tournament_stats(
             'Challenge Accuracy by Bid Ratio',
         ),
         specs=[
-            [{'type': 'bar'},    {'type': 'histogram'}, {'type': 'bar'}],
+            [{'type': 'bar'},    {'type': 'bar'}, {'type': 'bar'}],
             [{'type': 'violin'}, {'type': 'bar'},        {'type': 'scatter'}],
             [{'type': 'table', 'colspan': 3}, None, None],
             [{'type': 'scatter', 'colspan': 3}, None, None],

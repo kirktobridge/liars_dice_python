@@ -52,22 +52,6 @@ function cunnLabel(v) {
   return `${v} (Masterful)`;
 }
 
-function buildHistogram(values, numBins = 28) {
-  if (!values.length) return { labels: [], counts: [] };
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  if (min === max) return { labels: [min], counts: [values.length] };
-  const binWidth = Math.max(1, Math.ceil((max - min) / numBins));
-  const n = Math.ceil((max - min) / binWidth) + 1;
-  const counts = new Array(n).fill(0);
-  const labels = Array.from({ length: n }, (_, i) => min + i * binWidth);
-  values.forEach(v => {
-    const idx = Math.min(Math.floor((v - min) / binWidth), n - 1);
-    counts[idx]++;
-  });
-  return { labels, counts, binWidth };
-}
-
 function downsamplePairs(xs, ys, maxN = 4000) {
   if (xs.length <= maxN) return xs.map((x, i) => ({ x, y: ys[i] }));
   const step = Math.ceil(xs.length / maxN);
@@ -210,7 +194,7 @@ document.getElementById('run-form').addEventListener('submit', async e => {
     }
     const data = await resp.json();
     jobId = data.job_id;
-    pollTimer = setInterval(pollStatus, 200);
+    pollTimer = setInterval(pollStatus, 800);
   } catch (err) {
     showError(`Network error: ${err.message}`);
   }
@@ -341,7 +325,8 @@ function renderWinRate(s) {
 
 function renderGameLength(s) {
   destroyChart('gameLength');
-  const { labels, counts } = buildHistogram(s.rounds_series, 28);
+  const labels = s.hist_labels;
+  const counts = s.hist_counts;
   const ctx = document.getElementById('chart-game-length').getContext('2d');
   charts.gameLength = new Chart(ctx, {
     type: 'bar',
@@ -628,13 +613,10 @@ function renderInsightBadges(s) {
   ]);
 
   // Game Length
-  if (s.rounds_series?.length) {
-    const sorted   = [...s.rounds_series].sort((a, b) => a - b);
-    const median   = sorted[Math.floor(sorted.length / 2)];
-    const belowPct = Math.round(sorted.filter(v => v <= s.mean_rounds).length / sorted.length * 100);
+  if (s.hist_labels?.length) {
     addInsightBadge('chart-game-length', [
-      `Median: ${median} rounds`,
-      `${belowPct}% of games end at or below the mean`,
+      `Median: ${s.hist_median} rounds`,
+      `${s.hist_below_mean_pct}% of games end at or below the mean`,
     ]);
   }
 
@@ -853,7 +835,7 @@ document.getElementById('custom-run-form').addEventListener('submit', async e =>
     }
     const data = await resp.json();
     jobId = data.job_id;
-    pollTimer = setInterval(pollStatus, 200);
+    pollTimer = setInterval(pollStatus, 800);
   } catch (err) {
     showError(`Network error: ${err.message}`);
   }
