@@ -147,11 +147,18 @@ class TestEffectiveChallengeThreshold(unittest.TestCase):
         # Floor at 0.50 — challenging below 50% is mathematically -EV.
         self.assertGreaterEqual(effective, 0.50)
 
-    def test_fewer_than_min_samples_returns_base(self):
-        s = self._make(0.50)
-        s.opponent_profiles["New"] = OpponentProfile(
-            bids_challenged=1, challenge_successes=1)  # only 1 sample
-        self.assertAlmostEqual(s._effective_challenge_threshold("New"), 0.50)
+    def test_single_sample_uses_smoothed_rate(self):
+        """With Beta(2,2) smoothing, a single observation moves the rate gradually
+        rather than jumping to 0 or 1."""
+        s = self._make(0.55)
+        s.opponent_profiles["First"] = OpponentProfile(
+            bids_challenged=1, challenge_successes=1)
+        # Smoothed bluff_rate = (1+1)/(1+2) = 0.667 (not 1.0).
+        # bluff_adjustment = (0.667 - 0.5) * 0.4 * 1.0 = 0.0667
+        # effective = max(0.50, 0.55 - 0.0667) = 0.4833 → floored at 0.50
+        effective = s._effective_challenge_threshold("First")
+        self.assertGreaterEqual(effective, 0.50)
+        self.assertLess(effective, 0.55)
 
 
 class TestGetPermissibleBids(unittest.TestCase):

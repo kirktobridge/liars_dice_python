@@ -310,7 +310,8 @@ class CPUStrategy:
         blend = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
         prob = blend * bayesian_prob + (1 - blend) * flat_prob
 
-        _MIN_SAMPLES = 2
+        # With Beta(2,2) smoothing on OpponentProfile, even one observation is informative.
+        _MIN_SAMPLES = 1
         _profile = self.opponent_profiles.get(bidder_name)
         _attention = self.attentiveness_score / Constants.MAX_ATTENTIVENESS_SCORE
         if _profile and _profile.bids_observed >= _MIN_SAMPLES:
@@ -319,7 +320,7 @@ class CPUStrategy:
         return prob
 
     def _effective_challenge_threshold(self, bidder_name: str) -> float:
-        _MIN_SAMPLES = 2
+        _MIN_SAMPLES = 1
         effective_threshold = self.challenge_threshold
         _profile = self.opponent_profiles.get(bidder_name)
         _attention = self.attentiveness_score / Constants.MAX_ATTENTIVENESS_SCORE
@@ -378,28 +379,27 @@ class CPUStrategy:
     ) -> 'tuple[Bid | None, float]':
         if not permissible:
             return None, 0.0
-        risk_ranking: list[list] = []
+        ranking: list[tuple[float, Bid]] = []
         for legal_bid in permissible:
             nc = needed_cnt(dice[:num_dice], legal_bid)
             bid_probability = 1.0 if nc <= 0 else 1.0 - model.cdf(nc - 1)
-            risk_ranking.append([bid_probability, legal_bid])
-        risk_ranking.sort(key=lambda x: x[0], reverse=True)
+            ranking.append((bid_probability, legal_bid))
+        ranking.sort(key=lambda row: row[0], reverse=True)
+
         if pressure_hint > _PRESSURE_OPP_THRESHOLD:
-            best_prob = risk_ranking[0][0]
-            near_best = [row for row in risk_ranking if row[0] >= best_prob - 0.05]
-            near_best.sort(key=lambda x: (x[0], x[1].count), reverse=True)
-            best_bid_probability = near_best[0][0]
-            best_bids = [row[1] for row in near_best if row[0] == best_bid_probability]
-            crowd_pick = self._apply_crowd_preference(best_bids, all_prev_bids)
-            if crowd_pick is not None:
-                return crowd_pick, best_bid_probability
-            return near_best[0][1], best_bid_probability
-        best_bid_probability = risk_ranking[0][0]
-        best_bids: list[Bid] = [row[1] for row in risk_ranking if row[0] == best_bid_probability]
-        crowd_pick = self._apply_crowd_preference(best_bids, all_prev_bids)
-        if crowd_pick is not None:
-            return crowd_pick, best_bid_probability
-        return best_bids[0], best_bid_probability
+            # Pressure-driven CPUs widen the candidate window and prefer the highest count.
+            best_prob = ranking[0][0]
+            near_best = [row for row in ranking if row[0] >= best_prob - 0.05]
+            near_best.sort(key=lambda row: (row[0], row[1].count), reverse=True)
+            top_prob = near_best[0][0]
+            tied_at_top = [row[1] for row in near_best if row[0] == top_prob]
+            crowd_pick = self._apply_crowd_preference(tied_at_top, all_prev_bids)
+            return (crowd_pick if crowd_pick is not None else near_best[0][1]), top_prob
+
+        top_prob = ranking[0][0]
+        tied_at_top = [row[1] for row in ranking if row[0] == top_prob]
+        crowd_pick = self._apply_crowd_preference(tied_at_top, all_prev_bids)
+        return (crowd_pick if crowd_pick is not None else tied_at_top[0]), top_prob
 
     def _apply_crowd_preference(self, best_bids: list[Bid], all_prev_bids: set[Bid]) -> 'Bid | None':
         if len(best_bids) <= 1 or not all_prev_bids:

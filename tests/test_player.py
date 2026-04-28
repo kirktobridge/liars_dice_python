@@ -411,7 +411,8 @@ class TestOpponentProfile(unittest.TestCase):
 
     def test_bluff_rate_computed(self):
         p = OpponentProfile(bids_challenged=4, challenge_successes=3)
-        self.assertAlmostEqual(p.bluff_rate, 0.75)
+        # Beta(2,2) smoothed: (3+1)/(4+2) = 0.667
+        self.assertAlmostEqual(p.bluff_rate, 4 / 6)
 
     def test_avg_aggression_defaults_neutral(self):
         p = OpponentProfile()

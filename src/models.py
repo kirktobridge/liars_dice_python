@@ -28,11 +28,13 @@ class OpponentProfile:
 
     @property
     def bluff_rate(self) -> float:
-        return self.challenge_successes / self.bids_challenged if self.bids_challenged else 0.5
+        # Beta(2,2) prior: 0.5 at zero observations, smooth movement on first few samples.
+        return (self.challenge_successes + 1) / (self.bids_challenged + 2)
 
     @property
     def avg_aggression(self) -> float:
-        return self.total_aggression / self.bids_observed if self.bids_observed else 0.5
+        # Beta(2,2)-style prior: weight 2 with mean 0.5 aggression.
+        return (self.total_aggression + 1.0) / (self.bids_observed + 2)
 
 
 @dataclass(frozen=True)
