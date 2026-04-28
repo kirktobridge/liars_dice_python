@@ -187,14 +187,6 @@ async def tournament_results(job_id: str):
     return result
 
 
-def _numpy_default(o):
-    if hasattr(o, 'item'):
-        return o.item()
-    if hasattr(o, 'tolist'):
-        return o.tolist()
-    raise TypeError(f'Not JSON serializable: {type(o)}')
-
-
 @app.post('/tournament/run-custom')
 async def tournament_run_custom(body: _CustomTournamentRunBody):
     if not (1 <= body.n <= 10000):
@@ -233,15 +225,14 @@ def _tournament_worker(job_id: str, n: int, num_players: int) -> None:
     _log.info('TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, num_players)
     try:
         from tournament import run_tournament
-        from charts import compute_tournament_stats
+        from tournament_stats import compute_tournament_stats
 
         def _progress_cb(frac: float) -> None:
             _jobs[job_id]['progress'] = frac
 
         df, df_rounds, df_elim = run_tournament(n, num_players, parallel=True, on_progress=_progress_cb, show_progress=False)
         stats = compute_tournament_stats(df, df_rounds, df_elim)
-        sanitized = json.loads(json.dumps(stats, default=_numpy_default))
-        _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
+        _jobs[job_id].update(status='complete', progress=1.0, result=stats)
         _log.info('TOURNAMENT_COMPLETE job=%s', job_id[:8])
     except Exception as exc:
         _jobs[job_id].update(status='error', progress=0.0, error=str(exc))
@@ -274,7 +265,7 @@ def _custom_tournament_worker(job_id: str, n: int, player_configs: list[dict]) -
     _log.info('CUSTOM_TOURNAMENT_START job=%s n=%d num_players=%d', job_id[:8], n, len(player_configs))
     try:
         from tournament import run_tournament
-        from charts import compute_tournament_stats
+        from tournament_stats import compute_tournament_stats
 
         def _progress_cb(frac: float) -> None:
             _jobs[job_id]['progress'] = frac
@@ -283,8 +274,7 @@ def _custom_tournament_worker(job_id: str, n: int, player_configs: list[dict]) -
             n, parallel=True, on_progress=_progress_cb, player_configs=player_configs, show_progress=False
         )
         stats = compute_tournament_stats(df, df_rounds, df_elim)
-        sanitized = json.loads(json.dumps(stats, default=_numpy_default))
-        _jobs[job_id].update(status='complete', progress=1.0, result=sanitized)
+        _jobs[job_id].update(status='complete', progress=1.0, result=stats)
         _log.info('CUSTOM_TOURNAMENT_COMPLETE job=%s', job_id[:8])
     except Exception as exc:
         _jobs[job_id].update(status='error', progress=0.0, error=str(exc))

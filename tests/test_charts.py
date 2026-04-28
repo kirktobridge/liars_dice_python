@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
-from charts import compute_tournament_stats
+from tournament_stats import compute_tournament_stats
 from stats_schema import RoundRow, rounds_to_df
 
 

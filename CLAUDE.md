@@ -16,7 +16,8 @@ All source files live under `src/`:
 - `src/tournament.py` — runs individual games (`run_game`) and parallel tournament batches (`run_tournament`)
 - `src/stats_collector.py` — `GameStatsCollector` class: accumulates per-game results into stats
 - `src/stats_schema.py` — structured stats dataclasses: `RoundRow`, `EliminationRow`, `GameRow`; DataFrame converters used by charts
-- `src/charts.py` — `show_tournament_stats()`: renders plotly charts from tournament data
+- `src/tournament_stats.py` — `compute_tournament_stats()`: pure aggregation of tournament DataFrames into a JSON-safe dict (no Plotly dependency); used by `web/app.py` and `charts.py`
+- `src/charts.py` — `show_tournament_stats()`: renders plotly charts from tournament data; delegates aggregation to `tournament_stats`
 
 ## Web Layer
 
