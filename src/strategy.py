@@ -447,15 +447,24 @@ _HISTORY_MAX = 10
 class LLMStrategy:
     player_type: str = 'LLM'
 
-    def __init__(self, model: str = "gemma3:4b", temperature: float = 0.3) -> None:
+    def __init__(
+        self,
+        model: str = "gemma3:4b",
+        temperature: float = 0.3,
+        timeout: float = 4.0,
+    ) -> None:
         self._model = model
         self._temperature = temperature
+        self._timeout = timeout
         self._history: list[str] = []
+        self._fallback = CPUStrategy(random.Random())
 
     def reset(self) -> None:
         self._history = []
+        self._fallback.reset()
 
     def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
+        self._fallback.observe_action(player_name, action, bid, total_dice)
         if action == Action.BID and bid is not None:
             entry = f"{player_name} bid {bid.count} {_FACE_WORDS.get(bid.face, bid.face)}"
         elif action == Action.RAISE and bid is not None:
@@ -471,7 +480,7 @@ class LLMStrategy:
             del self._history[: len(self._history) - _HISTORY_MAX]
 
     def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
-        pass
+        self._fallback.observe_outcome(bidder_name, challenge_succeeded)
 
     def decide(
         self,
@@ -485,11 +494,19 @@ class LLMStrategy:
     ) -> TurnResult:
         last = recent_events[0]
         prompt = self._build_prompt(dice[:num_dice], tot_other_dice, last)
-        raw = query_llm(self._model, prompt, temperature=self._temperature)
+        raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
         result = self._parse_response(raw, player_name)
-        if last.action == Action.START:
-            return result if result is not None else TurnResult(Bid(2, 3), Action.BID, player_name)
-        return result if result is not None else TurnResult(None, Action.CHALLENGE, player_name)
+        if result is not None:
+            return result
+        return self._fallback.decide(
+            player_name=player_name,
+            dice=dice,
+            num_dice=num_dice,
+            recent_events=recent_events,
+            tot_other_dice=tot_other_dice,
+            bidder_num_dice=bidder_num_dice,
+            next_player_num_dice=next_player_num_dice,
+        )
 
     def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:
         prev_desc = (

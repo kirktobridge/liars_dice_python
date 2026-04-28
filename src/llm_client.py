@@ -11,7 +11,7 @@ def _ollama_url() -> str:
     return os.environ.get('OLLAMA_URL', _DEFAULT_OLLAMA_URL)
 
 
-def query_llm(model: str, prompt: str, timeout: int = 15, temperature: float = 0.7) -> str | None:
+def query_llm(model: str, prompt: str, timeout: float = 15, temperature: float = 0.7) -> str | None:
     try:
         response = requests.post(
             _ollama_url(),

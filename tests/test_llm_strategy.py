@@ -41,19 +41,20 @@ class TestLLMStrategyOpeningBid(unittest.TestCase):
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')
-    def test_none_response_falls_back_to_opening_bid(self, mock_query):
+    def test_none_response_falls_back_to_cpu_strategy(self, mock_query):
         mock_query.return_value = None
         result = _decide(self.strategy, _start_events())
+        # CPU fallback always produces a bid on the opening turn (no prior bid to challenge)
         self.assertEqual(result.action, Action.BID)
-        self.assertEqual(result.bid, Bid(2, 3))
+        self.assertIsNotNone(result.bid)
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')
-    def test_malformed_json_falls_back_to_opening_bid(self, mock_query):
+    def test_malformed_json_falls_back_to_cpu_strategy(self, mock_query):
         mock_query.return_value = 'not json at all'
         result = _decide(self.strategy, _start_events())
         self.assertEqual(result.action, Action.BID)
-        self.assertEqual(result.bid, Bid(2, 3))
+        self.assertIsNotNone(result.bid)
         self.assertEqual(result.player_name, PLAYER)
 
 
@@ -95,27 +96,24 @@ class TestLLMStrategyNormalTurn(unittest.TestCase):
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')
-    def test_none_response_falls_back_to_challenge(self, mock_query):
+    def test_none_response_falls_back_to_cpu_strategy(self, mock_query):
         mock_query.return_value = None
         result = _decide(self.strategy, _bid_events())
-        self.assertEqual(result.action, Action.CHALLENGE)
-        self.assertIsNone(result.bid)
+        self.assertIn(result.action, (Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON))
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')
-    def test_malformed_json_falls_back_to_challenge(self, mock_query):
+    def test_malformed_json_falls_back_to_cpu_strategy(self, mock_query):
         mock_query.return_value = 'definitely not json'
         result = _decide(self.strategy, _bid_events())
-        self.assertEqual(result.action, Action.CHALLENGE)
-        self.assertIsNone(result.bid)
+        self.assertIn(result.action, (Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON))
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')
-    def test_invalid_action_string_falls_back_to_challenge(self, mock_query):
+    def test_invalid_action_string_falls_back_to_cpu_strategy(self, mock_query):
         mock_query.return_value = '{"action": "surrender", "count": 2, "face": 3}'
         result = _decide(self.strategy, _bid_events())
-        self.assertEqual(result.action, Action.CHALLENGE)
-        self.assertIsNone(result.bid)
+        self.assertIn(result.action, (Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON))
         self.assertEqual(result.player_name, PLAYER)
 
     @patch('strategy.query_llm')

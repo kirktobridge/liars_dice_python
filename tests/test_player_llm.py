@@ -131,7 +131,7 @@ class TestLLMTakeTurn(unittest.TestCase):
         with patch("strategy.query_llm", return_value="not valid json at all"):
             result = p.take_turn(_bid_events(), tot_other_dice=5)
         self.assertIsInstance(result, TurnResult)
-        self.assertEqual(result.action, Action.CHALLENGE)
+        self.assertIn(result.action, (Action.BID, Action.RAISE, Action.CHALLENGE, Action.SPOT_ON))
 
 
 # ---------------------------------------------------------------------------
