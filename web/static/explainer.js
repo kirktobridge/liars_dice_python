@@ -169,11 +169,11 @@ function renderContextStep(panel, step) {
   wrap.appendChild(makeProbBar('Challenge probability', step.data.challenge_prob,
     'Chance the previous bid is a lie.'));
   wrap.appendChild(makeProbBar('Spot-on probability', step.data.spot_on_prob,
-    'Chance the bid is exactly correct.'));
+    `Chance the bid is exactly correct. With ${step.data.num_active_players} players, that translates to a spot-on EV of ${fmtNum(step.data.spot_on_ev, 2)} dice.`));
   wrap.appendChild(makeProbBar('Best legal bid probability', step.data.best_bid_prob,
     `CPU's strongest legal bid: ${step.data.best_bid_desc}.`));
   wrap.appendChild(makeProbBar('Effective challenge threshold', step.data.effective_threshold,
-    'How confident the CPU must be before challenging.'));
+    'Floor at break-even (0.50). Higher means the CPU demands more confidence.'));
 
   const scoreRow = el('div', 'score-row');
   scoreRow.appendChild(makeScoreCard('Blind aggression score',
@@ -201,7 +201,7 @@ function renderPersonalityStep(panel, step) {
   wrap.appendChild(card);
 
   const derivedWrap = el('div', 'derived-wrap');
-  derivedWrap.appendChild(makeStatBox('Spot-on threshold', fmtNum(step.data.spot_on_threshold, 3)));
+  derivedWrap.appendChild(makeStatBox('Spot-on EV bias', fmtNum(step.data.spot_on_ev_bias, 3)));
   derivedWrap.appendChild(makeStatBox('Challenge threshold', fmtNum(step.data.challenge_threshold, 3)));
   if (step.data.blind_aggression_active) {
     derivedWrap.appendChild(makeStatBox('Boost magnitude', '+' + fmtNum(step.data.boost_magnitude, 3)));
@@ -230,7 +230,9 @@ function renderDecisionStep(panel, step) {
   wrap.appendChild(reason);
 
   const meta = el('div', 'decision-meta');
-  meta.appendChild(makeStatBox('Best probability', fmtNum(step.data.best_probability, 3)));
+  meta.appendChild(makeStatBox('Challenge EV', fmtNum(step.data.ev_challenge, 2) + ' dice'));
+  meta.appendChild(makeStatBox('Spot-on EV', fmtNum(step.data.ev_spot_on, 2) + ' dice'));
+  meta.appendChild(makeStatBox('Bid baseline', fmtNum(step.data.ev_bid_baseline, 2) + ' dice'));
   meta.appendChild(makeStatBox('Decision branch', step.data.branch));
   wrap.appendChild(meta);
 

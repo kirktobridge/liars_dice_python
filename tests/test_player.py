@@ -318,27 +318,31 @@ class TestPlayerReset(unittest.TestCase):
 class TestChallengeThreshold(unittest.TestCase):
     def test_challenge_threshold_in_range(self):
         p = Player("Test")
-        self.assertGreaterEqual(p.personality.challenge_threshold, 0.20)
+        # Floor at 0.50 (break-even); upper bound around 0.65 + jitter.
+        self.assertGreaterEqual(p.personality.challenge_threshold, 0.50)
         self.assertLessEqual(p.personality.challenge_threshold, 0.71)
 
     def test_challenge_threshold_conservative_higher(self):
         import random as _r
-        # Force risk_appetite=5 by seeding; retry until we get one in low range
         for seed in range(200):
             rng = _r.Random(seed)
             p = Player("T", rng=rng)
             if p.personality.risk_appetite <= 10:
-                self.assertGreater(p.personality.challenge_threshold, 0.50)
+                # Conservative players sit well above the floor.
+                self.assertGreater(p.personality.challenge_threshold, 0.60)
                 return
         self.fail("Could not find a low risk_appetite player in 200 seeds")
 
-    def test_challenge_threshold_aggressive_lower(self):
+    def test_challenge_threshold_aggressive_floored(self):
+        """High-risk players reach the 0.50 floor — never below break-even."""
         import random as _r
         for seed in range(200):
             rng = _r.Random(seed)
             p = Player("T", rng=rng)
             if p.personality.risk_appetite >= 90:
-                self.assertLess(p.personality.challenge_threshold, 0.50)
+                self.assertGreaterEqual(p.personality.challenge_threshold, 0.50)
+                # Should be near the floor for high risk
+                self.assertLess(p.personality.challenge_threshold, 0.55)
                 return
         self.fail("Could not find a high risk_appetite player in 200 seeds")
 
@@ -517,11 +521,11 @@ class TestOpponentProfileInfluencesChallenge(unittest.TestCase):
     def test_honest_bidder_raises_effective_threshold(self):
         bidder = "HonestHank"
         p = self._player_with_bluff_profile(bidder, bluff_rate_approx=0.0)
-        p.personality.challenge_threshold = 0.30
+        p.personality.challenge_threshold = 0.55
         profile = p.opponent_profiles[bidder]
         # bluff_adjustment = (0.0 - 0.5) * 0.4 = -0.2 → threshold goes up
         bluff_adjustment = (profile.bluff_rate - 0.5) * 0.4
-        effective = max(0.10, p.personality.challenge_threshold - bluff_adjustment)
+        effective = max(0.50, p.personality.challenge_threshold - bluff_adjustment)
         self.assertGreater(effective, p.personality.challenge_threshold)
 
 

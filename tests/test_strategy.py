@@ -124,25 +124,28 @@ class TestEffectiveChallengeThreshold(unittest.TestCase):
         self.assertAlmostEqual(s._effective_challenge_threshold("Unknown"), 0.50)
 
     def test_known_bluffer_lowers_threshold(self):
-        s = self._make(0.50)
+        # Start at 0.65 so the bluff adjustment can still move; floor is 0.50.
+        s = self._make(0.65)
         s.opponent_profiles["Liar"] = OpponentProfile(
             bids_challenged=4, challenge_successes=4)  # bluff_rate=1.0
         effective = s._effective_challenge_threshold("Liar")
-        self.assertLess(effective, 0.50)
+        self.assertLess(effective, 0.65)
+        self.assertGreaterEqual(effective, 0.50)
 
     def test_honest_bidder_raises_threshold(self):
-        s = self._make(0.50)
+        s = self._make(0.55)
         s.opponent_profiles["Honest"] = OpponentProfile(
             bids_challenged=4, challenge_successes=0)  # bluff_rate=0.0
         effective = s._effective_challenge_threshold("Honest")
-        self.assertGreater(effective, 0.50)
+        self.assertGreater(effective, 0.55)
 
-    def test_threshold_clamped_at_minimum(self):
-        s = self._make(0.11)
+    def test_threshold_clamped_at_break_even(self):
+        s = self._make(0.51)
         s.opponent_profiles["Bluffer"] = OpponentProfile(
             bids_challenged=4, challenge_successes=4)
         effective = s._effective_challenge_threshold("Bluffer")
-        self.assertGreaterEqual(effective, 0.10)
+        # Floor at 0.50 — challenging below 50% is mathematically -EV.
+        self.assertGreaterEqual(effective, 0.50)
 
     def test_fewer_than_min_samples_returns_base(self):
         s = self._make(0.50)
@@ -225,35 +228,39 @@ class TestRankAndSelectBid(unittest.TestCase):
 class TestDecideAction(unittest.TestCase):
     def _make(self) -> CPUStrategy:
         s = make_cpu_strategy()
-        s.spot_on_threshold = 0.05
-        s.risk_appetite = 1  # low — won't gamble on spot-on
+        s.spot_on_ev_bias = 0.0
+        s.risk_appetite = 1
         s.challenge_threshold = 0.50
         return s
 
     def _ctx(self, challenge_prob=0.0, effective_threshold=0.50, spot_on_prob=0.0,
-             best_bid=None, best_bid_prob=0.0, prev_bid=Bid(2, 3)):
+             spot_on_ev=-1.0, best_bid=None, best_bid_prob=0.0, prev_bid=Bid(2, 3)):
         return ResponseContext(
             prev_bid=prev_bid,
             challenge_prob=challenge_prob,
             effective_threshold=effective_threshold,
             spot_on_prob=spot_on_prob,
+            spot_on_ev=spot_on_ev,
             best_bid=best_bid,
             best_bid_prob=best_bid_prob,
         )
 
-    def test_challenge_when_challenge_prob_is_best(self):
+    def test_challenge_when_ev_is_positive_and_dominates(self):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.90, effective_threshold=0.50,
-            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40))
+            spot_on_prob=0.05, spot_on_ev=-0.5,
+            best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.action, Action.CHALLENGE)
         self.assertIsNone(result.bid)
 
-    def test_spot_on_when_spot_on_is_best(self):
+    def test_spot_on_when_spot_on_ev_is_positive_and_dominates(self):
         s = self._make()
+        # 4-player table, P(exact)=0.30 → EV = 0.30*3 - 0.70 = +0.20
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.30, effective_threshold=0.50,
-            spot_on_prob=0.80, best_bid=Bid(3, 4), best_bid_prob=0.40))
+            spot_on_prob=0.30, spot_on_ev=0.20,
+            best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.action, Action.SPOT_ON)
         self.assertIsNone(result.bid)
 
@@ -261,7 +268,8 @@ class TestDecideAction(unittest.TestCase):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.10, effective_threshold=0.50,
-            spot_on_prob=0.01, best_bid=Bid(2, 5), best_bid_prob=0.80,
+            spot_on_prob=0.01, spot_on_ev=-0.95,
+            best_bid=Bid(2, 5), best_bid_prob=0.80,
             prev_bid=Bid(2, 3)))
         self.assertEqual(result.action, Action.BID)
         self.assertEqual(result.bid, Bid(2, 5))
@@ -270,30 +278,55 @@ class TestDecideAction(unittest.TestCase):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.10, effective_threshold=0.50,
-            spot_on_prob=0.01, best_bid=Bid(3, 5), best_bid_prob=0.80,
+            spot_on_prob=0.01, spot_on_ev=-0.95,
+            best_bid=Bid(3, 5), best_bid_prob=0.80,
             prev_bid=Bid(2, 3)))
         self.assertEqual(result.action, Action.RAISE)
         self.assertEqual(result.bid, Bid(3, 5))
 
     def test_challenge_below_threshold_not_taken(self):
         s = self._make()
+        # P(succ)=0.40 < 0.50 floor, so challenge gated off; falls back to bid.
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.40, effective_threshold=0.50,
-            spot_on_prob=0.01, best_bid=Bid(2, 4), best_bid_prob=0.70))
+            spot_on_prob=0.01, spot_on_ev=-0.95,
+            best_bid=Bid(2, 4), best_bid_prob=0.70))
         self.assertNotEqual(result.action, Action.CHALLENGE)
+
+    def test_spot_on_skipped_when_ev_negative(self):
+        s = self._make()
+        # 2-player table, P(exact)=0.30 → EV = 0.30*1 - 0.70 = -0.40 (skip)
+        result = s._decide_action("T", self._ctx(
+            challenge_prob=0.30, effective_threshold=0.50,
+            spot_on_prob=0.30, spot_on_ev=-0.40,
+            best_bid=Bid(2, 4), best_bid_prob=0.50,
+            prev_bid=Bid(2, 3)))
+        self.assertNotEqual(result.action, Action.SPOT_ON)
+
+    def test_spot_on_taken_when_ev_strongly_positive_at_8_players(self):
+        s = self._make()
+        # 8-player table, P(exact)=0.34 → EV = 0.34*7 - 0.66 = +1.72
+        result = s._decide_action("T", self._ctx(
+            challenge_prob=0.20, effective_threshold=0.50,
+            spot_on_prob=0.34, spot_on_ev=1.72,
+            best_bid=Bid(3, 5), best_bid_prob=0.60,
+            prev_bid=Bid(2, 3)))
+        self.assertEqual(result.action, Action.SPOT_ON)
 
     def test_fallback_to_challenge_when_all_zero_no_bid(self):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.0, effective_threshold=0.50,
-            spot_on_prob=0.0, best_bid=None, best_bid_prob=0.0))
+            spot_on_prob=0.0, spot_on_ev=-1.0,
+            best_bid=None, best_bid_prob=0.0))
         self.assertEqual(result.action, Action.CHALLENGE)
 
     def test_fallback_to_bid_when_all_zero_but_have_bid(self):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.0, effective_threshold=0.50,
-            spot_on_prob=0.0, best_bid=Bid(3, 2), best_bid_prob=0.0,
+            spot_on_prob=0.0, spot_on_ev=-1.0,
+            best_bid=Bid(3, 2), best_bid_prob=0.0,
             prev_bid=Bid(2, 3)))
         self.assertIn(result.action, (Action.BID, Action.RAISE))
         self.assertEqual(result.bid, Bid(3, 2))
@@ -302,7 +335,8 @@ class TestDecideAction(unittest.TestCase):
         s = self._make()
         result = s._decide_action("T", self._ctx(
             challenge_prob=0.90, effective_threshold=0.50,
-            spot_on_prob=0.05, best_bid=Bid(3, 4), best_bid_prob=0.40))
+            spot_on_prob=0.05, spot_on_ev=-0.5,
+            best_bid=Bid(3, 4), best_bid_prob=0.40))
         self.assertEqual(result.player_name, "T")
 
 
@@ -316,6 +350,7 @@ class TestBlindAggressionBoost(unittest.TestCase):
             challenge_prob=challenge_prob,
             effective_threshold=effective_threshold,
             spot_on_prob=0.01,
+            spot_on_ev=-0.95,
             best_bid=Bid(4, 4),
             best_bid_prob=0.40,
             blind_aggression_score=score,

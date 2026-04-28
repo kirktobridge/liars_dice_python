@@ -39,6 +39,7 @@ class ExplainerScenario:
     attentiveness_score: int
     positional_cunning: int
     rng_seed: int
+    num_active_players: int = 4
     opponent_profile: OpponentProfile | None = None
 
 
@@ -150,10 +151,13 @@ def _step_evaluate_bid(scenario: ExplainerScenario) -> ExplainerStep:
 def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
                   ctx: ResponseContext) -> ExplainerStep:
     bid = scenario.prev_bid
+    n_others = max(0, scenario.num_active_players - 1)
     narrative = (
-        f"The CPU evaluates four key probabilities and two situational scores. "
+        f"The CPU evaluates probabilities and situational scores. "
         f"Challenge probability ({_round(ctx.challenge_prob):.2f}) estimates the chance the previous bid is a lie. "
-        f"Spot-on probability ({_round(ctx.spot_on_prob):.2f}) is the chance the bid is exactly correct. "
+        f"Spot-on probability ({_round(ctx.spot_on_prob):.2f}) is the chance the bid is exactly correct; "
+        f"with {n_others} other player(s) on the table that translates to a spot-on EV of "
+        f"{_round(ctx.spot_on_ev):+.2f} dice. "
         f"Best-bid probability ({_round(ctx.best_bid_prob):.2f}) is the chance the CPU's strongest legal bid would be true. "
         f"Blind aggression score ({_round(ctx.blind_aggression_score):.2f}) measures how much "
         f"the bidder claimed beyond their own information window — values above "
@@ -175,6 +179,8 @@ def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
             'challenge_prob': _round(ctx.challenge_prob),
             'effective_threshold': _round(ctx.effective_threshold),
             'spot_on_prob': _round(ctx.spot_on_prob),
+            'spot_on_ev': _round(ctx.spot_on_ev),
+            'num_active_players': scenario.num_active_players,
             'best_bid_count': ctx.best_bid.count if ctx.best_bid else None,
             'best_bid_face': ctx.best_bid.face if ctx.best_bid else None,
             'best_bid_desc': best_bid_desc,
@@ -195,7 +201,7 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
             (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
         )
         boosted_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
-        boosted_threshold = max(0.10, ctx.effective_threshold - boost_magnitude * 0.5)
+        boosted_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)
     else:
         boost_magnitude = 0.0
         boosted_prob = ctx.challenge_prob
@@ -229,7 +235,7 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
             'peer_pressure_score': strategy.peer_pressure_score,
             'attentiveness_score': strategy.attentiveness_score,
             'positional_cunning': strategy.positional_cunning,
-            'spot_on_threshold': _round(strategy.spot_on_threshold),
+            'spot_on_ev_bias': _round(strategy.spot_on_ev_bias),
             'challenge_threshold': _round(strategy.challenge_threshold),
             'cunning_fraction': _round(cunning),
             'blind_aggression_active': bas_above,
@@ -249,66 +255,64 @@ def _step_decision(strategy: CPUStrategy, scenario: ExplainerScenario,
             (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
         )
         eff_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
-        eff_threshold = max(0.10, ctx.effective_threshold - boost_magnitude * 0.5)
+        eff_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)
     else:
         eff_prob = ctx.challenge_prob
         eff_threshold = ctx.effective_threshold
     challenge_passes = eff_prob >= eff_threshold
-    challenge_value = eff_prob if challenge_passes else 0.0
-    best_probability = max(challenge_value, ctx.spot_on_prob, ctx.best_bid_prob)
+    ev_challenge_raw = 2 * eff_prob - 1
+    ev_challenge_gated = ev_challenge_raw if challenge_passes else float('-inf')
+    ev_spot_on = ctx.spot_on_ev + strategy.spot_on_ev_bias
+    ev_bid = 0.0
 
     action_label = decision.action.value
     bid_desc = (f" — {decision.bid.count} {_FACE_NAMES[decision.bid.face]}"
                 if decision.bid is not None else "")
 
-    if best_probability == 0:
+    if decision.action == Action.CHALLENGE and decision.bid is None and ctx.best_bid is None and not challenge_passes:
         reason = (
-            "Every probability rounded to zero, so the CPU falls back to the safest "
-            "available action."
+            "No legal bid was available and no other +EV action existed, so the CPU "
+            "falls back to CHALLENGE."
         )
         branch = 'fallback_zero'
-    elif ctx.spot_on_prob == best_probability:
-        reason = (
-            f"Spot-on probability ({_round(ctx.spot_on_prob):.2f}) is the highest of "
-            f"the three, so the CPU calls SPOT ON."
-        )
-        branch = 'spot_on_max'
-    elif challenge_value == best_probability:
+    elif decision.action == Action.CHALLENGE:
         if ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD:
             reason = (
-                f"After the blind-aggression boost, effective challenge probability "
-                f"({_round(challenge_value):.2f}) cleared the lowered threshold "
-                f"({_round(eff_threshold):.2f}) and beat both spot-on "
-                f"({_round(ctx.spot_on_prob):.2f}) and the best legal bid "
-                f"({_round(ctx.best_bid_prob):.2f})."
+                f"After the blind-aggression boost, challenge probability "
+                f"({_round(eff_prob):.2f}) cleared the {_round(eff_threshold):.2f} threshold; "
+                f"its EV ({_round(ev_challenge_raw):+.2f} dice) beats spot-on "
+                f"({_round(ev_spot_on):+.2f}) and the bid baseline (0.00)."
             )
         else:
             reason = (
-                f"Challenge probability ({_round(challenge_value):.2f}) cleared the "
-                f"effective threshold ({_round(eff_threshold):.2f}) and is the "
-                f"highest of the three, so the CPU CHALLENGES."
+                f"Challenge probability ({_round(eff_prob):.2f}) cleared the "
+                f"{_round(eff_threshold):.2f} break-even threshold; its EV "
+                f"({_round(ev_challenge_raw):+.2f} dice) beats spot-on "
+                f"({_round(ev_spot_on):+.2f}) and the bid baseline (0.00)."
             )
-        branch = 'challenge_max'
+        branch = 'challenge_ev'
+    elif decision.action == Action.SPOT_ON:
+        reason = (
+            f"Spot-on EV ({_round(ev_spot_on):+.2f} dice) is positive and beats both "
+            f"the bid baseline (0.00) and challenge ({_round(ev_challenge_raw):+.2f}). "
+            f"With {scenario.num_active_players} players on the table the exact-count "
+            f"payoff outweighs the cost of being wrong."
+        )
+        branch = 'spot_on_ev'
+    elif decision.action == Action.RAISE:
+        reason = (
+            f"Neither challenge nor spot-on cleared the bid baseline (0.00). "
+            f"Best legal bid ({_round(ctx.best_bid_prob):.2f} P(true)) wins, and its "
+            f"count exceeds the previous bid, so this is a RAISE."
+        )
+        branch = 'raise'
     else:
-        if decision.action == Action.SPOT_ON:
-            reason = (
-                f"Spot-on probability ({_round(ctx.spot_on_prob):.2f}) was above the "
-                f"spot-on threshold ({_round(strategy.spot_on_threshold):.2f}) and a "
-                f"risk-appetite gamble fired, so the CPU calls SPOT ON."
-            )
-            branch = 'spot_on_gamble'
-        elif decision.action == Action.RAISE:
-            reason = (
-                f"Best legal bid ({_round(ctx.best_bid_prob):.2f}) wins the comparison. "
-                f"Its count exceeds the previous bid, so this is a RAISE."
-            )
-            branch = 'raise'
-        else:
-            reason = (
-                f"Best legal bid ({_round(ctx.best_bid_prob):.2f}) wins the comparison. "
-                f"Its count matches the previous bid, so this is a same-count BID on a different face."
-            )
-            branch = 'bid'
+        reason = (
+            f"Neither challenge nor spot-on cleared the bid baseline (0.00). "
+            f"Best legal bid ({_round(ctx.best_bid_prob):.2f} P(true)) wins; its count "
+            f"matches the previous bid, so this is a same-count BID on a different face."
+        )
+        branch = 'bid'
 
     narrative = f"Decision: {action_label}{bid_desc}. {reason}"
     return ExplainerStep(
@@ -319,9 +323,11 @@ def _step_decision(strategy: CPUStrategy, scenario: ExplainerScenario,
             'action': decision.action.value,
             'bid_count': decision.bid.count if decision.bid else None,
             'bid_face': decision.bid.face if decision.bid else None,
-            'effective_challenge_prob': _round(challenge_value),
+            'effective_challenge_prob': _round(eff_prob if challenge_passes else 0.0),
             'effective_challenge_threshold': _round(eff_threshold),
-            'best_probability': _round(best_probability),
+            'ev_challenge': _round(ev_challenge_raw if challenge_passes else 0.0),
+            'ev_spot_on': _round(ev_spot_on),
+            'ev_bid_baseline': _round(ev_bid),
             'branch': branch,
             'reason': reason,
         },
@@ -350,6 +356,7 @@ def run_scenario(scenario_id: str) -> ExplainerResult:
         scenario.bidder_num_dice,
         all_prev_bids,
         scenario.next_player_num_dice,
+        scenario.num_active_players,
     )
     steps.append(_step_context(strategy, scenario, ctx))
     steps.append(_step_personality(strategy, ctx))
@@ -388,6 +395,7 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         attentiveness_score=50,
         positional_cunning=20,
         rng_seed=101,
+        num_active_players=4,
     ),
     'challenge-aggressor': ExplainerScenario(
         id='challenge-aggressor',
@@ -409,6 +417,7 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         attentiveness_score=80,
         positional_cunning=40,
         rng_seed=202,
+        num_active_players=4,
         opponent_profile=OpponentProfile(
             bids_observed=4,
             total_aggression=2.6,
@@ -438,19 +447,21 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         attentiveness_score=40,
         positional_cunning=30,
         rng_seed=303,
+        num_active_players=4,
     ),
     'blind-aggression-trigger': ExplainerScenario(
         id='blind-aggression-trigger',
         title='Cunning Sees the Bluff',
         summary='Bidder claimed far beyond their information window — high cunning amplifies suspicion into a challenge.',
         narrative_intro=(
-            "The bidder has only one die but claimed eight fours in a 15-dice game. "
-            "On the raw numbers the CPU would just escalate, but its high positional cunning "
-            "spots how blind the claim really is and tips the decision toward CHALLENGE."
+            "The bidder has only one die but claimed nine fours in a 15-dice game. "
+            "The CPU is already 5/9 of the way there from its own hand; its high "
+            "positional cunning spots how blind the over-claim is and pushes the boosted "
+            "challenge probability above the break-even threshold."
         ),
         dice=[4, 4, 4, 4, 4],
         num_dice=5,
-        prev_bid=Bid(count=8, face=4),
+        prev_bid=Bid(count=9, face=4),
         prev_bidder='Lord Cutler Beckett',
         tot_other_dice=10,
         bidder_num_dice=1,
@@ -460,6 +471,7 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         attentiveness_score=50,
         positional_cunning=100,
         rng_seed=404,
+        num_active_players=4,
     ),
     'pressure-opportunity': ExplainerScenario(
         id='pressure-opportunity',
@@ -482,5 +494,6 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         attentiveness_score=50,
         positional_cunning=100,
         rng_seed=505,
+        num_active_players=4,
     ),
 }

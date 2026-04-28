@@ -58,7 +58,7 @@ def test_step_data_is_json_serializable(scenario_id: str) -> None:
 def test_blind_aggression_branch_tagged() -> None:
     result = run_scenario('blind-aggression-trigger')
     decision_step = result.steps[-1]
-    assert decision_step.data['branch'] == 'challenge_max'
+    assert decision_step.data['branch'] == 'challenge_ev'
     personality_step = result.steps[4]
     assert personality_step.data['blind_aggression_active'] is True
     assert personality_step.data['boost_magnitude'] > 0
@@ -76,7 +76,7 @@ def test_pressure_opportunity_picks_higher_count() -> None:
 def test_spot_on_spike_branch_tagged() -> None:
     result = run_scenario('spot-on-spike')
     decision_step = result.steps[-1]
-    assert decision_step.data['branch'] == 'spot_on_max'
+    assert decision_step.data['branch'] == 'spot_on_ev'
 
 
 def test_confident_bid_is_raise() -> None:
@@ -90,7 +90,7 @@ def test_confident_bid_is_raise() -> None:
 def test_challenge_aggressor_uses_opponent_profile() -> None:
     result = run_scenario('challenge-aggressor')
     decision_step = result.steps[-1]
-    assert decision_step.data['branch'] == 'challenge_max'
+    assert decision_step.data['branch'] == 'challenge_ev'
 
 
 def test_scenario_ids_unique() -> None:
@@ -111,26 +111,24 @@ def test_personality_override_matches_constructor_thresholds() -> None:
     rng_constructor = random.Random(7)
     s_ctor = CPUStrategy(rng_constructor)
 
+    risk_fraction = s_ctor.risk_appetite / 100
+    spot_on_jitter = s_ctor.spot_on_ev_bias - (risk_fraction - 0.5) * 0.4
+    challenge_jitter = s_ctor.challenge_threshold - max(0.50, 0.65 - risk_fraction * 0.15)
+
     s_override = CPUStrategy(random.Random(99))
     s_override._set_personality(
         risk_appetite=s_ctor.risk_appetite,
         peer_pressure_score=s_ctor.peer_pressure_score,
         attentiveness_score=s_ctor.attentiveness_score,
         positional_cunning=s_ctor.positional_cunning,
-        spot_on_jitter=s_ctor.spot_on_threshold - max(
-            0.01,
-            0.6 - (s_ctor.risk_appetite / 100) * 0.06
-        ),
-        challenge_jitter=s_ctor.challenge_threshold - max(
-            0.20,
-            0.65 - (s_ctor.risk_appetite / 100) * 0.30
-        ),
+        spot_on_jitter=spot_on_jitter,
+        challenge_jitter=challenge_jitter,
     )
     assert s_override.risk_appetite == s_ctor.risk_appetite
     assert s_override.peer_pressure_score == s_ctor.peer_pressure_score
     assert s_override.attentiveness_score == s_ctor.attentiveness_score
     assert s_override.positional_cunning == s_ctor.positional_cunning
-    assert s_override.spot_on_threshold == pytest.approx(s_ctor.spot_on_threshold, abs=1e-9)
+    assert s_override.spot_on_ev_bias == pytest.approx(s_ctor.spot_on_ev_bias, abs=1e-9)
     assert s_override.challenge_threshold == pytest.approx(s_ctor.challenge_threshold, abs=1e-9)
 
 

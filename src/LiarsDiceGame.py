@@ -143,7 +143,8 @@ class LiarsDiceGame:
                     return None
             cur_event = player.take_turn(
                 self.recent_events, tot_dice - player.num_dice,
-                bidder_num_dice, next_player_num_dice)
+                bidder_num_dice, next_player_num_dice,
+                num_active_players=len(self.players))
             self.log_event(cur_event)
             for observer in self.players:
                 if observer is not player:

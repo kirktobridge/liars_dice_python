@@ -24,7 +24,7 @@ class Personality:
     peer_pressure_score: int
     attentiveness_score: int
     positional_cunning: int
-    spot_on_threshold: float
+    spot_on_ev_bias: float
     challenge_threshold: float
 
     @classmethod
@@ -39,14 +39,16 @@ class Personality:
         challenge_jitter: float = 0.0,
     ) -> 'Personality':
         risk_fraction = risk_appetite / Constants.MAX_RISK_SCORE
-        spot_on_threshold = max(0.01, Constants.MIN_SPOT_ON_RISK - risk_fraction * 0.06 + spot_on_jitter)
-        challenge_threshold = max(0.20, 0.65 - risk_fraction * 0.30 + challenge_jitter)
+        # Risk-seeking players accept slightly worse spot-on EVs; cautious players require margin.
+        spot_on_ev_bias = (risk_fraction - 0.5) * 0.4 + spot_on_jitter
+        # Floor at break-even (0.50). Risk only narrows the safety margin above 0.50.
+        challenge_threshold = max(0.50, 0.65 - risk_fraction * 0.15 + challenge_jitter)
         return cls(
             risk_appetite=risk_appetite,
             peer_pressure_score=peer_pressure_score,
             attentiveness_score=attentiveness_score,
             positional_cunning=positional_cunning,
-            spot_on_threshold=spot_on_threshold,
+            spot_on_ev_bias=spot_on_ev_bias,
             challenge_threshold=challenge_threshold,
         )
 
@@ -81,6 +83,7 @@ class Strategy(Protocol):
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int,
+        num_active_players: int,
     ) -> TurnResult: ...
 
     def observe_action(
@@ -139,12 +142,12 @@ class CPUStrategy:
         self.personality.positional_cunning = value
 
     @property
-    def spot_on_threshold(self) -> float:
-        return self.personality.spot_on_threshold
+    def spot_on_ev_bias(self) -> float:
+        return self.personality.spot_on_ev_bias
 
-    @spot_on_threshold.setter
-    def spot_on_threshold(self, value: float) -> None:
-        self.personality.spot_on_threshold = value
+    @spot_on_ev_bias.setter
+    def spot_on_ev_bias(self, value: float) -> None:
+        self.personality.spot_on_ev_bias = value
 
     @property
     def challenge_threshold(self) -> float:
@@ -201,6 +204,7 @@ class CPUStrategy:
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
+        num_active_players: int = 2,
     ) -> TurnResult:
         last = recent_events[0]
         last_action = last.action
@@ -220,7 +224,7 @@ class CPUStrategy:
             }
             ctx = self._build_response_context(
                 dice, num_dice, last, tot_other_dice, bidder_num_dice,
-                all_prev_bids, next_player_num_dice)
+                all_prev_bids, next_player_num_dice, num_active_players)
             return self._decide_action(player_name, ctx)
 
         logger.error('last_action behavior missing. Last event: %s', last)
@@ -255,6 +259,7 @@ class CPUStrategy:
         bidder_num_dice: int,
         all_prev_bids: set[Bid],
         next_player_num_dice: int = 0,
+        num_active_players: int = 2,
     ) -> ResponseContext:
         prev_bid = prev_event.bid
         nc = needed_cnt(dice[:num_dice], prev_bid)
@@ -267,12 +272,16 @@ class CPUStrategy:
         best_bid, best_bid_prob = self._rank_and_select_bid(
             dice, num_dice, permissible, model, all_prev_bids,
             pressure_hint=pos * cunning)
+        spot_on_prob = float(model.pmf(nc))
+        n_others = max(0, num_active_players - 1)
+        spot_on_ev = spot_on_prob * n_others - (1 - spot_on_prob) * 1
         return ResponseContext(
             prev_bid=prev_bid,
             challenge_prob=self._compute_challenge_probability(
                 prev_event.player_name, tot_other_dice, bidder_num_dice, nc),
             effective_threshold=self._effective_challenge_threshold(prev_event.player_name),
-            spot_on_prob=float(model.pmf(nc)),
+            spot_on_prob=spot_on_prob,
+            spot_on_ev=spot_on_ev,
             best_bid=best_bid,
             best_bid_prob=best_bid_prob,
             blind_aggression_score=bas,
@@ -316,7 +325,8 @@ class CPUStrategy:
         _attention = self.attentiveness_score / Constants.MAX_ATTENTIVENESS_SCORE
         if _profile and _profile.bids_challenged >= _MIN_SAMPLES:
             bluff_adjustment = (_profile.bluff_rate - 0.5) * 0.4 * _attention
-            effective_threshold = max(0.10, self.challenge_threshold - bluff_adjustment)
+            # Floor at break-even — challenging below 0.50 P(success) is mathematically -EV.
+            effective_threshold = max(0.50, self.challenge_threshold - bluff_adjustment)
         return effective_threshold
 
     def _blind_aggression_score(
@@ -414,30 +424,31 @@ class CPUStrategy:
                 (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
             )
             effective_challenge_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
-            effective_threshold = max(0.10, ctx.effective_threshold - boost_magnitude * 0.5)
+            effective_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)
         else:
             effective_challenge_prob = ctx.challenge_prob
             effective_threshold = ctx.effective_threshold
-        effective_challenge_prob = effective_challenge_prob if effective_challenge_prob >= effective_threshold else 0.0
-        best_probability = max(effective_challenge_prob, ctx.spot_on_prob, ctx.best_bid_prob)
 
-        if best_probability == 0:
-            if ctx.best_bid is not None:
-                action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
-                return TurnResult(ctx.best_bid, action, player_name)
+        # EVs in dice units. Challenge & spot-on each cost or gain whole dice;
+        # bidding is the baseline (no immediate die change).
+        ev_challenge = (2 * effective_challenge_prob - 1) if effective_challenge_prob >= effective_threshold else float('-inf')
+        ev_spot_on = ctx.spot_on_ev + self.spot_on_ev_bias
+        ev_bid = 0.0
+
+        # Prefer challenge if it's the highest +EV move.
+        if ev_challenge >= 0 and ev_challenge >= ev_spot_on and ev_challenge >= ev_bid:
             return TurnResult(None, Action.CHALLENGE, player_name)
 
-        if ctx.spot_on_prob == best_probability:
+        # Spot-on if it strictly beats the bid baseline.
+        if ev_spot_on > ev_bid and ev_spot_on >= ev_challenge:
             return TurnResult(None, Action.SPOT_ON, player_name)
 
-        if effective_challenge_prob == best_probability:
-            return TurnResult(None, Action.CHALLENGE, player_name)
+        if ctx.best_bid is not None:
+            action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
+            return TurnResult(ctx.best_bid, action, player_name)
 
-        if ctx.spot_on_prob > self.spot_on_threshold and self._rng.random() < self.risk_appetite / Constants.MAX_RISK_SCORE:
-            return TurnResult(None, Action.SPOT_ON, player_name)
-
-        action = Action.RAISE if ctx.best_bid.count > ctx.prev_bid.count else Action.BID
-        return TurnResult(ctx.best_bid, action, player_name)
+        # No legal bid available — fall back to challenge.
+        return TurnResult(None, Action.CHALLENGE, player_name)
 
 
 _FACE_WORDS = {1: 'ones', 2: 'twos', 3: 'threes', 4: 'fours', 5: 'fives', 6: 'sixes'}
@@ -491,6 +502,7 @@ class LLMStrategy:
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
+        num_active_players: int = 2,
     ) -> TurnResult:
         last = recent_events[0]
         prompt = self._build_prompt(dice[:num_dice], tot_other_dice, last)
@@ -506,6 +518,7 @@ class LLMStrategy:
             tot_other_dice=tot_other_dice,
             bidder_num_dice=bidder_num_dice,
             next_player_num_dice=next_player_num_dice,
+            num_active_players=num_active_players,
         )
 
     def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:
@@ -590,6 +603,7 @@ class HumanStrategy:
         tot_other_dice: int,
         bidder_num_dice: int,
         next_player_num_dice: int = 0,
+        num_active_players: int = 2,
     ) -> TurnResult:
         last = recent_events[0]
         if last.action == Action.START:

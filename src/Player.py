@@ -86,10 +86,12 @@ class Player:
     def observe_outcome(self, bidder_name: str, challenge_succeeded: bool) -> None:
         self._strategy.observe_outcome(bidder_name, challenge_succeeded)
 
-    def take_turn(self, prev_events, tot_other_dice: int, bidder_num_dice: int = 0, next_player_num_dice: int = 0) -> TurnResult:
+    def take_turn(self, prev_events, tot_other_dice: int, bidder_num_dice: int = 0,
+                  next_player_num_dice: int = 0, num_active_players: int = 2) -> TurnResult:
         return self._strategy.decide(
             self.name, self.dice, self.num_dice,
             prev_events, tot_other_dice, bidder_num_dice, next_player_num_dice,
+            num_active_players=num_active_players,
         )
 
     def get_needed_cnt(self, bid: Bid) -> int:
