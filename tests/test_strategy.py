@@ -50,28 +50,53 @@ class TestMakeOpeningBid(unittest.TestCase):
 
     def test_returns_bid_action(self):
         s, dice, num_dice = self._make([3, 3, 3, 4, 5])
-        result = s._make_opening_bid("T", dice, num_dice)
+        s.risk_appetite = 1  # avoid wild-tactic randomness
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
         self.assertEqual(result.action, Action.BID)
 
     def test_bid_face_in_valid_range(self):
         s, dice, num_dice = self._make([3, 3, 3, 4, 5])
-        result = s._make_opening_bid("T", dice, num_dice)
+        s.risk_appetite = 1
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
         self.assertIn(result.bid.face, range(1, 7))
 
     def test_bid_count_at_least_minimum(self):
         s, dice, num_dice = self._make([3, 3, 3, 4, 5])
-        result = s._make_opening_bid("T", dice, num_dice)
+        s.risk_appetite = 1
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=0)
         self.assertGreaterEqual(result.bid.count, Constants.MINIMUM_BID)
 
     def test_uses_mode_when_mode_count_sufficient(self):
         s, dice, num_dice = self._make([3, 3, 3, 4, 5])
-        s.risk_appetite = 1  # zero extra dice
-        result = s._make_opening_bid("T", dice, num_dice)
+        s.risk_appetite = 1  # disables wild tactic; uses mode path
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
         self.assertEqual(result.bid.face, 3)
+
+    def test_opening_bid_scales_with_other_dice(self):
+        """Opener with mode_count=3 in a 30-other-dice game expects ~3 + 30/3 = 13 dice."""
+        s, dice, num_dice = self._make([3, 3, 3, 4, 5])
+        s.risk_appetite = 1
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=30)
+        self.assertGreaterEqual(result.bid.count, 8)
+
+    def test_low_risk_opens_below_expected(self):
+        s, dice, num_dice = self._make([3, 3, 3, 4, 5])
+        s.risk_appetite = 1  # safety ≈ 1.0 → underbid by ~1
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
+        # mode_count=3, expected_others=5, safety≈1.0 → target≈7
+        self.assertLessEqual(result.bid.count, 8)
+
+    def test_high_risk_opens_at_expected(self):
+        s, dice, num_dice = self._make([3, 3, 3, 4, 5])
+        s.risk_appetite = 100  # safety ≈ 0
+        # Run many trials to dodge the wild-tactic path (no 1s held → never taken).
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
+        self.assertGreaterEqual(result.bid.count, 7)
 
     def test_player_name_in_result(self):
         s, dice, num_dice = self._make([3, 3, 3, 4, 5])
-        result = s._make_opening_bid("T", dice, num_dice)
+        s.risk_appetite = 1
+        result = s._make_opening_bid("T", dice, num_dice, tot_other_dice=15)
         self.assertEqual(result.player_name, "T")
 
 

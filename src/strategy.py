@@ -211,7 +211,7 @@ class CPUStrategy:
         self._compute_dice_stats(dice, num_dice)
 
         if last_action == Action.START:
-            return self._make_opening_bid(player_name, dice, num_dice)
+            return self._make_opening_bid(player_name, dice, num_dice, tot_other_dice)
 
         if last_action == Action.BID or last_action == Action.RAISE:
             prev_bid = last.bid
@@ -239,16 +239,35 @@ class CPUStrategy:
             self._rolls_mode = active[0]
             self._mode_count = 1
 
-    def _make_opening_bid(self, player_name: str, dice: list[int], num_dice: int) -> TurnResult:
+    def _make_opening_bid(self, player_name: str, dice: list[int], num_dice: int,
+                          tot_other_dice: int = 0) -> TurnResult:
         logger.debug('START received by %s', player_name)
-        risk_factor = self.risk_appetite / Constants.MAX_RISK_SCORE
-        extra = sum(1 for _ in range(2) if self._rng.random() < risk_factor)
+        risk_fraction = self.risk_appetite / Constants.MAX_RISK_SCORE
+
+        # Wilds-driven opening: cautious players never take it; bold players
+        # sometimes open on 1s (no wild double-counting, but their hand alone covers a lot).
+        wild_count = dice[:num_dice].count(1)
+        if wild_count >= 2 and self._rng.random() < risk_fraction:
+            count = max(Constants.MINIMUM_BID, wild_count + round(tot_other_dice / 6))
+            return TurnResult(Bid(count, 1), Action.BID, player_name)
+
+        # Expected count of any non-1 face among others = tot_other_dice / 3 (face hits + wilds).
+        # Risk-averse openers underbid by ~1; risk-seeking match expected.
+        expected_others = tot_other_dice / 3
+        safety = 1.0 - risk_fraction
         if self._mode_count >= Constants.MINIMUM_BID:
-            output = Bid(Constants.MINIMUM_BID + extra, self._rolls_mode)
+            target = self._mode_count + expected_others - safety
+            face = self._rolls_mode
         else:
-            output = Bid(Constants.MINIMUM_BID + extra,
-                         dice[self._rng.randint(0, num_dice - 1)])
-        return TurnResult(output, Action.BID, player_name)
+            # No strong face in hand — pick a held face but bid more conservatively.
+            target = expected_others - safety
+            face = dice[self._rng.randint(0, num_dice - 1)]
+        count = max(Constants.MINIMUM_BID, round(target))
+        # Cap the count so we never claim more than the table can hold.
+        max_count = num_dice + tot_other_dice
+        if max_count > 0:
+            count = min(count, max_count)
+        return TurnResult(Bid(count, face), Action.BID, player_name)
 
     def _build_response_context(
         self,
