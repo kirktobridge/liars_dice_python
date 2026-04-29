@@ -12,14 +12,21 @@ PROB_THRESHOLDS = {
     'VERY HIGH': 0.95,
     'CERTAIN': 1.0
 }
-RISK_APPETITE_DISTRIBUTION = list(range(1, 101))
-MAX_RISK_SCORE = max(RISK_APPETITE_DISTRIBUTION)
-PEER_PRESSURE_DISTRIBUTION = list(range(1, 101))
-MAX_PEER_PRESSURE_SCORE = max(PEER_PRESSURE_DISTRIBUTION)
-ATTENTIVENESS_DISTRIBUTION = list(range(1, 101))
-MAX_ATTENTIVENESS_SCORE = max(ATTENTIVENESS_DISTRIBUTION)
-POSITIONAL_CUNNING_DISTRIBUTION: list[int] = list(range(1, 101))
-MAX_POSITIONAL_CUNNING_SCORE: int = max(POSITIONAL_CUNNING_DISTRIBUTION)
+MAX_RISK_SCORE = 100
+MAX_ATTENTIVENESS_SCORE = 100
+MAX_BLUFF_SCORE = 100
+TRAIT_JITTER = 8
+
+# Archetype-based personality sampling. Generic — assigned randomly per game,
+# independent of pirate name. Same character can play differently across games.
+ARCHETYPES: list[dict] = [
+    {'label': 'Salty Veteran',       'risk': 30, 'att': 80, 'bluff': 10, 'weight': 3},
+    {'label': 'Reckless Buccaneer',  'risk': 80, 'att': 30, 'bluff': 60, 'weight': 2},
+    {'label': 'Crafty Captain',      'risk': 50, 'att': 90, 'bluff': 35, 'weight': 2},
+    {'label': 'Stoic Quartermaster', 'risk': 15, 'att': 70, 'bluff':  5, 'weight': 2},
+    {'label': 'Wild Card',           'risk': 70, 'att': 50, 'bluff': 80, 'weight': 1},
+]
+ARCHETYPE_LABELS: list[str] = [a['label'] for a in ARCHETYPES]
 LOWEST_THRESHOLD = 'LOWER THAN DAVY JONES\' LOCKER'
 SELF_RISK_THRESHOLDS = ['LOW', 'MED', 'HIGH']
 PLAYER_NAMES = [

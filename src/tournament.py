@@ -23,12 +23,13 @@ _Personalities = dict[str, Personality]
 def _trait_columns(name: str, personality: 'Personality | None') -> dict:
     safe = name.replace(' ', '_')
     if personality is None:
-        return {f'p_{safe}_risk': 0, f'p_{safe}_peer': 0, f'p_{safe}_att': 0, f'p_{safe}_cun': 0}
+        return {f'p_{safe}_risk': 0, f'p_{safe}_att': 0, f'p_{safe}_bluff': 0,
+                f'p_{safe}_archetype': None}
     return {
-        f'p_{safe}_risk': personality.risk_appetite,
-        f'p_{safe}_peer': personality.peer_pressure_score,
-        f'p_{safe}_att':  personality.attentiveness_score,
-        f'p_{safe}_cun':  personality.positional_cunning,
+        f'p_{safe}_risk':      personality.risk_appetite,
+        f'p_{safe}_att':       personality.attentiveness_score,
+        f'p_{safe}_bluff':     personality.bluff_frequency,
+        f'p_{safe}_archetype': personality.archetype_label,
     }
 
 
@@ -52,9 +53,9 @@ def _build_result(
         'rounds': game.round_num,
         'num_players': num_players,
         'winner_risk_appetite': winner_pers.risk_appetite if winner_pers else 0,
-        'winner_peer_pressure': winner_pers.peer_pressure_score if winner_pers else 0,
         'winner_attentiveness': winner_pers.attentiveness_score if winner_pers else 0,
-        'winner_positional_cunning': winner_pers.positional_cunning if winner_pers else 0,
+        'winner_bluff_frequency': winner_pers.bluff_frequency if winner_pers else 0,
+        'winner_archetype': winner_pers.archetype_label if winner_pers else None,
         **player_data,
         '_round_rows': collector.round_rows,
         '_elim_rows': collector.elimination_rows,
@@ -123,8 +124,9 @@ def run_tournament(
     daemon threads (e.g. threading.Thread), but not directly inside an async event loop.
 
     player_configs: optional list of dicts with keys name, risk_appetite,
-        peer_pressure_score, attentiveness_score. When provided, these players
-        are used with fixed personalities instead of randomly assigning traits.
+        attentiveness_score, bluff_frequency, optional archetype. When provided,
+        these players are used with fixed personalities instead of randomly
+        assigning traits.
     """
     if player_configs is not None:
         names = [c['name'] for c in player_configs]
@@ -144,10 +146,10 @@ def run_tournament(
             personality = None
             if ptype == 'CPU':
                 personality = Personality.from_traits(
-                    risk_appetite=c.get('risk_appetite', 0),
-                    peer_pressure_score=c.get('peer_pressure_score', 0),
-                    attentiveness_score=c.get('attentiveness_score', 0),
-                    positional_cunning=c.get('positional_cunning', 50),
+                    risk_appetite=c['risk_appetite'],
+                    attentiveness_score=c['attentiveness_score'],
+                    bluff_frequency=c['bluff_frequency'],
+                    archetype_label=c.get('archetype'),
                 )
             persistent_players[c['name']] = Player(
                 c['name'],

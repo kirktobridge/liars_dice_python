@@ -84,7 +84,7 @@ class TestComputeTournamentStats:
             'bucket_labels', 'bucket_success', 'bucket_fail',
             'pos_players', 'pos_positions', 'pos_matrix',
             'profile_players', 'profile_wins', 'profile_win_pct',
-            'profile_risk', 'profile_peer', 'profile_att',
+            'profile_risk', 'profile_att', 'profile_bluff', 'profile_archetype',
         }
         assert required <= set(self.stats.keys())
 
@@ -149,8 +149,9 @@ class TestComputeTournamentStats:
         assert len(s['profile_wins']) == n
         assert len(s['profile_win_pct']) == n
         assert len(s['profile_risk']) == n
-        assert len(s['profile_peer']) == n
         assert len(s['profile_att']) == n
+        assert len(s['profile_bluff']) == n
+        assert len(s['profile_archetype']) == n
 
     def test_no_plotly_objects(self):
         """All values must be plain Python types, not Plotly objects."""

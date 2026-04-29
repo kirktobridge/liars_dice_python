@@ -1,4 +1,4 @@
-from statistics import mode, StatisticsError
+from statistics import mode
 from collections import deque
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
@@ -15,28 +15,34 @@ logger = logging.getLogger('liars_dice.strategy')
 
 _BLIND_AGGRESSION_THRESHOLD = 1.4
 _CHALLENGE_BOOST_MAX = 0.15
-_PRESSURE_OPP_THRESHOLD = 0.45
+_PRESSURE_OPP_THRESHOLD = 0.30
+# Always-on cunning factor (replaces the positional_cunning trait gate).
+_CUNNING_FACTOR = 0.5
+
+
+def _clamp_trait(value: int) -> int:
+    return max(1, min(100, value))
 
 
 @dataclass
 class Personality:
     risk_appetite: int
-    peer_pressure_score: int
     attentiveness_score: int
-    positional_cunning: int
+    bluff_frequency: int
     spot_on_ev_bias: float
     challenge_threshold: float
+    archetype_label: 'str | None' = None
 
     @classmethod
     def from_traits(
         cls,
         *,
         risk_appetite: int,
-        peer_pressure_score: int,
         attentiveness_score: int,
-        positional_cunning: int,
+        bluff_frequency: int,
         spot_on_jitter: float = 0.0,
         challenge_jitter: float = 0.0,
+        archetype_label: 'str | None' = None,
     ) -> 'Personality':
         risk_fraction = risk_appetite / Constants.MAX_RISK_SCORE
         # Risk-seeking players accept slightly worse spot-on EVs; cautious players require margin.
@@ -45,29 +51,33 @@ class Personality:
         challenge_threshold = max(0.50, 0.65 - risk_fraction * 0.15 + challenge_jitter)
         return cls(
             risk_appetite=risk_appetite,
-            peer_pressure_score=peer_pressure_score,
             attentiveness_score=attentiveness_score,
-            positional_cunning=positional_cunning,
+            bluff_frequency=bluff_frequency,
             spot_on_ev_bias=spot_on_ev_bias,
             challenge_threshold=challenge_threshold,
+            archetype_label=archetype_label,
+        )
+
+    @classmethod
+    def from_archetype(cls, label: str, rng: random.Random) -> 'Personality':
+        spec = next((a for a in Constants.ARCHETYPES if a['label'] == label), None)
+        if spec is None:
+            raise ValueError(f'Unknown archetype: {label!r}')
+        j = Constants.TRAIT_JITTER
+        return cls.from_traits(
+            risk_appetite=_clamp_trait(spec['risk'] + rng.randint(-j, j)),
+            attentiveness_score=_clamp_trait(spec['att'] + rng.randint(-j, j)),
+            bluff_frequency=_clamp_trait(spec['bluff'] + rng.randint(-j, j)),
+            spot_on_jitter=rng.uniform(-0.03, 0.03),
+            challenge_jitter=rng.uniform(-0.03, 0.03),
+            archetype_label=label,
         )
 
     @classmethod
     def random(cls, rng: random.Random) -> 'Personality':
-        risk_appetite = rng.choice(Constants.RISK_APPETITE_DISTRIBUTION)
-        spot_on_jitter = rng.uniform(-0.03, 0.03)
-        challenge_jitter = rng.uniform(-0.03, 0.03)
-        peer_pressure_score = rng.choice(Constants.PEER_PRESSURE_DISTRIBUTION)
-        attentiveness_score = rng.choice(Constants.ATTENTIVENESS_DISTRIBUTION)
-        positional_cunning = rng.choice(Constants.POSITIONAL_CUNNING_DISTRIBUTION)
-        return cls.from_traits(
-            risk_appetite=risk_appetite,
-            peer_pressure_score=peer_pressure_score,
-            attentiveness_score=attentiveness_score,
-            positional_cunning=positional_cunning,
-            spot_on_jitter=spot_on_jitter,
-            challenge_jitter=challenge_jitter,
-        )
+        weights = [a['weight'] for a in Constants.ARCHETYPES]
+        spec = rng.choices(Constants.ARCHETYPES, weights=weights, k=1)[0]
+        return cls.from_archetype(spec['label'], rng)
 
 
 @runtime_checkable
@@ -118,14 +128,6 @@ class CPUStrategy:
         self.personality.risk_appetite = value
 
     @property
-    def peer_pressure_score(self) -> int:
-        return self.personality.peer_pressure_score
-
-    @peer_pressure_score.setter
-    def peer_pressure_score(self, value: int) -> None:
-        self.personality.peer_pressure_score = value
-
-    @property
     def attentiveness_score(self) -> int:
         return self.personality.attentiveness_score
 
@@ -134,12 +136,16 @@ class CPUStrategy:
         self.personality.attentiveness_score = value
 
     @property
-    def positional_cunning(self) -> int:
-        return self.personality.positional_cunning
+    def bluff_frequency(self) -> int:
+        return self.personality.bluff_frequency
 
-    @positional_cunning.setter
-    def positional_cunning(self, value: int) -> None:
-        self.personality.positional_cunning = value
+    @bluff_frequency.setter
+    def bluff_frequency(self, value: int) -> None:
+        self.personality.bluff_frequency = value
+
+    @property
+    def archetype_label(self) -> 'str | None':
+        return self.personality.archetype_label
 
     @property
     def spot_on_ev_bias(self) -> float:
@@ -160,19 +166,19 @@ class CPUStrategy:
     def _set_personality(
         self,
         risk_appetite: int,
-        peer_pressure_score: int,
         attentiveness_score: int,
-        positional_cunning: int,
+        bluff_frequency: int,
         spot_on_jitter: float = 0.0,
         challenge_jitter: float = 0.0,
+        archetype_label: 'str | None' = None,
     ) -> None:
         self.personality = Personality.from_traits(
             risk_appetite=risk_appetite,
-            peer_pressure_score=peer_pressure_score,
             attentiveness_score=attentiveness_score,
-            positional_cunning=positional_cunning,
+            bluff_frequency=bluff_frequency,
             spot_on_jitter=spot_on_jitter,
             challenge_jitter=challenge_jitter,
+            archetype_label=archetype_label,
         )
 
     def reset(self) -> None:
@@ -263,6 +269,9 @@ class CPUStrategy:
             target = expected_others - safety
             face = dice[self._rng.randint(0, num_dice - 1)]
         count = max(Constants.MINIMUM_BID, round(target))
+        # Bluff tactic: with probability bluff_frequency/100, claim one more than EV justifies.
+        if self._rng.random() < self.bluff_frequency / Constants.MAX_BLUFF_SCORE:
+            count += 1
         # Cap the count so we never claim more than the table can hold.
         max_count = num_dice + tot_other_dice
         if max_count > 0:
@@ -286,11 +295,10 @@ class CPUStrategy:
         total_dice = num_dice + tot_other_dice
         bas = self._blind_aggression_score(bidder_num_dice, total_dice, prev_bid.count)
         pos = self._pressure_opportunity_score(next_player_num_dice, total_dice, prev_bid.count)
-        cunning = self.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
         permissible = self._get_permissible_bids(prev_bid.count, tot_other_dice, all_prev_bids)
         best_bid, best_bid_prob = self._rank_and_select_bid(
             dice, num_dice, permissible, model, all_prev_bids,
-            pressure_hint=pos * cunning)
+            pressure_hint=pos * _CUNNING_FACTOR)
         spot_on_prob = float(model.pmf(nc))
         n_others = max(0, num_active_players - 1)
         spot_on_ev = spot_on_prob * n_others - (1 - spot_on_prob) * 1
@@ -319,15 +327,14 @@ class CPUStrategy:
         remaining_dice = tot_other_dice - bidder_num_dice
         bidder_model = get_binom(bidder_num_dice)
         remaining_model = get_binom(remaining_dice)
-        bayesian_prob = 0.0
+        # Bayesian model: marginalize over the bidder's hidden hand. Always on —
+        # this is strictly better math than the flat-tail estimate.
+        prob = 0.0
         for j in range(bidder_num_dice + 1):
             needed_from_remaining = needed - j
             if needed_from_remaining <= 0:
                 continue
-            bayesian_prob += bidder_model.pmf(j) * remaining_model.cdf(needed_from_remaining - 1)
-        flat_prob = get_binom(tot_other_dice).cdf(needed - 1)
-        blend = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
-        prob = blend * bayesian_prob + (1 - blend) * flat_prob
+            prob += bidder_model.pmf(j) * remaining_model.cdf(needed_from_remaining - 1)
 
         # With Beta(2,2) smoothing on OpponentProfile, even one observation is informative.
         _MIN_SAMPLES = 1
@@ -410,37 +417,15 @@ class CPUStrategy:
             best_prob = ranking[0][0]
             near_best = [row for row in ranking if row[0] >= best_prob - 0.05]
             near_best.sort(key=lambda row: (row[0], row[1].count), reverse=True)
-            top_prob = near_best[0][0]
-            tied_at_top = [row[1] for row in near_best if row[0] == top_prob]
-            crowd_pick = self._apply_crowd_preference(tied_at_top, all_prev_bids)
-            return (crowd_pick if crowd_pick is not None else near_best[0][1]), top_prob
+            return near_best[0][1], near_best[0][0]
 
-        top_prob = ranking[0][0]
-        tied_at_top = [row[1] for row in ranking if row[0] == top_prob]
-        crowd_pick = self._apply_crowd_preference(tied_at_top, all_prev_bids)
-        return (crowd_pick if crowd_pick is not None else tied_at_top[0]), top_prob
-
-    def _apply_crowd_preference(self, best_bids: list[Bid], all_prev_bids: set[Bid]) -> 'Bid | None':
-        if len(best_bids) <= 1 or not all_prev_bids:
-            return None
-        follow_crowd_prob = self.peer_pressure_score / Constants.MAX_PEER_PRESSURE_SCORE
-        if self._rng.random() >= follow_crowd_prob:
-            return None
-        try:
-            prev_bids_face_mode = mode([b.face for b in all_prev_bids])
-        except StatisticsError:
-            return None
-        for bid in best_bids:
-            if bid.face == prev_bids_face_mode:
-                return bid
-        return None
+        return ranking[0][1], ranking[0][0]
 
     def _decide_action(self, player_name: str, ctx: ResponseContext) -> TurnResult:
-        cunning = self.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
         if ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD:
             boost_magnitude = min(
                 _CHALLENGE_BOOST_MAX,
-                (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
+                (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * _CUNNING_FACTOR,
             )
             effective_challenge_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
             effective_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)

@@ -191,12 +191,14 @@ function renderContextStep(panel, step) {
 function renderPersonalityStep(panel, step) {
   const wrap = el('div', 'personality-wrap');
   const card = el('div', 'character-card');
-  card.appendChild(el('div', 'character-card-title', 'CPU CHARACTER SHEET'));
+  const title = step.data.archetype_label
+    ? `CPU CHARACTER SHEET — ${step.data.archetype_label.toUpperCase()}`
+    : 'CPU CHARACTER SHEET';
+  card.appendChild(el('div', 'character-card-title', title));
   const traits = el('div', 'character-traits');
   traits.appendChild(makeTraitRow('Risk appetite', step.data.risk_appetite));
-  traits.appendChild(makeTraitRow('Peer pressure', step.data.peer_pressure_score));
   traits.appendChild(makeTraitRow('Attentiveness', step.data.attentiveness_score));
-  traits.appendChild(makeTraitRow('Positional cunning', step.data.positional_cunning));
+  traits.appendChild(makeTraitRow('Bluff frequency', step.data.bluff_frequency));
   card.appendChild(traits);
   wrap.appendChild(card);
 

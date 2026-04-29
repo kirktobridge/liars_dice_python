@@ -123,22 +123,22 @@ def show_tournament_stats(
         else:
             return f'{v} (Eagle-eyed)'
 
-    def _cun_label(v: int) -> str:
+    def _bluff_label(v: int) -> str:
         if v <= 33:
-            return f'{v} (Blinkered)'
+            return f'{v} (Honest)'
         elif v <= 66:
-            return f'{v} (Tactical)'
+            return f'{v} (Hedging)'
         else:
-            return f'{v} (Masterful)'
-    profile_header = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness', 'Positional Cunning']
+            return f'{v} (Brazen)'
+    profile_header = ['Player', 'Wins', 'Win %', 'Archetype', 'Risk Appetite', 'Attentiveness', 'Bluff Frequency']
     profile_values = [
         s['profile_players'],
         [str(w) for w in s['profile_wins']],
         s['profile_win_pct'],
+        s['profile_archetype'],
         [_risk_label(v) for v in s['profile_risk']],
-        [str(v) for v in s['profile_peer']],
         [_att_label(v) for v in s['profile_att']],
-        [_cun_label(v) for v in s['profile_cun']],
+        [_bluff_label(v) for v in s['profile_bluff']],
     ]
     row_colors = ['#1e1e24' if i % 2 == 0 else '#26262e' for i in range(s['num_players'])]
     profile_table = go.Table(

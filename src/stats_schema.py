@@ -35,9 +35,9 @@ class GameRow:
     rounds: int
     num_players: int
     winner_risk_appetite: int
-    winner_peer_pressure: int
     winner_attentiveness: int
-    winner_positional_cunning: int
+    winner_bluff_frequency: int
+    winner_archetype: str | None
 
 
 _ROUND_NULLABLE_INT_COLS = ('total_dice_on_table', 'bid_count_claimed', 'effective_actual_count', 'bidder_num_dice')

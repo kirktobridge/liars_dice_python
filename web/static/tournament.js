@@ -46,11 +46,19 @@ function attLabel(v) {
   return `${v} (Eagle-eyed)`;
 }
 
-function cunnLabel(v) {
-  if (v <= 33) return `${v} (Blinkered)`;
-  if (v <= 66) return `${v} (Tactical)`;
-  return `${v} (Masterful)`;
+function bluffLabel(v) {
+  if (v <= 33) return `${v} (Honest)`;
+  if (v <= 66) return `${v} (Hedging)`;
+  return `${v} (Brazen)`;
 }
+
+const ARCHETYPES = [
+  { label: 'Salty Veteran',       risk: 30, att: 80, bluff: 10 },
+  { label: 'Reckless Buccaneer',  risk: 80, att: 30, bluff: 60 },
+  { label: 'Crafty Captain',      risk: 50, att: 90, bluff: 35 },
+  { label: 'Stoic Quartermaster', risk: 15, att: 70, bluff:  5 },
+  { label: 'Wild Card',           risk: 70, att: 50, bluff: 80 },
+];
 
 function downsamplePairs(xs, ys, maxN = 4000) {
   if (xs.length <= maxN) return xs.map((x, i) => ({ x, y: ys[i] }));
@@ -75,10 +83,10 @@ function addInsightBadge(refId, insights) {
 }
 
 function buildNarrative(name, i, s) {
-  const risk = s.profile_risk[i];
-  const peer = s.profile_peer[i];
-  const att  = s.profile_att[i];
-  const cun  = s.profile_cun?.[i] ?? 50;
+  const risk  = s.profile_risk[i];
+  const att   = s.profile_att[i];
+  const bluff = s.profile_bluff?.[i] ?? 50;
+  const archetype = s.profile_archetype?.[i];
   const winPct   = s.profile_win_pct_float?.[i] ?? parseFloat(s.profile_win_pct[i]);
   const expected = 100 / (s.num_players || s.profile_players.length);
   const diff     = winPct - expected;
@@ -86,17 +94,16 @@ function buildNarrative(name, i, s) {
   const bidStyle = risk <= 33 ? 'cautious bidder'
     : risk <= 66 ? 'measured bidder'
     : 'aggressive bidder';
-  const socialStyle = peer <= 33 ? 'sticks to their own read'
-    : peer <= 66 ? 'susceptible to the crowd'
-    : 'easily swayed by others';
   const attStyle = att <= 33 ? 'oblivious to opponents\' dice'
     : att <= 66 ? 'keeps a reasonable eye on the table'
     : 'hawk-eyed at the table';
-  const cunStyle = cun <= 33 ? 'ignores seat position'
-    : cun <= 66 ? 'reads the table order'
-    : 'exploits seat position masterfully';
+  const bluffStyle = bluff <= 33 ? 'rarely bluffs'
+    : bluff <= 66 ? 'mixes in the occasional bluff'
+    : 'bluffs brazenly';
 
-  const parts = [bidStyle, socialStyle, attStyle, cunStyle];
+  const parts = [];
+  if (archetype && archetype !== '—') parts.push(`a ${archetype}`);
+  parts.push(bidStyle, attStyle, bluffStyle);
 
   const si = s.sorted_players.indexOf(name);
   if (si >= 0) {
@@ -544,7 +551,7 @@ function renderBidRatio(s) {
 // ── 7. Player Profiles (HTML table with narrative rows) ──────────────────────
 
 function renderProfiles(s) {
-  const headers = ['Player', 'Wins', 'Win %', 'Risk Appetite', 'Peer Pressure', 'Attentiveness', 'Positional Cunning'];
+  const headers = ['Player', 'Wins', 'Win %', 'Archetype', 'Risk Appetite', 'Attentiveness', 'Bluff Frequency'];
   let html = `<table class="profiles-table"><thead><tr>${
     headers.map(h => `<th>${h}</th>`).join('')
   }</tr></thead><tbody>`;
@@ -555,10 +562,10 @@ function renderProfiles(s) {
       <td>${name}</td>
       <td>${s.profile_wins[i]}</td>
       <td>${s.profile_win_pct[i]}</td>
+      <td>${s.profile_archetype?.[i] ?? '—'}</td>
       <td>${riskLabel(s.profile_risk[i])}</td>
-      <td>${s.profile_peer[i]}</td>
       <td>${attLabel(s.profile_att[i])}</td>
-      <td>${cunnLabel(s.profile_cun?.[i] ?? 50)}</td>
+      <td>${bluffLabel(s.profile_bluff?.[i] ?? 50)}</td>
     </tr>
     <tr class="narrative-row${alt}">
       <td colspan="7">${buildNarrative(name, i, s)}</td>
@@ -703,13 +710,13 @@ function refreshCustomControls() {
 }
 
 function traitDisplayLabel(type, v) {
-  if (type === 'risk') return riskLabel(v);
-  if (type === 'att')  return attLabel(v);
-  if (type === 'cun')  return cunnLabel(v);
+  if (type === 'risk')  return riskLabel(v);
+  if (type === 'att')   return attLabel(v);
+  if (type === 'bluff') return bluffLabel(v);
   return String(v);
 }
 
-function addPlayerRow(name, risk = 50, peer = 50, att = 50, cun = 50) {
+function addPlayerRow(name, risk = 50, att = 50, bluff = 35, archetype = '') {
   const list = document.getElementById('custom-player-list');
   const row  = document.createElement('div');
   row.className = 'custom-player-row';
@@ -718,18 +725,23 @@ function addPlayerRow(name, risk = 50, peer = 50, att = 50, cun = 50) {
     `<option value="${n}"${n === name ? ' selected' : ''}>${n}</option>`
   ).join('');
 
+  const archetypeOpts =
+    `<option value="">— Custom —</option>` +
+    ARCHETYPES.map(a =>
+      `<option value="${a.label}"${a.label === archetype ? ' selected' : ''}>${a.label}</option>`
+    ).join('');
+
   row.innerHTML = `
     <select class="custom-name-select">${nameOpts}</select>
     <div class="custom-row-traits">
       <div class="trait-group">
+        <label>Archetype</label>
+        <select class="archetype-select" data-trait="archetype">${archetypeOpts}</select>
+      </div>
+      <div class="trait-group">
         <label>Risk Appetite</label>
         <input type="range" class="trait-slider" min="1" max="100" value="${risk}" data-trait="risk">
         <span class="trait-value">${traitDisplayLabel('risk', risk)}</span>
-      </div>
-      <div class="trait-group">
-        <label>Peer Pressure</label>
-        <input type="range" class="trait-slider" min="1" max="100" value="${peer}" data-trait="peer">
-        <span class="trait-value">${peer}</span>
       </div>
       <div class="trait-group">
         <label>Attentiveness</label>
@@ -737,9 +749,9 @@ function addPlayerRow(name, risk = 50, peer = 50, att = 50, cun = 50) {
         <span class="trait-value">${traitDisplayLabel('att', att)}</span>
       </div>
       <div class="trait-group">
-        <label>Positional Cunning</label>
-        <input type="range" class="trait-slider" min="1" max="100" value="${cun}" data-trait="cun">
-        <span class="trait-value">${traitDisplayLabel('cun', cun)}</span>
+        <label>Bluff Frequency</label>
+        <input type="range" class="trait-slider" min="1" max="100" value="${bluff}" data-trait="bluff">
+        <span class="trait-value">${traitDisplayLabel('bluff', bluff)}</span>
       </div>
     </div>
     <button class="btn-remove-player" type="button" title="Remove player">✕</button>
@@ -749,7 +761,22 @@ function addPlayerRow(name, risk = 50, peer = 50, att = 50, cun = 50) {
     slider.addEventListener('input', () => {
       const v = parseInt(slider.value, 10);
       slider.nextElementSibling.textContent = traitDisplayLabel(slider.dataset.trait, v);
+      // Manual edit clears the archetype.
+      row.querySelector('.archetype-select').value = '';
     });
+  });
+
+  row.querySelector('.archetype-select').addEventListener('change', e => {
+    const spec = ARCHETYPES.find(a => a.label === e.target.value);
+    if (!spec) return;
+    const setSlider = (trait, value) => {
+      const slider = row.querySelector(`[data-trait="${trait}"]`);
+      slider.value = value;
+      slider.nextElementSibling.textContent = traitDisplayLabel(trait, value);
+    };
+    setSlider('risk',  spec.risk);
+    setSlider('att',   spec.att);
+    setSlider('bluff', spec.bluff);
   });
 
   row.querySelector('.custom-name-select').addEventListener('change', refreshCustomControls);
@@ -805,13 +832,16 @@ document.getElementById('custom-run-form').addEventListener('submit', async e =>
   errEl.classList.add('hidden');
 
   const rows = document.querySelectorAll('.custom-player-row');
-  const players = Array.from(rows).map(row => ({
-    name:                row.querySelector('.custom-name-select').value,
-    risk_appetite:       parseInt(row.querySelector('[data-trait="risk"]').value, 10),
-    peer_pressure_score: parseInt(row.querySelector('[data-trait="peer"]').value, 10),
-    attentiveness_score: parseInt(row.querySelector('[data-trait="att"]').value, 10),
-    positional_cunning:  parseInt(row.querySelector('[data-trait="cun"]').value, 10),
-  }));
+  const players = Array.from(rows).map(row => {
+    const archetype = row.querySelector('.archetype-select').value || null;
+    return {
+      name:                row.querySelector('.custom-name-select').value,
+      risk_appetite:       parseInt(row.querySelector('[data-trait="risk"]').value, 10),
+      attentiveness_score: parseInt(row.querySelector('[data-trait="att"]').value, 10),
+      bluff_frequency:     parseInt(row.querySelector('[data-trait="bluff"]').value, 10),
+      archetype,
+    };
+  });
 
   stopPolling();
   document.getElementById('progress-msg').textContent =
@@ -936,10 +966,9 @@ function renderCorrelationCharts(s) {
   section.style.display = '';
   const names   = s.profile_players;
   const winPcts = s.profile_win_pct_float;
-  makeTraitChart('corrRiskChart', s.profile_risk,              winPcts, names, 'Risk Appetite (1–100)',      '#c9a84c');
-  makeTraitChart('corrPeerChart', s.profile_peer,              winPcts, names, 'Peer Pressure (1–100)',      '#5B8DB8');
-  makeTraitChart('corrAttChart',  s.profile_att,               winPcts, names, 'Attentiveness (1–100)',      '#7ecf86');
-  makeTraitChart('corrCunChart',  s.profile_cun ?? [],         winPcts, names, 'Positional Cunning (1–100)', '#b07ecf');
+  makeTraitChart('corrRiskChart',  s.profile_risk,              winPcts, names, 'Risk Appetite (1–100)',    '#c9a84c');
+  makeTraitChart('corrAttChart',   s.profile_att,               winPcts, names, 'Attentiveness (1–100)',    '#7ecf86');
+  makeTraitChart('corrBluffChart', s.profile_bluff ?? [],       winPcts, names, 'Bluff Frequency (1–100)',  '#b07ecf');
 }
 
 // ── 10. Challenge Success Heatmap (HTML table) ────────────────────────────────

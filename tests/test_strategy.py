@@ -3,7 +3,7 @@ import random
 
 import constants as Constants
 from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext
-from strategy import CPUStrategy
+from strategy import CPUStrategy, Personality
 
 
 def make_cpu_strategy(seed: int = 0) -> CPUStrategy:
@@ -103,7 +103,6 @@ class TestMakeOpeningBid(unittest.TestCase):
 class TestComputeChallengeProb(unittest.TestCase):
     def _make(self) -> CPUStrategy:
         s = make_cpu_strategy()
-        s.peer_pressure_score = 50
         s.attentiveness_score = 50
         return s
 
@@ -222,7 +221,6 @@ class TestGetPermissibleBids(unittest.TestCase):
 class TestRankAndSelectBid(unittest.TestCase):
     def _make(self) -> tuple[CPUStrategy, list[int], int]:
         s = make_cpu_strategy()
-        s.peer_pressure_score = 1  # suppress crowd-following
         dice = [3, 3, 3, -1, -1, -1]
         return s, dice, 3
 
@@ -389,37 +387,36 @@ class TestBlindAggressionBoost(unittest.TestCase):
             pressure_opportunity_score=0.0,
         )
 
-    def test_high_cunning_boosts_challenge_above_threshold(self):
+    def test_high_aggression_boosts_challenge_above_threshold(self):
+        """With always-on cunning factor 0.5, a high blind-aggression score still
+        boosts a near-threshold challenge prob enough to fire."""
         s = make_cpu_strategy()
-        s.positional_cunning = Constants.MAX_POSITIONAL_CUNNING_SCORE
-        s.challenge_threshold = 0.70  # raw prob (0.55) is below this threshold
-        # score=3.0 → boost = min(0.15, (3.0-1.4)*0.1*1.0) = 0.15
-        # effective_challenge_prob = 0.70, effective_threshold = 0.625 → challenge fires
-        ctx = self._ctx_with_aggression(score=3.0, challenge_prob=0.55, effective_threshold=0.70)
+        s.challenge_threshold = 0.65
+        # score=3.0 → boost = min(0.15, (3.0-1.4)*0.1*0.5) = 0.08
+        # effective_challenge_prob = 0.55+0.08=0.63, effective_threshold = max(0.50, 0.65-0.04)=0.61
+        # ev_challenge = 2*0.63 - 1 = 0.26 > 0 and beats spot-on/bid baseline.
+        ctx = self._ctx_with_aggression(score=3.0, challenge_prob=0.55, effective_threshold=0.65)
         result = s._decide_action("T", ctx)
         self.assertEqual(result.action, Action.CHALLENGE)
 
-    def test_zero_cunning_no_boost_challenge_suppressed(self):
+    def test_low_aggression_no_boost_challenge_suppressed(self):
+        """At score barely above threshold, the boost is tiny and challenge stays gated."""
         s = make_cpu_strategy()
-        s.positional_cunning = 1  # near-zero cunning: boost ≈ 0.0016, insufficient
-        s.challenge_threshold = 0.70
-        ctx = self._ctx_with_aggression(score=3.0, challenge_prob=0.55, effective_threshold=0.70)
+        s.challenge_threshold = 0.65
+        # score=1.5 → boost = min(0.15, (1.5-1.4)*0.1*0.5) = 0.005
+        # effective_prob = 0.555, effective_threshold ≈ 0.6475 → gated off
+        ctx = self._ctx_with_aggression(score=1.5, challenge_prob=0.55, effective_threshold=0.65)
         result = s._decide_action("T", ctx)
         self.assertNotEqual(result.action, Action.CHALLENGE)
 
 
 class TestPressureOpportunityBidSelection(unittest.TestCase):
-    """High pressure_opportunity_score shifts bid selection toward higher counts when cunning is high."""
+    """High pressure_opportunity_score (× the always-on cunning factor) shifts bid
+    selection toward higher counts."""
 
-    def _make_with_cunning(self, cunning: int) -> CPUStrategy:
-        s = make_cpu_strategy()
-        s.peer_pressure_score = 1  # suppress crowd-following
-        s.positional_cunning = cunning
-        return s
-
-    def test_high_cunning_picks_higher_count_bid(self):
+    def test_high_pressure_picks_higher_count_bid(self):
         from scipy.stats import binom as _binom
-        s = self._make_with_cunning(Constants.MAX_POSITIONAL_CUNNING_SCORE)
+        s = make_cpu_strategy()
         dice = [3, 3, 3, -1, -1, -1]
         num_dice = 3
         model = _binom(n=5, p=2 / 6)
@@ -430,16 +427,55 @@ class TestPressureOpportunityBidSelection(unittest.TestCase):
                                         pressure_hint=pressure_hint)
         self.assertEqual(bid, Bid(3, 3))
 
-    def test_zero_cunning_picks_lower_count_bid(self):
+    def test_no_pressure_picks_lower_count_bid(self):
         from scipy.stats import binom as _binom
-        s = self._make_with_cunning(1)
+        s = make_cpu_strategy()
         dice = [3, 3, 3, -1, -1, -1]
         num_dice = 3
         model = _binom(n=5, p=2 / 6)
-        # pressure_hint = 0 (zero cunning × score) → normal path → first bid wins
+        # pressure_hint = 0 → no pressure path → insertion order wins (Bid(2,3) first).
         bid, _ = s._rank_and_select_bid(dice, num_dice, [Bid(2, 3), Bid(3, 3)], model, set(),
                                         pressure_hint=0.0)
         self.assertEqual(bid, Bid(2, 3))
+
+
+class TestPersonalityArchetype(unittest.TestCase):
+    def test_from_archetype_explicit(self):
+        rng = random.Random(0)
+        p = Personality.from_archetype('Salty Veteran', rng)
+        self.assertEqual(p.archetype_label, 'Salty Veteran')
+        self.assertGreaterEqual(p.risk_appetite, 1)
+        self.assertLessEqual(p.risk_appetite, 100)
+        # Salty Veteran spec: risk=30 ± 8 → [22, 38].
+        self.assertGreaterEqual(p.risk_appetite, 22)
+        self.assertLessEqual(p.risk_appetite, 38)
+
+    def test_from_archetype_unknown_raises(self):
+        with self.assertRaises(ValueError):
+            Personality.from_archetype('Captain Crunch', random.Random(0))
+
+    def test_archetype_random_picks_by_weight(self):
+        rng = random.Random(1)
+        labels = [Personality.random(rng).archetype_label for _ in range(2000)]
+        from collections import Counter
+        counts = Counter(labels)
+        # Weights: Salty=3, Reckless=2, Crafty=2, Stoic=2, Wild Card=1 (sum=10)
+        # Salty Veteran should be the most common archetype.
+        most_common = counts.most_common(1)[0][0]
+        self.assertEqual(most_common, 'Salty Veteran')
+        # Wild Card is rarest (weight=1) — should be ~10% of samples.
+        self.assertLess(counts['Wild Card'] / 2000, 0.20)
+
+    def test_archetype_jitter_in_bounds(self):
+        rng = random.Random(42)
+        for _ in range(500):
+            p = Personality.random(rng)
+            self.assertGreaterEqual(p.risk_appetite, 1)
+            self.assertLessEqual(p.risk_appetite, 100)
+            self.assertGreaterEqual(p.attentiveness_score, 1)
+            self.assertLessEqual(p.attentiveness_score, 100)
+            self.assertGreaterEqual(p.bluff_frequency, 1)
+            self.assertLessEqual(p.bluff_frequency, 100)
 
 
 if __name__ == '__main__':

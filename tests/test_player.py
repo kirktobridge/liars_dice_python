@@ -31,19 +31,24 @@ class TestPlayerInit(unittest.TestCase):
         with self.assertRaises(TypeError):
             p.take_turn(prev_events, tot_other_dice=5)
 
-    def test_risk_appetite_in_distribution(self):
+    def test_risk_appetite_in_range(self):
         p = Player("Test")
-        self.assertIn(p.personality.risk_appetite, Constants.RISK_APPETITE_DISTRIBUTION)
         self.assertGreaterEqual(p.personality.risk_appetite, 1)
         self.assertLessEqual(p.personality.risk_appetite, 100)
 
-    def test_peer_pressure_score_in_distribution(self):
+    def test_attentiveness_score_in_range(self):
         p = Player("Test")
-        self.assertIn(p.personality.peer_pressure_score, Constants.PEER_PRESSURE_DISTRIBUTION)
+        self.assertGreaterEqual(p.personality.attentiveness_score, 1)
+        self.assertLessEqual(p.personality.attentiveness_score, 100)
 
-    def test_attentiveness_score_in_distribution(self):
+    def test_bluff_frequency_in_range(self):
         p = Player("Test")
-        self.assertIn(p.personality.attentiveness_score, Constants.ATTENTIVENESS_DISTRIBUTION)
+        self.assertGreaterEqual(p.personality.bluff_frequency, 1)
+        self.assertLessEqual(p.personality.bluff_frequency, 100)
+
+    def test_archetype_assigned(self):
+        p = Player("Test")
+        self.assertIn(p.personality.archetype_label, Constants.ARCHETYPE_LABELS)
 
 
 class TestDiceOperations(unittest.TestCase):
@@ -307,12 +312,14 @@ class TestPlayerReset(unittest.TestCase):
     def test_preserves_personality(self):
         p = Player("Test")
         ra = p.personality.risk_appetite
-        pp = p.personality.peer_pressure_score
         att = p.personality.attentiveness_score
+        bluff = p.personality.bluff_frequency
+        archetype = p.personality.archetype_label
         p.reset()
         self.assertEqual(p.personality.risk_appetite, ra)
-        self.assertEqual(p.personality.peer_pressure_score, pp)
         self.assertEqual(p.personality.attentiveness_score, att)
+        self.assertEqual(p.personality.bluff_frequency, bluff)
+        self.assertEqual(p.personality.archetype_label, archetype)
 
 
 class TestChallengeThreshold(unittest.TestCase):
@@ -335,16 +342,16 @@ class TestChallengeThreshold(unittest.TestCase):
 
     def test_challenge_threshold_aggressive_floored(self):
         """High-risk players reach the 0.50 floor — never below break-even."""
-        import random as _r
-        for seed in range(200):
-            rng = _r.Random(seed)
-            p = Player("T", rng=rng)
-            if p.personality.risk_appetite >= 90:
-                self.assertGreaterEqual(p.personality.challenge_threshold, 0.50)
-                # Should be near the floor for high risk
-                self.assertLess(p.personality.challenge_threshold, 0.55)
-                return
-        self.fail("Could not find a high risk_appetite player in 200 seeds")
+        from strategy import Personality
+        # Direct construction: archetype jitter cannot reach risk_appetite >= 90
+        # given the current archetype set, so build a max-risk personality directly.
+        p = Personality.from_traits(
+            risk_appetite=100,
+            attentiveness_score=50,
+            bluff_frequency=50,
+        )
+        self.assertGreaterEqual(p.challenge_threshold, 0.50)
+        self.assertLess(p.challenge_threshold, 0.55)
 
     def _player_with_trait(self, risk_appetite: int, challenge_threshold: float) -> Player:
         """Build a player and forcibly set personality traits for deterministic tests."""

@@ -107,7 +107,7 @@ def test_list_scenarios_shape() -> None:
 
 def test_personality_override_matches_constructor_thresholds() -> None:
     """`_set_personality` with explicit jitter must produce the same thresholds the
-    constructor would for the same risk_appetite + jitter values."""
+    constructor would for the same trait values."""
     rng_constructor = random.Random(7)
     s_ctor = CPUStrategy(rng_constructor)
 
@@ -118,16 +118,16 @@ def test_personality_override_matches_constructor_thresholds() -> None:
     s_override = CPUStrategy(random.Random(99))
     s_override._set_personality(
         risk_appetite=s_ctor.risk_appetite,
-        peer_pressure_score=s_ctor.peer_pressure_score,
         attentiveness_score=s_ctor.attentiveness_score,
-        positional_cunning=s_ctor.positional_cunning,
+        bluff_frequency=s_ctor.bluff_frequency,
         spot_on_jitter=spot_on_jitter,
         challenge_jitter=challenge_jitter,
+        archetype_label=s_ctor.archetype_label,
     )
     assert s_override.risk_appetite == s_ctor.risk_appetite
-    assert s_override.peer_pressure_score == s_ctor.peer_pressure_score
     assert s_override.attentiveness_score == s_ctor.attentiveness_score
-    assert s_override.positional_cunning == s_ctor.positional_cunning
+    assert s_override.bluff_frequency == s_ctor.bluff_frequency
+    assert s_override.archetype_label == s_ctor.archetype_label
     assert s_override.spot_on_ev_bias == pytest.approx(s_ctor.spot_on_ev_bias, abs=1e-9)
     assert s_override.challenge_threshold == pytest.approx(s_ctor.challenge_threshold, abs=1e-9)
 

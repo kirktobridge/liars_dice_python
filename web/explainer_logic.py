@@ -18,7 +18,7 @@ from typing import Any
 import constants as Constants
 from dice_math import needed_cnt
 from models import Action, Bid, OpponentProfile, ResponseContext, TurnResult
-from strategy import CPUStrategy, _BLIND_AGGRESSION_THRESHOLD, _CHALLENGE_BOOST_MAX
+from strategy import CPUStrategy, _BLIND_AGGRESSION_THRESHOLD, _CHALLENGE_BOOST_MAX, _CUNNING_FACTOR
 
 
 @dataclass(frozen=True)
@@ -35,11 +35,11 @@ class ExplainerScenario:
     bidder_num_dice: int
     next_player_num_dice: int
     risk_appetite: int
-    peer_pressure_score: int
     attentiveness_score: int
-    positional_cunning: int
+    bluff_frequency: int
     rng_seed: int
     num_active_players: int = 4
+    archetype_label: 'str | None' = None
     opponent_profile: OpponentProfile | None = None
 
 
@@ -74,9 +74,9 @@ def _build_strategy(scenario: ExplainerScenario) -> CPUStrategy:
     strategy = CPUStrategy(random.Random(scenario.rng_seed))
     strategy._set_personality(
         risk_appetite=scenario.risk_appetite,
-        peer_pressure_score=scenario.peer_pressure_score,
         attentiveness_score=scenario.attentiveness_score,
-        positional_cunning=scenario.positional_cunning,
+        bluff_frequency=scenario.bluff_frequency,
+        archetype_label=scenario.archetype_label,
     )
     if scenario.opponent_profile is not None:
         strategy.opponent_profiles[scenario.prev_bidder] = replace(scenario.opponent_profile)
@@ -193,12 +193,11 @@ def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
 
 
 def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerStep:
-    cunning = strategy.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
     bas_above = ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD
     if bas_above:
         boost_magnitude = min(
             _CHALLENGE_BOOST_MAX,
-            (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
+            (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * _CUNNING_FACTOR,
         )
         boosted_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
         boosted_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)
@@ -207,11 +206,14 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
         boosted_prob = ctx.challenge_prob
         boosted_threshold = ctx.effective_threshold
 
+    archetype_phrase = (
+        f"as a {strategy.archetype_label}, " if strategy.archetype_label else ''
+    )
     if bas_above and boost_magnitude > 0:
         narrative = (
-            f"Risk appetite ({strategy.risk_appetite}/100), peer pressure ({strategy.peer_pressure_score}/100), "
-            f"attentiveness ({strategy.attentiveness_score}/100), and positional cunning "
-            f"({strategy.positional_cunning}/100) tune the thresholds. "
+            f"{archetype_phrase.capitalize()}risk appetite ({strategy.risk_appetite}/100), "
+            f"attentiveness ({strategy.attentiveness_score}/100), and bluff frequency "
+            f"({strategy.bluff_frequency}/100) tune the thresholds. "
             f"This bidder is over-claiming (blind aggression "
             f"{_round(ctx.blind_aggression_score):.2f} > {_BLIND_AGGRESSION_THRESHOLD}), so cunning amplifies suspicion: "
             f"the challenge probability gets boosted by {_round(boost_magnitude):.3f} "
@@ -220,9 +222,9 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
         )
     else:
         narrative = (
-            f"Risk appetite ({strategy.risk_appetite}/100), peer pressure ({strategy.peer_pressure_score}/100), "
-            f"attentiveness ({strategy.attentiveness_score}/100), and positional cunning "
-            f"({strategy.positional_cunning}/100) tune the thresholds. "
+            f"{archetype_phrase.capitalize()}risk appetite ({strategy.risk_appetite}/100), "
+            f"attentiveness ({strategy.attentiveness_score}/100), and bluff frequency "
+            f"({strategy.bluff_frequency}/100) tune the thresholds. "
             f"Blind aggression score ({_round(ctx.blind_aggression_score):.2f}) is at or below "
             f"{_BLIND_AGGRESSION_THRESHOLD}, so no challenge boost applies."
         )
@@ -232,12 +234,12 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
         narrative=narrative,
         data={
             'risk_appetite': strategy.risk_appetite,
-            'peer_pressure_score': strategy.peer_pressure_score,
             'attentiveness_score': strategy.attentiveness_score,
-            'positional_cunning': strategy.positional_cunning,
+            'bluff_frequency': strategy.bluff_frequency,
+            'archetype_label': strategy.archetype_label,
             'spot_on_ev_bias': _round(strategy.spot_on_ev_bias),
             'challenge_threshold': _round(strategy.challenge_threshold),
-            'cunning_fraction': _round(cunning),
+            'cunning_factor': _CUNNING_FACTOR,
             'blind_aggression_active': bas_above,
             'boost_magnitude': _round(boost_magnitude),
             'effective_challenge_prob': _round(boosted_prob),
@@ -248,11 +250,10 @@ def _step_personality(strategy: CPUStrategy, ctx: ResponseContext) -> ExplainerS
 
 def _step_decision(strategy: CPUStrategy, scenario: ExplainerScenario,
                    ctx: ResponseContext, decision: TurnResult) -> ExplainerStep:
-    cunning = strategy.positional_cunning / Constants.MAX_POSITIONAL_CUNNING_SCORE
     if ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD:
         boost_magnitude = min(
             _CHALLENGE_BOOST_MAX,
-            (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * cunning,
+            (ctx.blind_aggression_score - _BLIND_AGGRESSION_THRESHOLD) * 0.1 * _CUNNING_FACTOR,
         )
         eff_prob = min(1.0, ctx.challenge_prob + boost_magnitude)
         eff_threshold = max(0.50, ctx.effective_threshold - boost_magnitude * 0.5)
@@ -391,11 +392,11 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         bidder_num_dice=4,
         next_player_num_dice=4,
         risk_appetite=70,
-        peer_pressure_score=30,
         attentiveness_score=50,
-        positional_cunning=20,
+        bluff_frequency=20,
         rng_seed=101,
         num_active_players=4,
+        archetype_label='Reckless Buccaneer',
     ),
     'challenge-aggressor': ExplainerScenario(
         id='challenge-aggressor',
@@ -413,11 +414,11 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         bidder_num_dice=4,
         next_player_num_dice=4,
         risk_appetite=50,
-        peer_pressure_score=20,
         attentiveness_score=80,
-        positional_cunning=40,
+        bluff_frequency=20,
         rng_seed=202,
         num_active_players=4,
+        archetype_label='Crafty Captain',
         opponent_profile=OpponentProfile(
             bids_observed=4,
             total_aggression=2.6,
@@ -443,11 +444,11 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         bidder_num_dice=5,
         next_player_num_dice=1,
         risk_appetite=40,
-        peer_pressure_score=0,
         attentiveness_score=40,
-        positional_cunning=30,
+        bluff_frequency=10,
         rng_seed=303,
         num_active_players=4,
+        archetype_label='Salty Veteran',
     ),
     'blind-aggression-trigger': ExplainerScenario(
         id='blind-aggression-trigger',
@@ -467,11 +468,11 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         bidder_num_dice=1,
         next_player_num_dice=4,
         risk_appetite=80,
-        peer_pressure_score=0,
-        attentiveness_score=50,
-        positional_cunning=100,
+        attentiveness_score=90,
+        bluff_frequency=30,
         rng_seed=404,
         num_active_players=4,
+        archetype_label='Crafty Captain',
     ),
     'pressure-opportunity': ExplainerScenario(
         id='pressure-opportunity',
@@ -490,10 +491,10 @@ SCENARIOS: dict[str, ExplainerScenario] = {
         bidder_num_dice=3,
         next_player_num_dice=1,
         risk_appetite=50,
-        peer_pressure_score=0,
-        attentiveness_score=50,
-        positional_cunning=100,
+        attentiveness_score=70,
+        bluff_frequency=40,
         rng_seed=505,
         num_active_players=4,
+        archetype_label='Crafty Captain',
     ),
 }

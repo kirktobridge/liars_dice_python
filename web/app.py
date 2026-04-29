@@ -140,9 +140,11 @@ class _TournamentRunBody(BaseModel):
 class _PlayerConfig(BaseModel):
     name: str
     risk_appetite: int
-    peer_pressure_score: int
     attentiveness_score: int
-    positional_cunning: int = 50
+    bluff_frequency: int
+    archetype: str | None = None
+
+    model_config = {'extra': 'forbid'}
 
 
 class _CustomTournamentRunBody(BaseModel):
@@ -206,12 +208,12 @@ async def tournament_run_custom(body: _CustomTournamentRunBody):
         names_seen.add(pc.name)
         if not (1 <= pc.risk_appetite <= 100):
             raise HTTPException(status_code=422, detail=f'risk_appetite out of range for {pc.name}')
-        if not (1 <= pc.peer_pressure_score <= 100):
-            raise HTTPException(status_code=422, detail=f'peer_pressure_score out of range for {pc.name}')
         if not (1 <= pc.attentiveness_score <= 100):
             raise HTTPException(status_code=422, detail=f'attentiveness_score out of range for {pc.name}')
-        if not (1 <= pc.positional_cunning <= 100):
-            raise HTTPException(status_code=422, detail=f'positional_cunning out of range for {pc.name}')
+        if not (1 <= pc.bluff_frequency <= 100):
+            raise HTTPException(status_code=422, detail=f'bluff_frequency out of range for {pc.name}')
+        if pc.archetype is not None and pc.archetype not in Constants.ARCHETYPE_LABELS:
+            raise HTTPException(status_code=422, detail=f'Unknown archetype for {pc.name}: {pc.archetype}')
     job_id = str(uuid.uuid4())
     _register_job(job_id)
     player_configs = [pc.model_dump() for pc in body.players]

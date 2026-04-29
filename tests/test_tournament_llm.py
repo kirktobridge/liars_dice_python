@@ -18,15 +18,15 @@ _CPU_A = {
     'name': 'Alice',
     'player_type': 'CPU',
     'risk_appetite': 3,
-    'peer_pressure_score': 3,
     'attentiveness_score': 3,
+    'bluff_frequency': 3,
 }
 _CPU_B = {
     'name': 'Bob',
     'player_type': 'CPU',
     'risk_appetite': 2,
-    'peer_pressure_score': 2,
     'attentiveness_score': 2,
+    'bluff_frequency': 2,
 }
 
 # ---------------------------------------------------------------------------
@@ -152,4 +152,4 @@ class TestLLMConfigMinimal(unittest.TestCase):
                 1, player_configs=configs, parallel=False, show_progress=False
             )
         self.assertEqual(df_games.iloc[0]['p_Gemma_risk'], 0)
-        self.assertEqual(df_games.iloc[0]['p_Gemma_peer'], 0)
+        self.assertEqual(df_games.iloc[0]['p_Gemma_bluff'], 0)

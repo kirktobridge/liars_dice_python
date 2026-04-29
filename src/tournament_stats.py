@@ -136,18 +136,19 @@ def compute_tournament_stats(
     profile_wins: list[int] = []
     profile_win_pct: list[str] = []
     profile_risk: list[int] = []
-    profile_peer: list[int] = []
     profile_att: list[int] = []
-    profile_cun: list[int] = []
+    profile_bluff: list[int] = []
+    profile_archetype: list[str] = []
     for player in all_players:
         safe = player.replace(' ', '_')
         wins = int((df['winner'] == player).sum())
         profile_wins.append(wins)
         profile_win_pct.append(f"{wins / n_games * 100:.1f}%")
         profile_risk.append(int(df[f'p_{safe}_risk'].iloc[0]))
-        profile_peer.append(int(df[f'p_{safe}_peer'].iloc[0]))
         profile_att.append(int(df[f'p_{safe}_att'].iloc[0]))
-        profile_cun.append(int(df[f'p_{safe}_cun'].iloc[0]) if f'p_{safe}_cun' in df.columns else 50)
+        profile_bluff.append(int(df[f'p_{safe}_bluff'].iloc[0]) if f'p_{safe}_bluff' in df.columns else 50)
+        a = df[f'p_{safe}_archetype'].iloc[0] if f'p_{safe}_archetype' in df.columns else None
+        profile_archetype.append('—' if a is None or (isinstance(a, float) and a != a) else str(a))
 
     return {
         # Metadata
@@ -210,8 +211,8 @@ def compute_tournament_stats(
         "profile_wins": profile_wins,
         "profile_win_pct": profile_win_pct,
         "profile_risk": profile_risk,
-        "profile_peer": profile_peer,
         "profile_att": profile_att,
-        "profile_cun": profile_cun,
+        "profile_bluff": profile_bluff,
+        "profile_archetype": profile_archetype,
         "profile_win_pct_float": [round(w / n_games * 100, 1) for w in profile_wins],
     }
