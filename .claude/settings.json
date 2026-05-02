@@ -9,6 +9,17 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/enforce-venv.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(*uvicorn*)",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/safe-uvicorn.py",
+            "statusMessage": "Rewriting uvicorn command with trap..."
+          }
+        ]
       }
     ],
     "PostToolUse": [

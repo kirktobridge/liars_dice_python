@@ -152,6 +152,43 @@ def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
                   ctx: ResponseContext) -> ExplainerStep:
     bid = scenario.prev_bid
     n_others = max(0, scenario.num_active_players - 1)
+    total_dice = scenario.num_dice + scenario.tot_other_dice
+    info_ratio = scenario.bidder_num_dice / total_dice if total_dice > 0 else 0.0
+    bid_ratio = bid.count / total_dice if total_dice > 0 else 0.0
+
+    bas_breakdown = (
+        f"{scenario.prev_bidder} holds {scenario.bidder_num_dice} of {total_dice} dice "
+        f"({info_ratio * 100:.1f}% information window) but claimed {bid.count} {_FACE_NAMES[bid.face]} "
+        f"— {bid_ratio * 100:.1f}% of all dice. "
+        f"BAS = {bid_ratio * 100:.1f}% ÷ {info_ratio * 100:.1f}% = {_round(ctx.blind_aggression_score):.2f} "
+        f"({'above' if ctx.blind_aggression_score > _BLIND_AGGRESSION_THRESHOLD else 'below'} "
+        f"the {_BLIND_AGGRESSION_THRESHOLD} threshold)."
+    )
+
+    profile = strategy.opponent_profiles.get(scenario.prev_bidder)
+    if profile and profile.bids_observed >= 1:
+        profile_narrative = (
+            f"The CPU has also built a profile of {scenario.prev_bidder} through `observe_action()` "
+            f"— every bid the CPU witnesses is recorded. Over {profile.bids_observed} observed bid(s), "
+            f"this player has averaged {_round(profile.avg_aggression):.2f} aggression "
+            f"(fraction of table dice claimed per bid; >0.5 is aggressive). "
+        )
+        if profile.bids_challenged >= 1:
+            profile_narrative += (
+                f"Of {profile.bids_challenged} challenge(s) against them, "
+                f"{profile.challenge_successes} succeeded — a {_round(profile.bluff_rate * 100, 1):.0f}% bluff rate "
+                f"(smoothed). This record feeds both the challenge-probability boost and the "
+                f"threshold adjustment in the next step."
+            )
+        else:
+            profile_narrative += (
+                f"No challenge history on this player yet, so only the aggression boost applies."
+            )
+    else:
+        profile_narrative = (
+            f"No prior observations of {scenario.prev_bidder} — opponent profile effects are absent."
+        )
+
     narrative = (
         f"The CPU evaluates probabilities and situational scores. "
         f"Challenge probability ({_round(ctx.challenge_prob):.2f}) estimates the chance the previous bid is a lie. "
@@ -162,8 +199,10 @@ def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
         f"Blind aggression score ({_round(ctx.blind_aggression_score):.2f}) measures how much "
         f"the bidder claimed beyond their own information window — values above "
         f"{_BLIND_AGGRESSION_THRESHOLD} suggest they are bluffing or guessing blindly. "
+        f"{bas_breakdown} "
         f"Pressure-opportunity score ({_round(ctx.pressure_opportunity_score):.2f}) measures how much "
-        f"the next player can be squeezed (low information + room to escalate)."
+        f"the next player can be squeezed (low information + room to escalate). "
+        f"{profile_narrative}"
     )
     best_bid_desc = (
         f"{ctx.best_bid.count} {_FACE_NAMES[ctx.best_bid.face]}"
@@ -186,8 +225,17 @@ def _step_context(strategy: CPUStrategy, scenario: ExplainerScenario,
             'best_bid_desc': best_bid_desc,
             'best_bid_prob': _round(ctx.best_bid_prob),
             'blind_aggression_score': _round(ctx.blind_aggression_score),
-            'pressure_opportunity_score': _round(ctx.pressure_opportunity_score),
             'blind_aggression_threshold': _BLIND_AGGRESSION_THRESHOLD,
+            'bidder_num_dice': scenario.bidder_num_dice,
+            'total_dice': total_dice,
+            'bidder_info_ratio': _round(info_ratio, 4),
+            'bid_count_ratio': _round(bid_ratio, 4),
+            'pressure_opportunity_score': _round(ctx.pressure_opportunity_score),
+            'opponent_bids_observed': profile.bids_observed if profile else 0,
+            'opponent_avg_aggression': _round(profile.avg_aggression) if profile else None,
+            'opponent_bids_challenged': profile.bids_challenged if profile else 0,
+            'opponent_challenge_successes': profile.challenge_successes if profile else 0,
+            'opponent_bluff_rate': _round(profile.bluff_rate) if profile and profile.bids_challenged >= 1 else None,
         },
     )
 
@@ -401,18 +449,21 @@ SCENARIOS: dict[str, ExplainerScenario] = {
     'challenge-aggressor': ExplainerScenario(
         id='challenge-aggressor',
         title='Calling the Bluff',
-        summary='Weak hand vs. an aggressive bidder with a known bluff streak — the CPU challenges.',
+        summary='Bid just above table average from a known over-claimer — opponent history tips a borderline challenge.',
         narrative_intro=(
-            "The bidder has been pushing the table all round, and the new bid is far "
-            "above what the visible dice can plausibly support. The CPU has been watching."
+            "The bidder has six dice and claimed seven threes — just a hair above the table's expected count. "
+            "The raw math gives a 56% challenge probability, just below the CPU's 57.5% break-even threshold: "
+            "not enough to challenge on numbers alone. But the CPU has been watching: this player has a 67% "
+            "bluff success rate when challenged. That history lowers the threshold below 56%, turning a "
+            "'probably not' into a confident 'call'."
         ),
-        dice=[2, 4, 5, 6, 6],
+        dice=[3, 3, 3, 5, 6],
         num_dice=5,
-        prev_bid=Bid(count=8, face=3),
+        prev_bid=Bid(count=7, face=3),
         prev_bidder='Captain Blackbeard',
-        tot_other_dice=12,
-        bidder_num_dice=4,
-        next_player_num_dice=4,
+        tot_other_dice=10,
+        bidder_num_dice=6,
+        next_player_num_dice=2,
         risk_appetite=50,
         attentiveness_score=80,
         bluff_frequency=20,
