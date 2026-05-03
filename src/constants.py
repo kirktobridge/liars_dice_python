@@ -1,4 +1,4 @@
-LLM_MODEL = "gemma3:4b"
+LLM_MODEL = "gemma4:e4b"
 MAX_NUM_DICE = 6
 MAX_PLAYERS = 8
 MAX_ROUNDS = 100

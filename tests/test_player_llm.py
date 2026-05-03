@@ -3,6 +3,7 @@ import unittest
 from collections import deque
 from unittest.mock import patch
 
+import constants as Constants
 from Player import Player
 from strategy import CPUStrategy, LLMStrategy
 from models import Action, Bid, TurnResult
@@ -37,7 +38,7 @@ class TestLLMPlayerConstructor(unittest.TestCase):
 
     def test_default_llm_model_is_gemma(self):
         p = Player("Bot", player_type="LLM")
-        self.assertEqual(p._strategy._model, "gemma3:4b")
+        self.assertEqual(p._strategy._model, Constants.LLM_MODEL)
 
     def test_custom_llm_model_is_forwarded(self):
         p = Player("Bot", player_type="LLM", llm_model="llama3:8b")
@@ -45,7 +46,7 @@ class TestLLMPlayerConstructor(unittest.TestCase):
 
     def test_llm_model_none_falls_back_to_default(self):
         p = Player("Bot", player_type="LLM", llm_model=None)
-        self.assertEqual(p._strategy._model, "gemma3:4b")
+        self.assertEqual(p._strategy._model, Constants.LLM_MODEL)
 
 
 # ---------------------------------------------------------------------------

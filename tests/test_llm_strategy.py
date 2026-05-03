@@ -2,6 +2,7 @@ import unittest
 from collections import deque
 from unittest.mock import patch
 
+import constants as Constants
 from models import Action, Bid, TurnResult
 from strategy import LLMStrategy
 
@@ -144,7 +145,7 @@ class TestLLMStrategyNoOps(unittest.TestCase):
         self.assertEqual(self.strategy.player_type, 'LLM')
 
     def test_default_model_is_gemma(self):
-        self.assertEqual(self.strategy._model, 'gemma3:4b')
+        self.assertEqual(self.strategy._model, Constants.LLM_MODEL)
 
     def test_custom_model_stored(self):
         s = LLMStrategy(model='llama3.2:3b')
