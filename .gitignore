@@ -4,8 +4,7 @@
 *.png
 logs/
 tournament_stats.html
-scripts/gemma_traces.jsonl
-scripts/gemma_results.json
+analysis/gemma/runs/*/traces.jsonl
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

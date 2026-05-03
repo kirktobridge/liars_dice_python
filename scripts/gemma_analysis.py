@@ -2,21 +2,33 @@
 
 Runs N games per matchup (1 LLM player + 4 CPU players), captures every Gemma
 prompt/response via the LLM debug listener, aggregates win rates and behavioral
-metrics from the tournament DataFrames, and emits GEMMA_REPORT.md.
+metrics from the tournament DataFrames, and emits a self-contained run directory
+under analysis/gemma/runs/<run-name>/ containing report.md, results.json,
+traces.jsonl (gitignored), run.log, and run_metadata.json.
 
 Usage:
-    .venv/bin/python scripts/gemma_analysis.py                           # full run, 30 games per matchup
-    .venv/bin/python scripts/gemma_analysis.py --games-per-matchup 1     # smoke run
+    # Default: timestamped run name like 2026-05-03_143015
+    .venv/bin/python scripts/gemma_analysis.py
+
+    # Recommended: name the run after the intervention being tested
+    .venv/bin/python scripts/gemma_analysis.py --run-name 2026-05-03_v2_prompt-anchors
+
+    # Smoke run
+    .venv/bin/python scripts/gemma_analysis.py --run-name smoke-test --games-per-matchup 1
+
+    # Subset of matchups
     .venv/bin/python scripts/gemma_analysis.py --matchups vs_salty,vs_crafty
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import math
 import os
 import re
+import subprocess
 import sys
 import time
 from collections import Counter, defaultdict
@@ -714,6 +726,51 @@ def _cross_observations(stats: list[MatchupStats]) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _default_run_name() -> str:
+    return time.strftime("%Y-%m-%d_%H%M%S", time.localtime())
+
+
+def _git_sha() -> str | None:
+    try:
+        out = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=str(REPO_ROOT), stderr=subprocess.DEVNULL,
+        )
+        return out.decode().strip()
+    except Exception:
+        return None
+
+
+def _strategy_module_sha256() -> str:
+    """SHA-256 of src/strategy.py — lets a comparison report tell whether the prompt actually
+    changed between runs without having to diff git history manually."""
+    p = REPO_ROOT / "src" / "strategy.py"
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+class _TeeLogHandler(logging.Handler):
+    """Logging handler that mirrors records to both an in-memory list and a file path,
+    flushing each record immediately so a tail -f works."""
+
+    def __init__(self, path: Path) -> None:
+        super().__init__()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._fp = path.open("a", encoding="utf-8")
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            msg = self.format(record)
+            self._fp.write(msg + "\n")
+            self._fp.flush()
+        except Exception:
+            self.handleError(record)
+
+    def close(self) -> None:
+        try:
+            self._fp.close()
+        finally:
+            super().close()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--games-per-matchup", type=int, default=30)
@@ -724,34 +781,64 @@ def main() -> int:
         help="Comma-separated subset of matchup keys to run.",
     )
     parser.add_argument(
-        "--report",
+        "--run-name",
         type=str,
-        default=str(REPO_ROOT / "GEMMA_REPORT.md"),
-        help="Output report path.",
+        default=_default_run_name(),
+        help="Name of this run. Output goes to analysis/gemma/runs/<run-name>/. "
+        "Recommended: YYYY-MM-DD_v<N>_<slug>, e.g. 2026-05-03_v2_prompt-anchors. "
+        "Default: timestamped slug (never collides).",
     )
     parser.add_argument(
-        "--traces",
+        "--runs-root",
         type=str,
-        default=str(REPO_ROOT / "scripts" / "gemma_traces.jsonl"),
-        help="JSONL trace output path (gitignored).",
+        default=str(REPO_ROOT / "analysis" / "gemma" / "runs"),
+        help="Parent directory under which the run directory is created.",
     )
     parser.add_argument(
-        "--results-json",
-        type=str,
-        default=str(REPO_ROOT / "scripts" / "gemma_results.json"),
-        help="Aggregated results dump (gitignored).",
+        "--allow-overwrite",
+        action="store_true",
+        help="Permit writing into a run directory that already contains files. "
+        "Off by default to protect prior runs.",
     )
     parser.add_argument("--temperature", type=float, default=LLM_TEMPERATURE)
     parser.add_argument("--timeout", type=float, default=LLM_TIMEOUT)
+    parser.add_argument(
+        "--intervention",
+        type=str,
+        default="",
+        help="One-line description of what this run is testing (stored in run_metadata.json).",
+    )
     args = parser.parse_args()
-
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     selected = [m.strip() for m in args.matchups.split(",") if m.strip()]
     unknown = [m for m in selected if m not in MATCHUPS]
     if unknown:
         print(f"unknown matchups: {unknown}; valid: {list(MATCHUPS)}", file=sys.stderr)
         return 2
+
+    run_dir = Path(args.runs_root) / args.run_name
+    if run_dir.exists() and any(run_dir.iterdir()) and not args.allow_overwrite:
+        print(
+            f"run directory {run_dir} already contains files. "
+            f"Pass --allow-overwrite to write anyway, or pick a different --run-name.",
+            file=sys.stderr,
+        )
+        return 2
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    report_path = run_dir / "report.md"
+    traces_path = run_dir / "traces.jsonl"
+    results_path = run_dir / "results.json"
+    metadata_path = run_dir / "run_metadata.json"
+    log_path = run_dir / "run.log"
+
+    log_handler = _TeeLogHandler(log_path)
+    log_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.getLogger().addHandler(log_handler)
+
+    logger.info("run name: %s", args.run_name)
+    logger.info("output dir: %s", run_dir)
 
     # Apply LLM tuning to all LLMStrategy instances spawned by run_tournament:
     # monkey-patch __init__ to inject our temperature + timeout.
@@ -764,7 +851,6 @@ def main() -> int:
 
     LLMStrategy.__init__ = _patched_init  # type: ignore[assignment]
 
-    traces_path = Path(args.traces)
     if traces_path.exists():
         traces_path.unlink()
     capture = TraceCapture(traces_path)
@@ -783,7 +869,7 @@ def main() -> int:
 
                 # Build persistent players ONCE per matchup so personality state is
                 # consistent across games (mirrors run_tournament's behavior). Seeded
-                # RNG per game inside _run_one_game.
+                # RNG per game inside run_game.
                 players = _build_persistent_players(m["configs"])
 
                 game_results = []
@@ -811,13 +897,16 @@ def main() -> int:
 
     finished = time.monotonic()
     finished_wall = time.time()
-    write_report(Path(args.report), matchup_stats, args.games_per_matchup, started_wall, finished_wall)
+    write_report(report_path, matchup_stats, args.games_per_matchup, started_wall, finished_wall)
 
-    # Dump structured results too.
-    Path(args.results_json).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.results_json).write_text(
+    overall_decisions = sum(s.n_decisions for s in matchup_stats)
+    overall_wins = sum(s.win_count for s in matchup_stats)
+    overall_games = sum(s.n_games for s in matchup_stats)
+
+    results_path.write_text(
         json.dumps(
             {
+                "run_name": args.run_name,
                 "model": Constants.LLM_MODEL,
                 "games_per_matchup": args.games_per_matchup,
                 "duration_min": (finished - started) / 60.0,
@@ -829,10 +918,38 @@ def main() -> int:
         encoding="utf-8",
     )
 
-    logger.info(
-        "wrote report to %s (%.1f min total)",
-        args.report, (finished - started) / 60.0,
+    metadata_path.write_text(
+        json.dumps(
+            {
+                "run_name": args.run_name,
+                "intervention": args.intervention,
+                "date": time.strftime("%Y-%m-%d", time.localtime(started_wall)),
+                "model": Constants.LLM_MODEL,
+                "ollama_url": os.environ.get("OLLAMA_URL", "<default>"),
+                "temperature": args.temperature,
+                "timeout_s": args.timeout,
+                "games_per_matchup": args.games_per_matchup,
+                "matchups": selected,
+                "total_games": overall_games,
+                "total_wins": overall_wins,
+                "total_decisions_logged": overall_decisions,
+                "duration_min": (finished - started) / 60.0,
+                "code_sha_at_run_time": _git_sha(),
+                "strategy_module_sha256": _strategy_module_sha256(),
+                "command_line": " ".join(sys.argv),
+            },
+            indent=2,
+            default=str,
+        ),
+        encoding="utf-8",
     )
+
+    logger.info(
+        "run %s complete — Gemma %d/%d wins (%.1f min total)",
+        args.run_name, overall_wins, overall_games, (finished - started) / 60.0,
+    )
+    logger.info("artifacts: %s", run_dir)
+    log_handler.close()
     return 0
 
 

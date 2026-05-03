@@ -1,0 +1,17 @@
+{
+  "run_name": "2026-05-03_v1_baseline",
+  "intervention": "baseline (no changes) — first empirical measurement of Gemma at the table",
+  "date": "2026-05-03",
+  "model": "gemma4:e4b",
+  "ollama_host": "http://172.19.176.1:11434/api/generate",
+  "temperature": 1.0,
+  "timeout_s": 60.0,
+  "games_per_matchup": 30,
+  "matchups": ["vs_salty", "vs_reckless", "vs_crafty", "vs_stoic", "vs_wildcard", "vs_mixed"],
+  "total_games": 180,
+  "total_decisions_logged": 2432,
+  "duration_min": 523.94,
+  "code_sha_at_run_time": "d2bb3c4",
+  "headline_finding": "0/180 wins. Three failure modes: 22.5% bids count=1 (illegal), 49% reflexive challenges (1-9% accuracy), no archetype adaptation.",
+  "notes": "metadata file written post-hoc; values reconstructed from results.json and the run log."
+}

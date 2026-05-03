@@ -1,0 +1,343 @@
+{
+  "model": "gemma4:e4b",
+  "games_per_matchup": 30,
+  "duration_min": 523.93982948845,
+  "matchups": [
+    {
+      "key": "vs_salty",
+      "label": "vs 4\u00d7 Salty Veteran",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.0,
+      "mean_rounds": 25.966666666666665,
+      "fallback_rate": 0.0,
+      "n_decisions": 406,
+      "action_dist": {
+        "bid": 0.47044334975369456,
+        "raise": 0.0665024630541872,
+        "challenge": 0.45320197044334976,
+        "spot_on": 0.009852216748768473
+      },
+      "mean_aggression": 0.09496649391756884,
+      "challenges_called": 171,
+      "challenge_success_rate": 0.005847953216374269,
+      "spot_on_called": 3,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 7,
+      "bids_against_gemma": 7,
+      "caught_rate": null,
+      "mean_latency_s": 12.821441370295567,
+      "sample_traces": [
+        {
+          "matchup": "vs_salty",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 2, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 2,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 1.462,
+          "error": null
+        },
+        {
+          "matchup": "vs_salty",
+          "seed": 12,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [1, 4, 5, 4]\nTotal dice held by other players: 24\nRecent history:\n  - Salty Veteran 3 raised to 5 fives\n  - Salty Veteran 4 bid 5 twos\n  - Salty Veteran 1 raised to 3 sixes\n  - Salty Veteran 2 raised to 4 fours\n  - Salty Veteran 3 raised to 5 fives\n  - Salty Veteran 4 raised to 6 twos\n  - Salty Veteran 1 raised to 3 fours\n  - Salty Veteran 2 raised to 4 sixes\n  - Salty Veteran 3 bid 4 threes\n  - Salty Veteran 4 raised to 5 threes\nPrevious action: action=RAISE, bid=Bid(count=5, face=3)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"challenge\"}",
+          "parsed_action": "challenge",
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": false,
+          "latency_s": 1.276,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_reckless",
+      "label": "vs 4\u00d7 Reckless Buccaneer",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.0333333333333334,
+      "mean_rounds": 25.366666666666667,
+      "fallback_rate": 0.0,
+      "n_decisions": 383,
+      "action_dist": {
+        "bid": 0.4464751958224543,
+        "raise": 0.05221932114882506,
+        "challenge": 0.4934725848563969,
+        "spot_on": 0.007832898172323759
+      },
+      "mean_aggression": 0.10043132348961302,
+      "challenges_called": 169,
+      "challenge_success_rate": 0.01775147928994083,
+      "spot_on_called": 3,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 5,
+      "bids_against_gemma": 5,
+      "caught_rate": null,
+      "mean_latency_s": 13.48909046707849,
+      "sample_traces": [
+        {
+          "matchup": "vs_reckless",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 4, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 4,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 18.598,
+          "error": null
+        },
+        {
+          "matchup": "vs_reckless",
+          "seed": 16,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [5, 3, 2, 4]\nTotal dice held by other players: 24\nRecent history:\n  - Reckless Buccaneer 3 bid 4 fours\n  - Reckless Buccaneer 4 raised to 5 threes\n  - Reckless Buccaneer 1 bid 6 sixes\n  - Reckless Buccaneer 2 raised to 7 threes\n  - Reckless Buccaneer 3 bid 7 fours\n  - Reckless Buccaneer 4 raised to 8 threes\n  - Reckless Buccaneer 1 raised to 3 threes\n  - Reckless Buccaneer 2 raised to 4 sixes\n  - Reckless Buccaneer 3 raised to 5 fours\n  - Reckless Buccaneer 4 raised to 6 fours\nPrevious action: action=RAISE, bid=Bid(count=6, face=4)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"challenge\"}",
+          "parsed_action": "challenge",
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": false,
+          "latency_s": 1.274,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_crafty",
+      "label": "vs 4\u00d7 Crafty Captain",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.0666666666666667,
+      "mean_rounds": 25.433333333333334,
+      "fallback_rate": 0.0,
+      "n_decisions": 404,
+      "action_dist": {
+        "bid": 0.39851485148514854,
+        "raise": 0.07425742574257425,
+        "challenge": 0.5148514851485149,
+        "spot_on": 0.012376237623762377
+      },
+      "mean_aggression": 0.10072254181640589,
+      "challenges_called": 177,
+      "challenge_success_rate": 0.07909604519774012,
+      "spot_on_called": 2,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 14,
+      "bids_against_gemma": 14,
+      "caught_rate": null,
+      "mean_latency_s": 12.69873130656692,
+      "sample_traces": [
+        {
+          "matchup": "vs_crafty",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 4, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 4,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 16.156,
+          "error": null
+        },
+        {
+          "matchup": "vs_crafty",
+          "seed": 15,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [1, 5]\nTotal dice held by other players: 24\nRecent history:\n  - Crafty Captain 3 bid 4 threes\n  - Crafty Captain 4 raised to 5 fours\n  - Crafty Captain 1 raised to 2 ones\n  - Crafty Captain 2 raised to 3 sixes\n  - Crafty Captain 3 raised to 4 sixes\n  - Crafty Captain 4 raised to 5 fours\n  - Crafty Captain 1 raised to 2 ones\n  - Crafty Captain 2 raised to 3 sixes\n  - Crafty Captain 3 raised to 4 sixes\n  - Crafty Captain 4 raised to 5 fours\nPrevious action: action=RAISE, bid=Bid(count=5, face=4)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"challenge\"}",
+          "parsed_action": "challenge",
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": false,
+          "latency_s": 18.299,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_stoic",
+      "label": "vs 4\u00d7 Stoic Quartermaster",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.0333333333333334,
+      "mean_rounds": 26.766666666666666,
+      "fallback_rate": 0.0,
+      "n_decisions": 426,
+      "action_dist": {
+        "bid": 0.4460093896713615,
+        "raise": 0.07042253521126761,
+        "challenge": 0.4765258215962441,
+        "spot_on": 0.007042253521126761
+      },
+      "mean_aggression": 0.1011996763968637,
+      "challenges_called": 185,
+      "challenge_success_rate": 0.07027027027027027,
+      "spot_on_called": 3,
+      "spot_on_success_rate": 0.3333333333333333,
+      "times_caught_bluffing": 6,
+      "bids_against_gemma": 6,
+      "caught_rate": null,
+      "mean_latency_s": 13.626067265701883,
+      "sample_traces": [
+        {
+          "matchup": "vs_stoic",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 3, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 3,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 9.172,
+          "error": null
+        },
+        {
+          "matchup": "vs_stoic",
+          "seed": 16,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [5, 3, 2, 4]\nTotal dice held by other players: 24\nRecent history:\n  - Stoic Quartermaster 3 bid 5 threes\n  - Stoic Quartermaster 4 raised to 6 twos\n  - Stoic Quartermaster 1 raised to 3 sixes\n  - Stoic Quartermaster 2 raised to 4 threes\n  - Stoic Quartermaster 3 bid 4 fours\n  - Stoic Quartermaster 4 raised to 5 threes\n  - Stoic Quartermaster 1 raised to 2 threes\n  - Stoic Quartermaster 2 raised to 3 twos\n  - Stoic Quartermaster 3 raised to 4 fours\n  - Stoic Quartermaster 4 raised to 5 fours\nPrevious action: action=RAISE, bid=Bid(count=5, face=4)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"raise\", \"count\": 6, \"face\": 4}",
+          "parsed_action": "raise",
+          "parsed_count": 6,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 27.276,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_wildcard",
+      "label": "vs 4\u00d7 Wild Card",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.1,
+      "mean_rounds": 26.3,
+      "fallback_rate": 0.0,
+      "n_decisions": 422,
+      "action_dist": {
+        "bid": 0.4075829383886256,
+        "raise": 0.0924170616113744,
+        "challenge": 0.4928909952606635,
+        "spot_on": 0.0071090047393364926
+      },
+      "mean_aggression": 0.10814176645610454,
+      "challenges_called": 193,
+      "challenge_success_rate": 0.08808290155440414,
+      "spot_on_called": 1,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 3,
+      "bids_against_gemma": 3,
+      "caught_rate": null,
+      "mean_latency_s": 11.481546725028144,
+      "sample_traces": [
+        {
+          "matchup": "vs_wildcard",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 3, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 3,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 16.284,
+          "error": null
+        },
+        {
+          "matchup": "vs_wildcard",
+          "seed": 18,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [5, 2, 6, 4, 2]\nTotal dice held by other players: 24\nRecent history:\n  - Wild Card 3 raised to 8 twos\n  - Wild Card 4 raised to 9 twos\n  - Wild Card 1 raised to 3 threes\n  - Wild Card 2 bid 3 fives\n  - Wild Card 3 raised to 4 fives\n  - Wild Card 4 bid 4 threes\n  - Wild Card 1 raised to 7 threes\n  - Wild Card 2 bid 7 fives\n  - Wild Card 3 raised to 8 fives\n  - Wild Card 4 bid 8 threes\nPrevious action: action=BID, bid=Bid(count=8, face=3)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"challenge\"}",
+          "parsed_action": "challenge",
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": false,
+          "latency_s": 1.283,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_mixed",
+      "label": "vs 1 of each archetype",
+      "n_games": 30,
+      "win_count": 0,
+      "win_rate": 0.0,
+      "win_ci_lo": 0.0,
+      "win_ci_hi": 0.113517091390478,
+      "mean_finish": 1.0,
+      "mean_rounds": 25.833333333333332,
+      "fallback_rate": 0.0025575447570332483,
+      "n_decisions": 391,
+      "action_dist": {
+        "bid": 0.4230769230769231,
+        "raise": 0.0641025641025641,
+        "challenge": 0.5102564102564102,
+        "spot_on": 0.002564102564102564
+      },
+      "mean_aggression": 0.1029851368155441,
+      "challenges_called": 169,
+      "challenge_success_rate": 0.029585798816568046,
+      "spot_on_called": 1,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 15,
+      "bids_against_gemma": 15,
+      "caught_rate": null,
+      "mean_latency_s": 13.496536973473283,
+      "sample_traces": [
+        {
+          "matchup": "vs_mixed",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice held by other players: 24\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 2, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 2,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 6.899,
+          "error": null
+        },
+        {
+          "matchup": "vs_mixed",
+          "seed": 19,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [5, 4]\nTotal dice held by other players: 24\nRecent history:\n  - Crafty raised to 6 threes\n  - Stoic bid 6 fours\n  - Salty raised to 2 twos\n  - Reckless raised to 3 twos\n  - Crafty bid 3 fours\n  - Stoic raised to 4 sixes\n  - Salty raised to 2 twos\n  - Reckless raised to 3 twos\n  - Crafty raised to 4 fours\n  - Stoic raised to 5 sixes\nPrevious action: action=RAISE, bid=Bid(count=5, face=6)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "",
+          "parsed_action": null,
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": true,
+          "latency_s": 60.062,
+          "error": "HTTPConnectionPool(host='172.19.176.1', port=11434): Read timed out. (read timeout=60.0)"
+        },
+        {
+          "matchup": "vs_mixed",
+          "seed": 15,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims that AT LEAST <count> dice across all players show <face>. Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nYour dice: [4, 3, 4]\nTotal dice held by other players: 24\nRecent history:\n  - Crafty bid 3 twos\n  - Stoic raised to 4 threes\n  - Salty raised to 3 threes\n  - Reckless raised to 4 fives\n  - Crafty bid 4 twos\n  - Stoic raised to 5 threes\n  - Salty raised to 3 fours\n  - Reckless raised to 4 fours\n  - Crafty raised to 5 fours\n  - Stoic raised to 6 fours\nPrevious action: action=RAISE, bid=Bid(count=6, face=4)\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"challenge\", \"count\": null, \"face\": null}",
+          "parsed_action": "challenge",
+          "parsed_count": null,
+          "parsed_face": null,
+          "fallback": false,
+          "latency_s": 1.455,
+          "error": null
+        }
+      ]
+    }
+  ]
+}
