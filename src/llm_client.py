@@ -2,6 +2,8 @@ import logging
 import os
 import requests
 
+import constants as Constants
+
 logger = logging.getLogger('liars_dice.llm_client')
 
 _DEFAULT_OLLAMA_URL = 'http://localhost:11434/api/generate'
@@ -31,4 +33,4 @@ def query_llm(model: str, prompt: str, timeout: float = 15, temperature: float =
 
 
 if __name__ == '__main__':
-    print(query_llm('gemma3:4b', 'Say hello.'))
+    print(query_llm(Constants.LLM_MODEL, 'Say hello.'))

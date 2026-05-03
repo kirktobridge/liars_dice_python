@@ -32,7 +32,7 @@ class Player:
         if player_type == 'HUMAN':
             self._strategy: Strategy = HumanStrategy(input_handler)
         elif player_type == 'LLM':
-            self._strategy = LLMStrategy(model=llm_model or "gemma3:4b")
+            self._strategy = LLMStrategy(model=llm_model or Constants.LLM_MODEL)
         else:
             self._strategy = CPUStrategy(self._rng_ref, personality=personality)
         self.player_type: str = self._strategy.player_type

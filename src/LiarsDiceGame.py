@@ -145,6 +145,8 @@ class LiarsDiceGame:
                 self.recent_events, tot_dice - player.num_dice,
                 bidder_num_dice, next_player_num_dice,
                 num_active_players=len(self.players))
+            if cur_event.fallback:
+                self._emit('llm_fallback', player_name=cur_event.player_name)
             self.log_event(cur_event)
             for observer in self.players:
                 if observer is not player:

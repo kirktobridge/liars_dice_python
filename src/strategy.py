@@ -464,9 +464,9 @@ class LLMStrategy:
 
     def __init__(
         self,
-        model: str = "gemma3:4b",
+        model: str = Constants.LLM_MODEL,
         temperature: float = 0.3,
-        timeout: float = 4.0,
+        timeout: float = 30.0,
     ) -> None:
         self._model = model
         self._temperature = temperature
@@ -514,7 +514,7 @@ class LLMStrategy:
         result = self._parse_response(raw, player_name)
         if result is not None:
             return result
-        return self._fallback.decide(
+        fallback_result = self._fallback.decide(
             player_name=player_name,
             dice=dice,
             num_dice=num_dice,
@@ -523,6 +523,12 @@ class LLMStrategy:
             bidder_num_dice=bidder_num_dice,
             next_player_num_dice=next_player_num_dice,
             num_active_players=num_active_players,
+        )
+        return TurnResult(
+            bid=fallback_result.bid,
+            action=fallback_result.action,
+            player_name=fallback_result.player_name,
+            fallback=True,
         )
 
     def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:

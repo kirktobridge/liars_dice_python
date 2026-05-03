@@ -42,6 +42,7 @@ class TurnResult:
     bid: 'Bid | None'
     action: Action
     player_name: str
+    fallback: bool = False
 
 
 class OpeningBidRequest(TypedDict):

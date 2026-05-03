@@ -138,6 +138,8 @@ def pirate_renderer(event: dict) -> None:
     elif etype == 'round_summary':
         print(f'<!> There are {event["num_players"]} players and a total of {event["tot_num_dice"]} dice remaining.')
         _pause(presentation.PAUSE_ROUTINE)
+    elif etype == 'llm_fallback':
+        print(Fore.MAGENTA + Style.DIM + f'<~> {event["player_name"]}\'s oracle fell silent — the quartermaster takes the wheel.' + Style.RESET_ALL)
     elif etype == 'error':
         print(Fore.MAGENTA + Style.DIM + event['message'])
 
