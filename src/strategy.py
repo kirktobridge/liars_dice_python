@@ -517,6 +517,11 @@ class LLMStrategy:
         else:
             raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
         result = self._parse_response(raw, player_name)
+        # CHALLENGE / SPOT_ON are illegal on round open (no prior bid); the engine
+        # would crash on `prev_bid.count`. Treat as a parse failure → CPU fallback.
+        if result is not None and last.action == Action.START and result.action in (Action.CHALLENGE, Action.SPOT_ON):
+            logger.warning('LLMStrategy: illegal %s on round open; falling back', result.action.value)
+            result = None
         if result is not None:
             return result
         fallback_result = self._fallback.decide(

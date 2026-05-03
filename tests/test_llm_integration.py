@@ -16,21 +16,25 @@ appear live in the page while tests run.
 """
 import logging
 import os
-import shutil
-import signal
 import socket
-import subprocess
 import time
 import webbrowser
 from collections import deque
-from urllib.parse import urlparse
 
 import pytest
 import requests
 
 import constants as Constants
-from llm_client import query_llm, _ollama_url
+from llm_client import query_llm
 from models import Action, Bid, TurnResult
+from ollama_lifecycle import (
+    model_present,
+    ollama_reachable,
+    pull_model,
+    spawn_ollama_serve,
+    teardown_spawned,
+    wait_until_reachable,
+)
 from strategy import LLMStrategy
 from Player import Player
 from LiarsDiceGame import LiarsDiceGame
@@ -45,125 +49,26 @@ LLM_TIMEOUT = 60.0     # generous: cold starts + first-token latency
 # Session fixture: ensure Ollama is up and the model is available
 # ---------------------------------------------------------------------------
 
-def _ollama_base() -> str:
-    parsed = urlparse(_ollama_url())
-    return f"{parsed.scheme}://{parsed.netloc}"
-
-
-def _ollama_reachable() -> bool:
-    try:
-        r = requests.get(_ollama_base() + "/api/tags", timeout=3)
-        return r.status_code == 200
-    except Exception:
-        return False
-
-
-def _model_present(model: str) -> bool:
-    try:
-        r = requests.get(_ollama_base() + "/api/tags", timeout=5)
-        r.raise_for_status()
-        names = {m.get("name", "") for m in r.json().get("models", [])}
-        # Ollama may report the model with or without a ":latest" suffix.
-        return model in names or any(n.split(":")[0] == model.split(":")[0]
-                                      and n.split(":", 1)[-1] == model.split(":", 1)[-1]
-                                      for n in names)
-    except Exception:
-        return False
-
-
-def _pull_model(model: str) -> bool:
-    """Attempt to pull the model. Prefer the HTTP API; fall back to the CLI."""
-    try:
-        r = requests.post(
-            _ollama_base() + "/api/pull",
-            json={"name": model, "stream": False},
-            timeout=600,
-        )
-        if r.status_code == 200:
-            return True
-    except Exception as exc:
-        logging.warning("HTTP pull failed: %s", exc)
-
-    if shutil.which("ollama") is None:
-        return False
-    try:
-        result = subprocess.run(
-            ["ollama", "pull", model],
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        return result.returncode == 0
-    except Exception as exc:
-        logging.warning("CLI pull failed: %s", exc)
-        return False
-
-
-def _wait_until_reachable(timeout_s: float = 30.0, interval_s: float = 0.5) -> bool:
-    deadline = time.monotonic() + timeout_s
-    while time.monotonic() < deadline:
-        if _ollama_reachable():
-            return True
-        time.sleep(interval_s)
-    return False
-
-
-def _spawn_ollama_serve() -> subprocess.Popen | None:
-    if shutil.which("ollama") is None:
-        return None
-    log = open("/tmp/ollama_serve_test.log", "ab", buffering=0)
-    try:
-        # start_new_session so we can kill the whole process group on teardown.
-        proc = subprocess.Popen(
-            ["ollama", "serve"],
-            stdout=log,
-            stderr=subprocess.STDOUT,
-            start_new_session=True,
-        )
-    except Exception as exc:
-        logging.warning("failed to spawn ollama serve: %s", exc)
-        log.close()
-        return None
-    return proc
-
-
 @pytest.fixture(scope="session")
 def ollama_with_model():
-    spawned: subprocess.Popen | None = None
-    if not _ollama_reachable():
-        spawned = _spawn_ollama_serve()
+    spawned = None
+    if not ollama_reachable():
+        spawned = spawn_ollama_serve("/tmp/ollama_serve_test.log")
         if spawned is None:
             pytest.skip("Ollama not reachable and `ollama` binary not found on PATH.")
-        if not _wait_until_reachable(timeout_s=30.0):
-            try:
-                os.killpg(spawned.pid, signal.SIGTERM)
-            except Exception:
-                pass
+        if not wait_until_reachable(timeout_s=30.0):
+            teardown_spawned(spawned)
             pytest.skip("Spawned `ollama serve` but daemon never became reachable.")
 
     model = Constants.LLM_MODEL
-    if not _model_present(model):
-        if not _pull_model(model):
-            if spawned is not None:
-                try:
-                    os.killpg(spawned.pid, signal.SIGTERM)
-                except Exception:
-                    pass
+    if not model_present(model):
+        if not pull_model(model):
+            teardown_spawned(spawned)
             pytest.skip(f"Model {model} not present and could not be pulled.")
 
     yield model
 
-    if spawned is not None:
-        try:
-            os.killpg(spawned.pid, signal.SIGTERM)
-            try:
-                spawned.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                os.killpg(spawned.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
-        except Exception as exc:
-            logging.warning("error tearing down ollama serve: %s", exc)
+    teardown_spawned(spawned)
 
 
 # ---------------------------------------------------------------------------
