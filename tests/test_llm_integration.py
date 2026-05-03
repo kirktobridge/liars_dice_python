@@ -3,15 +3,18 @@
 Skipped by default. Run with:
     .venv/bin/pytest tests/test_llm_integration.py -m integration -v
 
-Requirements:
-- `ollama serve` running on http://localhost:11434 (or OLLAMA_URL set).
-- The model named by Constants.LLM_MODEL is either already pulled or pullable
-  by this host. The session-scoped fixture will attempt `ollama pull` if missing.
+The session-scoped fixture will:
+1. Use an already-running Ollama daemon if reachable.
+2. Otherwise, spawn `ollama serve` as a subprocess (skipping if the binary
+   is not on PATH) and tear it down at session end.
+3. Pull the configured model via `ollama pull` if missing.
 """
 import logging
 import os
 import shutil
+import signal
 import subprocess
+import time
 from collections import deque
 from urllib.parse import urlparse
 
@@ -89,15 +92,71 @@ def _pull_model(model: str) -> bool:
         return False
 
 
+def _wait_until_reachable(timeout_s: float = 30.0, interval_s: float = 0.5) -> bool:
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if _ollama_reachable():
+            return True
+        time.sleep(interval_s)
+    return False
+
+
+def _spawn_ollama_serve() -> subprocess.Popen | None:
+    if shutil.which("ollama") is None:
+        return None
+    log = open("/tmp/ollama_serve_test.log", "ab", buffering=0)
+    try:
+        # start_new_session so we can kill the whole process group on teardown.
+        proc = subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+    except Exception as exc:
+        logging.warning("failed to spawn ollama serve: %s", exc)
+        log.close()
+        return None
+    return proc
+
+
 @pytest.fixture(scope="session")
 def ollama_with_model():
+    spawned: subprocess.Popen | None = None
     if not _ollama_reachable():
-        pytest.skip(f"Ollama not reachable at {_ollama_base()}; start `ollama serve` to run integration tests.")
+        spawned = _spawn_ollama_serve()
+        if spawned is None:
+            pytest.skip("Ollama not reachable and `ollama` binary not found on PATH.")
+        if not _wait_until_reachable(timeout_s=30.0):
+            try:
+                os.killpg(spawned.pid, signal.SIGTERM)
+            except Exception:
+                pass
+            pytest.skip("Spawned `ollama serve` but daemon never became reachable.")
+
     model = Constants.LLM_MODEL
     if not _model_present(model):
         if not _pull_model(model):
+            if spawned is not None:
+                try:
+                    os.killpg(spawned.pid, signal.SIGTERM)
+                except Exception:
+                    pass
             pytest.skip(f"Model {model} not present and could not be pulled.")
-    return model
+
+    yield model
+
+    if spawned is not None:
+        try:
+            os.killpg(spawned.pid, signal.SIGTERM)
+            try:
+                spawned.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(spawned.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except Exception as exc:
+            logging.warning("error tearing down ollama serve: %s", exc)
 
 
 # ---------------------------------------------------------------------------
