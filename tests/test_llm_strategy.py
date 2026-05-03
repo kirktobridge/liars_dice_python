@@ -253,3 +253,180 @@ class TestLLMStrategyTemperature(unittest.TestCase):
         payload = kwargs['json']
         self.assertIn('options', payload)
         self.assertEqual(payload['options']['temperature'], 0.42)
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: prompt anchors & legality validation (post-Gemma-empirical)
+# ---------------------------------------------------------------------------
+
+
+class TestLLMStrategyPromptAnchors(unittest.TestCase):
+
+    def setUp(self):
+        self.strategy = LLMStrategy()
+
+    def test_prompt_states_minimum_bid_constraint(self):
+        prompt = self.strategy._build_prompt([3, 5, 2], 10, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('count', prompt.lower())
+        self.assertIn(f'>= {Constants.MINIMUM_BID}', prompt)
+
+    def test_prompt_states_face_range_constraint(self):
+        prompt = self.strategy._build_prompt([3, 5, 2], 10, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('1-6', prompt)
+
+    def test_prompt_says_opening_must_bid(self):
+        prompt = self.strategy._build_prompt([3, 5, 2], 10, TurnResult(None, Action.START, 'dealer')).lower()
+        self.assertIn('opening', prompt)
+        self.assertIn('illegal', prompt)
+
+    def test_prompt_states_raise_escalation_rule(self):
+        prompt = self.strategy._build_prompt([3, 5, 2], 10, TurnResult(None, Action.START, 'dealer')).lower()
+        self.assertIn('raise', prompt)
+        self.assertIn('escalate', prompt)
+
+    def test_prompt_includes_sizing_hint_with_suggested_count(self):
+        # Hand with three 4s + one wild → suggest at least 4 plus opponent expectation.
+        prompt = self.strategy._build_prompt([4, 4, 4, 1], 12, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('Sizing guide', prompt)
+        self.assertIn('safe opening bid', prompt.lower())
+
+    def test_sizing_hint_subtracts_safety_margin(self):
+        # 4 effective fours + ~4 expected from 12 opponents = EV of 8. Suggestion should be 7 (8-1).
+        prompt = self.strategy._build_prompt([4, 4, 4, 1], 12, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('around 7 4s', prompt)
+
+    def test_sizing_hint_picks_modal_held_face(self):
+        # Gemma holds three 5s. Suggested face should be 5.
+        prompt = self.strategy._build_prompt([5, 5, 5, 2, 3], 9, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('face 5', prompt)
+
+    def test_sizing_hint_counts_wilds_toward_best_face(self):
+        # 2 fives + 2 wilds = 4 effective fives. Suggested ≈ 4 + 9/3 = 7 fives.
+        prompt = self.strategy._build_prompt([5, 5, 1, 1, 3], 9, TurnResult(None, Action.START, 'dealer'))
+        self.assertIn('4 dice toward face 5', prompt)
+
+    def test_plausibility_cue_present_when_responding_to_bid(self):
+        prev = TurnResult(Bid(8, 4), Action.BID, 'opponent')
+        prompt = self.strategy._build_prompt([3, 5, 2], 12, prev)
+        self.assertIn('Plausibility cue', prompt)
+
+    def test_plausibility_cue_says_low_claims_likely_true(self):
+        # 2/15 = 13% claim ratio → far below 33% baseline.
+        prev = TurnResult(Bid(2, 4), Action.BID, 'opponent')
+        prompt = self.strategy._build_prompt([3, 5, 2], 12, prev).lower()
+        self.assertIn('challenge is rarely correct', prompt)
+
+    def test_plausibility_cue_says_high_claims_challengeable(self):
+        # 8/12 = 67% claim ratio → well above baseline.
+        prev = TurnResult(Bid(8, 4), Action.BID, 'opponent')
+        prompt = self.strategy._build_prompt([3, 5, 2], 9, prev).lower()
+        self.assertIn('challenge becomes plausible', prompt)
+
+    def test_no_plausibility_cue_on_round_open(self):
+        prompt = self.strategy._build_prompt([3, 5, 2], 12, TurnResult(None, Action.START, 'dealer'))
+        self.assertNotIn('Plausibility cue', prompt)
+
+
+class TestLLMStrategyLegalityValidation(unittest.TestCase):
+
+    def setUp(self):
+        self.strategy = LLMStrategy()
+
+    @patch('strategy.query_llm')
+    def test_count_below_minimum_triggers_retry_then_falls_back_if_still_bad(self, mock_query):
+        # Both calls return count=1 (illegal). Expect fallback (CPU) on the second illegal response.
+        mock_query.return_value = '{"action": "bid", "count": 1, "face": 4}'
+        result = _decide(self.strategy, _start_events())
+        self.assertEqual(mock_query.call_count, 2)
+        # CPU fallback always produces a legal bid
+        self.assertEqual(result.action, Action.BID)
+        self.assertGreaterEqual(result.bid.count, Constants.MINIMUM_BID)
+
+    @patch('strategy.query_llm')
+    def test_count_below_minimum_retry_succeeds_no_fallback(self, mock_query):
+        mock_query.side_effect = [
+            '{"action": "bid", "count": 1, "face": 4}',
+            '{"action": "bid", "count": 3, "face": 4}',
+        ]
+        result = _decide(self.strategy, _start_events())
+        self.assertEqual(mock_query.call_count, 2)
+        self.assertEqual(result.action, Action.BID)
+        self.assertEqual(result.bid, Bid(3, 4))
+        self.assertFalse(result.fallback)
+
+    @patch('strategy.query_llm')
+    def test_retry_prompt_contains_specific_illegality(self, mock_query):
+        mock_query.side_effect = [
+            '{"action": "bid", "count": 1, "face": 4}',
+            '{"action": "bid", "count": 3, "face": 4}',
+        ]
+        _decide(self.strategy, _start_events())
+        retry_call = mock_query.call_args_list[1]
+        retry_prompt = retry_call[0][1]  # positional: (model, prompt, ...)
+        self.assertIn('rejected', retry_prompt)
+        self.assertIn('1', retry_prompt)
+        self.assertIn(str(Constants.MINIMUM_BID), retry_prompt)
+
+    @patch('strategy.query_llm')
+    def test_challenge_on_round_open_is_rejected_then_retried(self, mock_query):
+        mock_query.side_effect = [
+            '{"action": "challenge"}',
+            '{"action": "bid", "count": 3, "face": 4}',
+        ]
+        result = _decide(self.strategy, _start_events())
+        self.assertEqual(mock_query.call_count, 2)
+        self.assertEqual(result.action, Action.BID)
+        self.assertFalse(result.fallback)
+
+    @patch('strategy.query_llm')
+    def test_non_escalating_raise_is_rejected(self, mock_query):
+        # Previous bid was 4 fives. A raise with count=4 face=4 fails to escalate.
+        mock_query.side_effect = [
+            '{"action": "raise", "count": 4, "face": 4}',
+            '{"action": "raise", "count": 5, "face": 4}',
+        ]
+        result = self.strategy.decide(
+            player_name=PLAYER,
+            dice=[4, 4, 4, 1, 2],
+            num_dice=5,
+            recent_events=_bid_events(Bid(4, 5)),
+            tot_other_dice=10,
+            bidder_num_dice=5,
+        )
+        self.assertEqual(mock_query.call_count, 2)
+        self.assertEqual(result.action, Action.RAISE)
+        self.assertEqual(result.bid, Bid(5, 4))
+
+    @patch('strategy.query_llm')
+    def test_escalating_raise_same_count_higher_face_is_accepted(self, mock_query):
+        # 3 fours → 3 fives is a legal raise.
+        mock_query.return_value = '{"action": "raise", "count": 3, "face": 5}'
+        result = self.strategy.decide(
+            player_name=PLAYER,
+            dice=[5, 5, 1, 2, 3],
+            num_dice=5,
+            recent_events=_bid_events(Bid(3, 4)),
+            tot_other_dice=10,
+            bidder_num_dice=5,
+        )
+        self.assertEqual(mock_query.call_count, 1)
+        self.assertEqual(result.action, Action.RAISE)
+        self.assertEqual(result.bid, Bid(3, 5))
+
+    @patch('strategy.query_llm')
+    def test_face_out_of_range_is_rejected(self, mock_query):
+        mock_query.side_effect = [
+            '{"action": "bid", "count": 3, "face": 7}',
+            '{"action": "bid", "count": 3, "face": 4}',
+        ]
+        result = _decide(self.strategy, _start_events())
+        self.assertEqual(mock_query.call_count, 2)
+        self.assertEqual(result.action, Action.BID)
+        self.assertEqual(result.bid, Bid(3, 4))
+
+    @patch('strategy.query_llm')
+    def test_legal_response_does_not_trigger_retry(self, mock_query):
+        mock_query.return_value = '{"action": "bid", "count": 4, "face": 5}'
+        result = _decide(self.strategy, _start_events())
+        self.assertEqual(mock_query.call_count, 1)
+        self.assertEqual(result.bid, Bid(4, 5))

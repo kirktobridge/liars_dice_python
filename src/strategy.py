@@ -511,17 +511,16 @@ class LLMStrategy:
         num_active_players: int = 2,
     ) -> TurnResult:
         last = recent_events[0]
-        prompt = self._build_prompt(dice[:num_dice], tot_other_dice, last)
-        if self._stream:
-            raw = query_llm_stream(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
-        else:
-            raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
-        result = self._parse_response(raw, player_name)
-        # CHALLENGE / SPOT_ON are illegal on round open (no prior bid); the engine
-        # would crash on `prev_bid.count`. Treat as a parse failure → CPU fallback.
-        if result is not None and last.action == Action.START and result.action in (Action.CHALLENGE, Action.SPOT_ON):
-            logger.warning('LLMStrategy: illegal %s on round open; falling back', result.action.value)
-            result = None
+        own = dice[:num_dice]
+        prompt = self._build_prompt(own, tot_other_dice, last)
+        result, illegality = self._query_and_validate(prompt, player_name, last)
+        if result is None and illegality is not None:
+            # One retry with the specific illegality fed back. Cheap insurance vs CPU fallback.
+            retry_prompt = prompt + (
+                f"\n\nYour previous response was rejected: {illegality}. "
+                f"Reply again with corrected JSON."
+            )
+            result, _ = self._query_and_validate(retry_prompt, player_name, last)
         if result is not None:
             return result
         fallback_result = self._fallback.decide(
@@ -541,17 +540,66 @@ class LLMStrategy:
             fallback=True,
         )
 
+    def _query_and_validate(
+        self, prompt: str, player_name: str, last: TurnResult,
+    ) -> 'tuple[TurnResult | None, str | None]':
+        if self._stream:
+            raw = query_llm_stream(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+        else:
+            raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+        result = self._parse_response(raw, player_name)
+        if result is None:
+            return None, 'response was not valid JSON in the requested format'
+        # CHALLENGE / SPOT_ON are illegal on round open (no prior bid); the engine
+        # would crash on `prev_bid.count`.
+        if last.action == Action.START and result.action in (Action.CHALLENGE, Action.SPOT_ON):
+            return None, (
+                f'{result.action.value} is illegal on the opening turn (no previous bid); you must bid'
+            )
+        if result.action in (Action.BID, Action.RAISE):
+            assert result.bid is not None
+            if result.bid.count < Constants.MINIMUM_BID:
+                return None, (
+                    f'count {result.bid.count} is below the legal minimum of {Constants.MINIMUM_BID}'
+                )
+            if not (1 <= result.bid.face <= 6):
+                return None, f'face {result.bid.face} is not a valid die face (must be 1-6)'
+            if result.action == Action.RAISE and last.bid is not None:
+                # Raise must strictly escalate: higher count, or same count + higher face.
+                prev = last.bid
+                escalates = (
+                    result.bid.count > prev.count
+                    or (result.bid.count == prev.count and result.bid.face > prev.face)
+                )
+                if not escalates:
+                    return None, (
+                        f'raise to {result.bid.count} {result.bid.face}s does not escalate '
+                        f'previous bid of {prev.count} {prev.face}s '
+                        f'(must increase count, or keep count and increase face)'
+                    )
+        return result, None
+
     def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:
         prev_desc = (
             f"action={last.action.value}, bid={last.bid}"
             if last.bid
             else f"action={last.action.value}"
         )
+        total_dice = len(dice) + tot_other_dice
         rules = (
-            "Rules: A bid claims that AT LEAST <count> dice across all players show <face>. "
-            "Challenge accuses the previous bidder of lying; spot-on claims the bid count is exactly correct. "
+            "Rules: A bid claims AT LEAST <count> dice across the whole table show <face>. "
+            "Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. "
             "Ones (1s) are wild and count as any face."
         )
+        legality = (
+            f"Constraints: count must be an integer >= {Constants.MINIMUM_BID}. "
+            f"face must be an integer 1-6. "
+            f"On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. "
+            f"A raise must strictly escalate the previous bid: either count goes up, or count stays "
+            f"the same and face goes up."
+        )
+        sizing = self._sizing_hint(dice, tot_other_dice)
+        challenge_guidance = self._challenge_guidance(dice, last, total_dice)
         history_section = ""
         if self._history:
             recent = self._history[-_HISTORY_MAX:]
@@ -559,15 +607,78 @@ class LLMStrategy:
         return (
             f"You are playing Liar's Dice.\n"
             f"{rules}\n"
+            f"{legality}\n"
             f"Your dice: {dice}\n"
-            f"Total dice held by other players: {tot_other_dice}\n"
+            f"Total dice on the table: {total_dice} ({len(dice)} yours + {tot_other_dice} opponents')\n"
+            f"{sizing}"
             f"{history_section}"
             f"Previous action: {prev_desc}\n"
+            f"{challenge_guidance}"
             f"Respond with only valid JSON, no markdown, no explanation.\n"
             f"Use this exact format:\n"
             f'  {{"action": "bid|raise|challenge|spot_on", "count": <int>, "face": <int>}}\n'
             f"count and face are only required when action is bid or raise."
         )
+
+    @staticmethod
+    def _sizing_hint(dice: list[int], tot_other_dice: int) -> str:
+        """Pre-computed bid suggestion. Anchors Gemma to a sensible count rather than letting
+        her default to 1 or 2. Mirrors the math CPUStrategy uses for opening bids:
+        expected count of any non-1 face among opponent dice = tot_other_dice / 3.
+        """
+        if not dice:
+            return ""
+        # Find the most-held face (excluding wilds), tie-break by face value.
+        wilds = dice.count(1)
+        non_wild = [d for d in dice if d != 1]
+        if non_wild:
+            best_face = max(set(non_wild), key=lambda f: (non_wild.count(f), f))
+            best_matches = non_wild.count(best_face) + wilds
+        else:
+            best_face = 1
+            best_matches = wilds
+        expected_others = tot_other_dice // 3
+        # Subtract a small safety margin so the suggestion lands below the EV truth-line.
+        # Bidding at the expected count is ~50% to be true; bidding 1-2 below pushes
+        # truth probability into the 65-80% range (mirrors CPUStrategy's safety term).
+        safety = 1
+        suggested = max(Constants.MINIMUM_BID, best_matches + expected_others - safety)
+        return (
+            f"Sizing guide: you hold {best_matches} dice toward face {best_face} (counting wilds). "
+            f"Across {tot_other_dice} opponent dice, ~{expected_others} more of any non-1 face are expected. "
+            f"A safe opening bid is around {suggested} {best_face}s -- bidding at the expected count is ~50% true, "
+            f"so leave a small safety margin. Adjust based on history.\n"
+        )
+
+    @staticmethod
+    def _challenge_guidance(dice: list[int], last: TurnResult, total_dice: int) -> str:
+        """Anti-reflexive-challenge nudge. Most legal bids are truthful; only challenge when
+        the standing claim is implausibly large vs. what's likely on the table.
+        """
+        if last.action != Action.BID and last.action != Action.RAISE:
+            return ""
+        if last.bid is None or total_dice <= 0:
+            return ""
+        # Rough plausibility: claim_ratio = bid_count / total_dice. Baseline P(any face) ≈ 1/3
+        # including wilds, so ratios up to ~0.33 are routinely true.
+        claim_ratio = last.bid.count / total_dice
+        if claim_ratio < 0.30:
+            posture = (
+                f"The previous bid claims {last.bid.count}/{total_dice} = {claim_ratio:.0%} "
+                f"of dice show face {last.bid.face}. This is below the ~33% baseline and is "
+                f"very likely true; challenge is rarely correct here."
+            )
+        elif claim_ratio < 0.45:
+            posture = (
+                f"The previous bid claims {last.bid.count}/{total_dice} = {claim_ratio:.0%} "
+                f"of dice. Around the truthful baseline; challenge only with strong reason."
+            )
+        else:
+            posture = (
+                f"The previous bid claims {last.bid.count}/{total_dice} = {claim_ratio:.0%} "
+                f"of dice -- well above baseline; challenge becomes plausible."
+            )
+        return f"Plausibility cue: {posture}\n"
 
     def _parse_response(self, raw: 'str | None', player_name: str) -> 'TurnResult | None':
         if raw is None:
