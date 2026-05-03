@@ -17,6 +17,7 @@ from pydantic import BaseModel
 from web.game_session import GameSession
 from web.timing import EVENT_DELAYS
 from web.web_logging import setup_web_logging, get_logger
+from web.llm_debug import broadcaster as llm_debug_broadcaster
 from models import Action, Bid, InputResponse
 import constants as Constants
 
@@ -51,9 +52,33 @@ def _default(o):
 
 # ── existing routes ──────────────────────────────────────────────────────────
 
+@app.on_event('startup')
+async def _start_llm_debug() -> None:
+    await llm_debug_broadcaster.start()
+
+
 @app.get('/health')
 async def health() -> dict:
     return {'status': 'ok'}
+
+
+@app.get('/llm-debug', response_class=HTMLResponse)
+async def llm_debug_page():
+    return FileResponse(str(BASE / 'templates' / 'llm_debug.html'))
+
+
+@app.websocket('/ws/llm-debug')
+async def llm_debug_ws(websocket: WebSocket):
+    await llm_debug_broadcaster.attach(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  # we don't expect input; loop just keeps connection open
+    except WebSocketDisconnect:
+        pass
+    except Exception:
+        pass
+    finally:
+        llm_debug_broadcaster.detach(websocket)
 
 
 @app.get('/', response_class=HTMLResponse)

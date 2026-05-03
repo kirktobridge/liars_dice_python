@@ -8,13 +8,20 @@ The session-scoped fixture will:
 2. Otherwise, spawn `ollama serve` as a subprocess (skipping if the binary
    is not on PATH) and tear it down at session end.
 3. Pull the configured model via `ollama pull` if missing.
+
+Set LLM_DEBUG_WINDOW=1 to spawn a local FastAPI server on $LLM_DEBUG_PORT
+(default 8766) and open http://localhost:<port>/llm-debug in your default
+browser. Each prompt sent to Gemma and every streamed response token will
+appear live in the page while tests run.
 """
 import logging
 import os
 import shutil
 import signal
+import socket
 import subprocess
 import time
+import webbrowser
 from collections import deque
 from urllib.parse import urlparse
 
@@ -157,6 +164,111 @@ def ollama_with_model():
             pass
         except Exception as exc:
             logging.warning("error tearing down ollama serve: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Optional live debug window: streams every prompt + response to a browser tab
+# ---------------------------------------------------------------------------
+
+def _debug_window_enabled() -> bool:
+    return os.environ.get("LLM_DEBUG_WINDOW", "").lower() in ("1", "true", "yes", "on")
+
+
+def _port_is_free(port: int) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+
+
+@pytest.fixture(scope="session", autouse=True)
+def llm_debug_window():
+    """If LLM_DEBUG_WINDOW=1, run the FastAPI app on LLM_DEBUG_PORT (default 8766)
+    in a background thread (same process as the tests, so the in-memory broadcaster
+    sees prompt/token events from `llm_client`), then open /llm-debug in the
+    default browser."""
+    if not _debug_window_enabled():
+        yield None
+        return
+
+    port = int(os.environ.get("LLM_DEBUG_PORT", "8766"))
+    if not _port_is_free(port):
+        print(f"\n[llm-debug] port {port} in use — assuming server already running\n", flush=True)
+        url = f"http://localhost:{port}/llm-debug"
+        try:
+            webbrowser.open(url)
+        except Exception:
+            pass
+        time.sleep(1.0)
+        yield port
+        return
+
+    import threading
+    import uvicorn
+    from web.app import app as fastapi_app
+
+    config = uvicorn.Config(fastapi_app, host="127.0.0.1", port=port, log_level="warning")
+    server = uvicorn.Server(config)
+
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+
+    # Wait for the server to come up.
+    deadline = time.monotonic() + 15.0
+    ready = False
+    while time.monotonic() < deadline:
+        try:
+            r = requests.get(f"http://127.0.0.1:{port}/health", timeout=1)
+            if r.status_code == 200:
+                ready = True
+                break
+        except Exception:
+            pass
+        time.sleep(0.2)
+
+    if not ready:
+        logging.warning("debug uvicorn never became ready; window disabled")
+        server.should_exit = True
+        thread.join(timeout=5)
+        yield None
+        return
+
+    url = f"http://localhost:{port}/llm-debug"
+    try:
+        webbrowser.open(url)
+    except Exception:
+        pass
+    print(f"\n[llm-debug] live window: {url}\n", flush=True)
+
+    # Give the browser a moment to connect before the first prompt fires.
+    time.sleep(1.5)
+
+    yield port
+
+    server.should_exit = True
+    thread.join(timeout=5)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def llm_streaming_when_debug():
+    """When the debug window is on, force LLMStrategy default `stream=True`
+    so every token reaches the browser. No-op otherwise."""
+    if not _debug_window_enabled():
+        yield
+        return
+    original = LLMStrategy.__init__
+
+    def patched(self, *args, **kwargs):
+        kwargs.setdefault("stream", True)
+        original(self, *args, **kwargs)
+
+    LLMStrategy.__init__ = patched
+    try:
+        yield
+    finally:
+        LLMStrategy.__init__ = original
 
 
 # ---------------------------------------------------------------------------

@@ -9,7 +9,7 @@ import re
 import constants as Constants
 from dice_math import get_binom, needed_cnt
 from models import Action, Bid, TurnResult, OpponentProfile, ResponseContext, InputHandler
-from llm_client import query_llm
+from llm_client import query_llm, query_llm_stream
 
 logger = logging.getLogger('liars_dice.strategy')
 
@@ -467,10 +467,12 @@ class LLMStrategy:
         model: str = Constants.LLM_MODEL,
         temperature: float = 0.3,
         timeout: float = 30.0,
+        stream: bool = False,
     ) -> None:
         self._model = model
         self._temperature = temperature
         self._timeout = timeout
+        self._stream = stream
         self._history: list[str] = []
         self._fallback = CPUStrategy(random.Random())
 
@@ -510,7 +512,10 @@ class LLMStrategy:
     ) -> TurnResult:
         last = recent_events[0]
         prompt = self._build_prompt(dice[:num_dice], tot_other_dice, last)
-        raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+        if self._stream:
+            raw = query_llm_stream(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+        else:
+            raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
         result = self._parse_response(raw, player_name)
         if result is not None:
             return result
