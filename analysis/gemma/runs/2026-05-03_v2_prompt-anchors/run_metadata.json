@@ -1,0 +1,25 @@
+{
+  "run_name": "2026-05-03_v2_prompt-anchors",
+  "intervention": "legality validation + sizing anchor + plausibility cue",
+  "date": "2026-05-04",
+  "model": "gemma4:e4b",
+  "ollama_url": "http://172.19.176.1:11434/api/generate",
+  "temperature": 1.0,
+  "timeout_s": 60.0,
+  "games_per_matchup": 30,
+  "matchups": [
+    "vs_salty",
+    "vs_reckless",
+    "vs_crafty",
+    "vs_stoic",
+    "vs_wildcard",
+    "vs_mixed"
+  ],
+  "total_games": 180,
+  "total_wins": 38,
+  "total_decisions_logged": 2755,
+  "duration_min": 425.52951503931666,
+  "code_sha_at_run_time": "c7715cc098e69823ac74de8a553708241813c0eb",
+  "strategy_module_sha256": "503a980a05ab385e7f82a697cbcbe7f30d5e0db91e638a02baa41eb1a19a362a",
+  "command_line": "scripts/gemma_analysis.py --run-name 2026-05-03_v2_prompt-anchors --intervention legality validation + sizing anchor + plausibility cue"
+}

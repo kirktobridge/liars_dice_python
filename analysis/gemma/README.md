@@ -7,6 +7,11 @@ Empirical research on how `gemma4:e4b` plays Liar's Dice, what fails, and which 
 | Run | Date | Intervention | Headline | Win rate |
 |---|---|---|---|---|
 | [2026-05-03_v1_baseline](runs/2026-05-03_v1_baseline/report.md) | 2026-05-03 | No changes — first measurement | 22.5% bids count=1, ~50% reflexive challenges, no archetype adaptation | 0/180 |
+| [2026-05-03_v2_prompt-anchors](runs/2026-05-03_v2_prompt-anchors/report.md) | 2026-05-04 | Legality constraints + sizing anchor + plausibility cue + retry loop | All three v1 failure modes essentially closed; lifts above 20% random baseline | **38/180 (21.1%)** |
+
+## Cross-run comparisons
+
+- [v1_vs_v2.md](v1_vs_v2.md) — Did the prompt intervention work? (Yes: 0/180 → 38/180.)
 
 ## How to run a new experiment
 

@@ -1,0 +1,332 @@
+{
+  "run_name": "2026-05-03_v2_prompt-anchors",
+  "model": "gemma4:e4b",
+  "games_per_matchup": 30,
+  "duration_min": 425.52951503931666,
+  "matchups": [
+    {
+      "key": "vs_salty",
+      "label": "vs 4\u00d7 Salty Veteran",
+      "n_games": 30,
+      "win_count": 2,
+      "win_rate": 0.06666666666666667,
+      "win_ci_lo": 0.01847663532769335,
+      "win_ci_hi": 0.21323817721072091,
+      "mean_finish": 2.6333333333333333,
+      "mean_rounds": 25.833333333333332,
+      "fallback_rate": 0.0,
+      "n_decisions": 537,
+      "action_dist": {
+        "bid": 0.3929236499068901,
+        "raise": 0.4450651769087523,
+        "challenge": 0.15456238361266295,
+        "spot_on": 0.0074487895716946
+      },
+      "mean_aggression": null,
+      "challenges_called": 83,
+      "challenge_success_rate": 0.3855421686746988,
+      "spot_on_called": 4,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 98,
+      "bids_against_gemma": 98,
+      "caught_rate": null,
+      "mean_latency_s": 10.001008616426448,
+      "sample_traces": [
+        {
+          "matchup": "vs_salty",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 9.064,
+          "error": null
+        },
+        {
+          "matchup": "vs_salty",
+          "seed": 22,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [2, 4, 6]\nTotal dice on the table: 11 (3 yours + 8 opponents')\nSizing guide: you hold 1 dice toward face 6 (counting wilds). Across 8 opponent dice, ~2 more of any non-1 face are expected. A safe opening bid is around 2 6s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Salty Veteran 1 bid 5 ones\n  - Salty Veteran 3 challenged\n  - Salty Veteran 3 bid 5 twos\n  - Salty Veteran 4 challenged\n  - Salty Veteran 4 bid 4 fours\n  - Salty Veteran 3 challenged\n  - Salty Veteran 3 bid 2 fours\n  - Salty Veteran 4 bid 2 twos\n  - Salty Veteran 3 bid 3 fours\n  - Salty Veteran 4 bid 3 sixes\nPrevious action: action=BID, bid=Bid(count=3, face=6)\nPlausibility cue: The previous bid claims 3/11 = 27% of dice show face 6. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.\n\nYour previous response was rejected: raise to 3 1s does not escalate previous bid of 3 6s (must increase count, or keep count and increase face). Reply again with corrected JSON.",
+          "response": "{\"action\": \"raise\", \"count\": 4, \"face\": 6}",
+          "parsed_action": "raise",
+          "parsed_count": 4,
+          "parsed_face": 6,
+          "fallback": false,
+          "latency_s": 0.957,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_reckless",
+      "label": "vs 4\u00d7 Reckless Buccaneer",
+      "n_games": 30,
+      "win_count": 14,
+      "win_rate": 0.4666666666666667,
+      "win_ci_lo": 0.30232127224128236,
+      "win_ci_hi": 0.6385798671847496,
+      "mean_finish": 3.6333333333333333,
+      "mean_rounds": 23.4,
+      "fallback_rate": 0.0,
+      "n_decisions": 332,
+      "action_dist": {
+        "bid": 0.4819277108433735,
+        "raise": 0.2891566265060241,
+        "challenge": 0.22289156626506024,
+        "spot_on": 0.006024096385542169
+      },
+      "mean_aggression": null,
+      "challenges_called": 74,
+      "challenge_success_rate": 0.527027027027027,
+      "spot_on_called": 2,
+      "spot_on_success_rate": 0.5,
+      "times_caught_bluffing": 70,
+      "bids_against_gemma": 70,
+      "caught_rate": null,
+      "mean_latency_s": 8.360826731352407,
+      "sample_traces": [
+        {
+          "matchup": "vs_reckless",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 1.545,
+          "error": null
+        },
+        {
+          "matchup": "vs_reckless",
+          "seed": 20,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [1, 5, 2, 4, 2, 2]\nTotal dice on the table: 27 (6 yours + 21 opponents')\nSizing guide: you hold 4 dice toward face 2 (counting wilds). Across 21 opponent dice, ~7 more of any non-1 face are expected. A safe opening bid is around 10 2s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Reckless Buccaneer 3 bid 9 sixes\n  - Reckless Buccaneer 4 raised to 10 twos\n  - Reckless Buccaneer 1 bid 11 fives\n  - Reckless Buccaneer 2 challenged\n  - Reckless Buccaneer 1 bid 10 sixes\n  - Reckless Buccaneer 2 challenged\n  - Reckless Buccaneer 1 bid 6 ones\n  - Reckless Buccaneer 2 bid 6 sixes\n  - Reckless Buccaneer 3 raised to 7 sixes\n  - Reckless Buccaneer 4 bid 7 threes\nPrevious action: action=BID, bid=Bid(count=7, face=3)\nPlausibility cue: The previous bid claims 7/27 = 26% of dice show face 3. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"raise\", \"count\": 10, \"face\": 3}",
+          "parsed_action": "raise",
+          "parsed_count": 10,
+          "parsed_face": 3,
+          "fallback": false,
+          "latency_s": 2.619,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_crafty",
+      "label": "vs 4\u00d7 Crafty Captain",
+      "n_games": 30,
+      "win_count": 6,
+      "win_rate": 0.2,
+      "win_ci_lo": 0.09504978102401235,
+      "win_ci_hi": 0.37306047381027446,
+      "mean_finish": 3.033333333333333,
+      "mean_rounds": 24.533333333333335,
+      "fallback_rate": 0.0,
+      "n_decisions": 456,
+      "action_dist": {
+        "bid": 0.4100877192982456,
+        "raise": 0.4232456140350877,
+        "challenge": 0.16447368421052633,
+        "spot_on": 0.0021929824561403508
+      },
+      "mean_aggression": null,
+      "challenges_called": 75,
+      "challenge_success_rate": 0.4266666666666667,
+      "spot_on_called": 1,
+      "spot_on_success_rate": 1.0,
+      "times_caught_bluffing": 91,
+      "bids_against_gemma": 91,
+      "caught_rate": null,
+      "mean_latency_s": 8.7568424451798,
+      "sample_traces": [
+        {
+          "matchup": "vs_crafty",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 10.611,
+          "error": null
+        },
+        {
+          "matchup": "vs_crafty",
+          "seed": 17,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 3, 5, 5]\nTotal dice on the table: 15 (4 yours + 11 opponents')\nSizing guide: you hold 2 dice toward face 5 (counting wilds). Across 11 opponent dice, ~3 more of any non-1 face are expected. A safe opening bid is around 4 5s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Crafty Captain 2 bid 3 threes\n  - Crafty Captain 3 raised to 4 twos\n  - Crafty Captain 4 raised to 5 twos\n  - Crafty Captain 1 called spot on\n  - Crafty Captain 1 bid 4 twos\n  - Crafty Captain 2 bid 4 fours\n  - Crafty Captain 3 called spot on\n  - Crafty Captain 3 bid 7 threes\n  - Crafty Captain 4 challenged\n  - Crafty Captain 4 bid 4 fives\nPrevious action: action=BID, bid=Bid(count=4, face=5)\nPlausibility cue: The previous bid claims 4/15 = 27% of dice show face 5. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"raise\", \"count\": 5, \"face\": 5}",
+          "parsed_action": "raise",
+          "parsed_count": 5,
+          "parsed_face": 5,
+          "fallback": false,
+          "latency_s": 2.302,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_stoic",
+      "label": "vs 4\u00d7 Stoic Quartermaster",
+      "n_games": 30,
+      "win_count": 2,
+      "win_rate": 0.06666666666666667,
+      "win_ci_lo": 0.01847663532769335,
+      "win_ci_hi": 0.21323817721072091,
+      "mean_finish": 2.433333333333333,
+      "mean_rounds": 25.666666666666668,
+      "fallback_rate": 0.0,
+      "n_decisions": 544,
+      "action_dist": {
+        "bid": 0.4007352941176471,
+        "raise": 0.45036764705882354,
+        "challenge": 0.13051470588235295,
+        "spot_on": 0.01838235294117647
+      },
+      "mean_aggression": null,
+      "challenges_called": 70,
+      "challenge_success_rate": 0.3142857142857143,
+      "spot_on_called": 10,
+      "spot_on_success_rate": 0.2,
+      "times_caught_bluffing": 100,
+      "bids_against_gemma": 100,
+      "caught_rate": null,
+      "mean_latency_s": 9.499436076327259,
+      "sample_traces": [
+        {
+          "matchup": "vs_stoic",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 10.863,
+          "error": null
+        },
+        {
+          "matchup": "vs_stoic",
+          "seed": 8,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [2, 3, 1, 1, 4, 3]\nTotal dice on the table: 26 (6 yours + 20 opponents')\nSizing guide: you hold 4 dice toward face 3 (counting wilds). Across 20 opponent dice, ~6 more of any non-1 face are expected. A safe opening bid is around 9 3s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Stoic Quartermaster 2 challenged\n  - Stoic Quartermaster 2 bid 11 ones\n  - Stoic Quartermaster 3 challenged\n  - Stoic Quartermaster 2 bid 9 ones\n  - Stoic Quartermaster 3 challenged\n  - Stoic Quartermaster 2 bid 9 ones\n  - Stoic Quartermaster 3 challenged\n  - Stoic Quartermaster 2 bid 7 fours\n  - Stoic Quartermaster 3 bid 7 threes\n  - Stoic Quartermaster 4 bid 7 sixes\nPrevious action: action=BID, bid=Bid(count=7, face=6)\nPlausibility cue: The previous bid claims 7/26 = 27% of dice show face 6. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.\n\nYour previous response was rejected: raise to 7 5s does not escalate previous bid of 7 6s (must increase count, or keep count and increase face). Reply again with corrected JSON.",
+          "response": "{\"action\": \"raise\", \"count\": 7, \"face\": 5}",
+          "parsed_action": "raise",
+          "parsed_count": 7,
+          "parsed_face": 5,
+          "fallback": false,
+          "latency_s": 0.955,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_wildcard",
+      "label": "vs 4\u00d7 Wild Card",
+      "n_games": 30,
+      "win_count": 12,
+      "win_rate": 0.4,
+      "win_ci_lo": 0.24590394326083403,
+      "win_ci_hi": 0.5767994750172616,
+      "mean_finish": 3.7666666666666666,
+      "mean_rounds": 25.333333333333332,
+      "fallback_rate": 0.0,
+      "n_decisions": 425,
+      "action_dist": {
+        "bid": 0.44,
+        "raise": 0.3058823529411765,
+        "challenge": 0.24,
+        "spot_on": 0.01411764705882353
+      },
+      "mean_aggression": null,
+      "challenges_called": 100,
+      "challenge_success_rate": 0.59,
+      "spot_on_called": 6,
+      "spot_on_success_rate": 0.3333333333333333,
+      "times_caught_bluffing": 82,
+      "bids_against_gemma": 82,
+      "caught_rate": null,
+      "mean_latency_s": 8.822630948270653,
+      "sample_traces": [
+        {
+          "matchup": "vs_wildcard",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 1.544,
+          "error": null
+        },
+        {
+          "matchup": "vs_wildcard",
+          "seed": 3,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [2, 6, 5, 3, 3]\nTotal dice on the table: 27 (5 yours + 22 opponents')\nSizing guide: you hold 2 dice toward face 3 (counting wilds). Across 22 opponent dice, ~7 more of any non-1 face are expected. A safe opening bid is around 8 3s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Wild Card 1 bid 9 fives\n  - Wild Card 2 bid 9 threes\n  - Wild Card 3 bid 9 sixes\n  - Wild Card 4 raised to 10 fives\n  - Wild Card 1 raised to 12 fives\n  - Wild Card 2 challenged\n  - Wild Card 1 bid 6 ones\n  - Wild Card 2 bid 6 fours\n  - Wild Card 3 raised to 7 fours\n  - Wild Card 4 bid 7 fives\nPrevious action: action=BID, bid=Bid(count=7, face=5)\nPlausibility cue: The previous bid claims 7/27 = 26% of dice show face 5. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"raise\", \"count\": 10, \"face\": 5}",
+          "parsed_action": "raise",
+          "parsed_count": 10,
+          "parsed_face": 5,
+          "fallback": false,
+          "latency_s": 2.331,
+          "error": null
+        }
+      ]
+    },
+    {
+      "key": "vs_mixed",
+      "label": "vs 1 of each archetype",
+      "n_games": 30,
+      "win_count": 2,
+      "win_rate": 0.06666666666666667,
+      "win_ci_lo": 0.01847663532769335,
+      "win_ci_hi": 0.21323817721072091,
+      "mean_finish": 2.9,
+      "mean_rounds": 24.933333333333334,
+      "fallback_rate": 0.0,
+      "n_decisions": 461,
+      "action_dist": {
+        "bid": 0.4316702819956616,
+        "raise": 0.3774403470715835,
+        "challenge": 0.1843817787418655,
+        "spot_on": 0.006507592190889371
+      },
+      "mean_aggression": null,
+      "challenges_called": 85,
+      "challenge_success_rate": 0.3411764705882353,
+      "spot_on_called": 3,
+      "spot_on_success_rate": 0.0,
+      "times_caught_bluffing": 88,
+      "bids_against_gemma": 88,
+      "caught_rate": null,
+      "mean_latency_s": 9.695223567279761,
+      "sample_traces": [
+        {
+          "matchup": "vs_mixed",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 1.552,
+          "error": null
+        },
+        {
+          "matchup": "vs_mixed",
+          "seed": 14,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [5, 5, 3, 5, 3, 3]\nTotal dice on the table: 25 (6 yours + 19 opponents')\nSizing guide: you hold 3 dice toward face 5 (counting wilds). Across 19 opponent dice, ~6 more of any non-1 face are expected. A safe opening bid is around 8 5s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Salty bid 11 fours\n  - Reckless challenged\n  - Reckless bid 9 threes\n  - Crafty bid 9 fours\n  - Stoic bid 9 twos\n  - Salty raised to 12 threes\n  - Reckless challenged\n  - Reckless bid 7 fives\n  - Crafty bid 7 twos\n  - Stoic bid 7 threes\nPrevious action: action=BID, bid=Bid(count=7, face=3)\nPlausibility cue: The previous bid claims 7/25 = 28% of dice show face 3. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nRespond with only valid JSON, no markdown, no explanation.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 8, \"face\": 5}",
+          "parsed_action": "bid",
+          "parsed_count": 8,
+          "parsed_face": 5,
+          "fallback": false,
+          "latency_s": 2.101,
+          "error": null
+        }
+      ]
+    }
+  ]
+}
