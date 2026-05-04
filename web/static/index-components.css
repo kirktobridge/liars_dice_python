@@ -1,3 +1,94 @@
+/* ── LOBBY SECONDARY ACTIONS (Tournament / Explainer) ── */
+.lobby-secondary-actions {
+  display: flex;
+  gap: 10px;
+  margin: -8px 0 22px;
+}
+
+.lobby-secondary-btn {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 8px;
+  border: 1px solid var(--color-border-wood, #5a4a38);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  color: #8a7a68;
+  text-decoration: none;
+  font-family: var(--font-display);
+  transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.lobby-secondary-btn:hover {
+  border-color: var(--color-gold, #c9a84c);
+  color: var(--color-gold-bright, #e8c875);
+  background: rgba(201, 168, 76, 0.08);
+  box-shadow: 0 0 10px var(--color-gold-alpha-30, rgba(201, 168, 76, 0.3));
+}
+
+.lobby-secondary-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.lobby-secondary-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+/* Tooltip on hover via data-tooltip */
+.lobby-secondary-btn[data-tooltip]::before,
+.lobby-secondary-btn[data-tooltip]::after {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 20;
+}
+
+.lobby-secondary-btn[data-tooltip]::before {
+  content: attr(data-tooltip);
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 240px;
+  padding: 7px 10px;
+  background: #1a0c00;
+  border: 1px solid var(--color-gold, #c9a84c);
+  border-radius: 6px;
+  color: #e8c875;
+  font-family: 'Crimson Text', serif;
+  font-size: 0.8rem;
+  font-style: italic;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: normal;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+}
+
+.lobby-secondary-btn[data-tooltip]::after {
+  content: '';
+  transform: translateX(-50%);
+  bottom: calc(100% + 2px);
+  border: 6px solid transparent;
+  border-top-color: var(--color-gold, #c9a84c);
+}
+
+.lobby-secondary-btn[data-tooltip]:hover::before,
+.lobby-secondary-btn[data-tooltip]:hover::after,
+.lobby-secondary-btn[data-tooltip]:focus-visible::before,
+.lobby-secondary-btn[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
 /* ── PIECE OF EIGHT DIAL ─────────────────────────────── */
 .coin-dial {
   display: flex;
