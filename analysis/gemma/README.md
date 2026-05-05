@@ -13,6 +13,10 @@ Empirical research on how `gemma4:e4b` plays Liar's Dice, what fails, and which 
 
 - [v1_vs_v2.md](v1_vs_v2.md) — Did the prompt intervention work? (Yes: 0/180 → 38/180.)
 
+## Conceptual guide
+
+- [GUIDE.md](GUIDE.md) — what we test and why, what Gemma sees / doesn't see, the opinionation-vs-cognition tension, and what it'd take to extend this to other local LLMs.
+
 ## How to run a new experiment
 
 ```bash
