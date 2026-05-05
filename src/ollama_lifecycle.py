@@ -5,6 +5,7 @@ Pure utility module — no game logic, no test framework dependency.
 """
 from __future__ import annotations
 
+import glob
 import logging
 import os
 import shutil
@@ -84,16 +85,42 @@ def wait_until_reachable(timeout_s: float = 30.0, interval_s: float = 0.5) -> bo
     return False
 
 
+def _find_ollama_executable() -> 'str | None':
+    """Locate an ollama executable. Falls back to Windows ollama.exe under WSL."""
+    found = shutil.which("ollama")
+    if found:
+        return found
+    explicit = os.environ.get("OLLAMA_EXE")
+    if explicit and os.path.isfile(explicit):
+        return explicit
+    # WSL fallback: Windows-side install reachable via /mnt/c interop
+    candidates = glob.glob("/mnt/c/Users/*/AppData/Local/Programs/Ollama/ollama.exe")
+    candidates += [
+        "/mnt/c/Program Files/Ollama/ollama.exe",
+        "/mnt/c/Program Files (x86)/Ollama/ollama.exe",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+    return None
+
+
 def spawn_ollama_serve(log_path: str = "/tmp/ollama_serve.log") -> 'subprocess.Popen | None':
-    if shutil.which("ollama") is None:
+    exe = _find_ollama_executable()
+    if exe is None:
         return None
     log = open(log_path, "ab", buffering=0)
+    # When launching the Windows .exe from WSL, bind to all interfaces so WSL can reach it.
+    env = os.environ.copy()
+    if exe.endswith(".exe") and "OLLAMA_HOST" not in env:
+        env["OLLAMA_HOST"] = "0.0.0.0:11434"
     try:
         proc = subprocess.Popen(
-            ["ollama", "serve"],
+            [exe, "serve"],
             stdout=log,
             stderr=subprocess.STDOUT,
             start_new_session=True,
+            env=env,
         )
     except Exception as exc:
         logger.warning("failed to spawn ollama serve: %s", exc)

@@ -29,6 +29,8 @@ let totalDiceInGame = 20;
 let advisorData     = null;
 let advisorEnabled  = false;
 let humanEliminated = false;
+let storedLlmModel  = '';
+let llmThinkingFor  = null;  // player name currently "thinking" (LLM only)
 
 // ============================================================
 // DOM SHORTHAND
@@ -80,6 +82,14 @@ function renderRoster(snap) {
       const dot = document.createElement('div');
       dot.className = 'player-card-turn pulse-dot';
       card.appendChild(dot);
+    }
+
+    // LLM "thinking…" indicator
+    if (llmThinkingFor === p.name && !isElim) {
+      const think = document.createElement('div');
+      think.className = 'llm-thinking';
+      think.innerHTML = '<span class="llm-spinner"></span><span class="llm-thinking-label">thinking…</span>';
+      card.appendChild(think);
     }
 
     // Pip indicators
@@ -560,21 +570,25 @@ function handleMessage(data) {
 
   // ── Bids ─────────────────────────────────────────────────
   if (t === 'bid_made') {
+    if (llmThinkingFor === event.player_name) llmThinkingFor = null;
     addFeedEntry(`<b style="color:#d0c0a0">${escHtml(event.player_name)}</b> opens: ${event.count}× ${dieBadge(event.face)}`);
     return;
   }
   if (t === 'raise_made') {
+    if (llmThinkingFor === event.player_name) llmThinkingFor = null;
     addFeedEntry(`<b style="color:#d0c0a0">${escHtml(event.player_name)}</b> raises to ${event.count}× ${dieBadge(event.face)}`);
     return;
   }
 
   // ── Challenges / Spot On ─────────────────────────────────
   if (t === 'challenge_called') {
+    if (llmThinkingFor === event.challenger_name) llmThinkingFor = null;
     disableActions();
     addFeedEntry(`⚔ <b style="color:#d0c0a0">${escHtml(event.challenger_name)}</b> calls out <b style="color:#d0c0a0">${escHtml(event.bidder_name)}</b>!`);
     return;
   }
   if (t === 'spot_on_called') {
+    if (llmThinkingFor === event.caller_name) llmThinkingFor = null;
     disableActions();
     addFeedEntry(`🎯 <b style="color:#d0c0a0">${escHtml(event.caller_name)}</b> calls Spot On!`);
     return;
@@ -631,12 +645,14 @@ function handleMessage(data) {
   // ── Round lifecycle ──────────────────────────────────────
   if (t === 'round_started') {
     currentTurnPlayer = null;
+    llmThinkingFor = null;
     addFeedEntry(`<span style="color:#4a4040; font-family:'Cinzel',serif; font-size:0.78rem; letter-spacing:0.1em;">— ROUND ${event.round_num} —</span>`);
     disableActions();
     return;
   }
   if (t === 'turn_started') {
     currentTurnPlayer = event.player_name;
+    llmThinkingFor = event.player_type === 'LLM' ? event.player_name : null;
     if (lastSnapshot) renderRoster(lastSnapshot);
     return;
   }
@@ -687,6 +703,7 @@ function connect(sessionId) {
       type:        'join',
       human_name:  humanName,
       num_players: storedNumPlayers,
+      llm_model:   storedLlmModel || null,
     }));
   };
 
@@ -733,6 +750,8 @@ function initLobby() {
 
     humanName        = name;
     storedNumPlayers = parseInt(numSelect.value) || 3;
+    const llmSelect  = $('llm-model');
+    storedLlmModel   = llmSelect ? llmSelect.value : '';
     startGame();
   });
 
@@ -761,6 +780,7 @@ function startGame() {
   eventLog          = [];
   lastSnapshot      = null;
   humanEliminated   = false;
+  llmThinkingFor    = null;
   totalDiceInGame   = storedNumPlayers * 5;
   const slider = $('bid-count');
   if (slider) { slider.max = totalDiceInGame; slider.value = 2; }
@@ -820,6 +840,87 @@ function initCoinDial() {
   }, { passive: false });
 
   sync();
+}
+
+// ============================================================
+// LLM OPPONENT DROPDOWN
+// ============================================================
+async function fetchLlmModels() {
+  const resp = await fetch('/llm/models');
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  return resp.json();
+}
+
+function renderLlmOpponent(data) {
+  const select   = $('llm-model');
+  const startBtn = $('llm-start-btn');
+  const hint     = $('llm-hint');
+  if (!select || !startBtn) return;
+
+  // Reset
+  select.innerHTML = '<option value="">None — all CPU</option>';
+  select.disabled = false;
+
+  if (!data.available) {
+    select.style.display = 'none';
+    startBtn.style.display = '';
+    if (hint) hint.textContent = 'Ollama is not running.';
+    return;
+  }
+
+  startBtn.style.display = 'none';
+  select.style.display = '';
+
+  if (!Array.isArray(data.models) || data.models.length === 0) {
+    select.disabled = true;
+    if (hint) hint.textContent = 'Ollama is running but has no models installed.';
+    return;
+  }
+
+  for (const name of data.models) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    select.appendChild(opt);
+  }
+  if (hint) hint.textContent = 'One opponent will be powered by the chosen LLM.';
+}
+
+async function initLlmOpponent() {
+  const row      = $('llm-opponent-row');
+  const startBtn = $('llm-start-btn');
+  const hint     = $('llm-hint');
+  if (!row || !startBtn) return;
+
+  startBtn.addEventListener('click', async () => {
+    startBtn.disabled = true;
+    const original = startBtn.textContent;
+    startBtn.textContent = 'STARTING…';
+    if (hint) hint.textContent = 'Spawning ollama serve…';
+    try {
+      const resp = await fetch('/llm/start', { method: 'POST' });
+      if (!resp.ok) {
+        const detail = await resp.json().catch(() => ({}));
+        throw new Error(detail.detail || ('HTTP ' + resp.status));
+      }
+      const data = await fetchLlmModels();
+      renderLlmOpponent(data);
+    } catch (err) {
+      console.warn('Ollama start failed', err);
+      startBtn.disabled = false;
+      startBtn.textContent = original;
+      if (hint) hint.textContent = 'Failed to start Ollama: ' + err.message;
+    }
+  });
+
+  let data;
+  try {
+    data = await fetchLlmModels();
+  } catch (err) {
+    console.warn('LLM models lookup failed', err);
+    data = { available: false, models: [] };
+  }
+  renderLlmOpponent(data);
 }
 
 // ============================================================
@@ -1185,6 +1286,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initBidForm();
   initPlayAgain();
   initAdvisorToggle();
+  initLlmOpponent();
   disableActions();
   updateSliderFill();
 });

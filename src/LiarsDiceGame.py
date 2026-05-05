@@ -120,6 +120,7 @@ class LiarsDiceGame:
             logger.debug('turn start | %s | hands: %s', player.name, self._dice_snapshot())
         self._emit('turn_started',
                    player_name=player.name,
+                   player_type=player.player_type,
                    num_dice=player.num_dice,
                    round_num=self.round_num)
 

@@ -72,6 +72,21 @@
           </div>
         </div>
 
+        <div id="llm-opponent-row">
+          <label class="block text-stone-400 text-xs font-display tracking-widest mb-1">LLM OPPONENT</label>
+          <select id="llm-model" style="display:none;"
+            class="w-full bg-stone-900 border border-stone-700 rounded-lg px-3 py-2 text-stone-100
+                   focus:outline-none focus:border-amber-500 transition-colors text-sm">
+            <option value="">None — all CPU</option>
+          </select>
+          <button id="llm-start-btn" type="button" style="display:none;"
+            class="w-full border border-amber-700 text-amber-400 hover:bg-amber-900/30
+                   font-display text-xs tracking-widest py-2 rounded-lg transition-colors">
+            START OLLAMA
+          </button>
+          <p id="llm-hint" class="text-stone-600 text-xs italic mt-1"></p>
+        </div>
+
         <button id="start-btn"
           class="w-full bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-stone-900 font-display
                  font-bold py-3 px-6 rounded-lg text-lg tracking-widest transition-colors mt-2 shadow-lg">

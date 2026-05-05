@@ -18,6 +18,7 @@ class TestQueryLlm(unittest.TestCase):
         mock.raise_for_status.return_value = None
         return mock
 
+    @patch.dict(os.environ, {'OLLAMA_URL': 'http://localhost:11434/api/generate'})
     @patch('llm_client.requests.post')
     def test_successful_response(self, mock_post):
         mock_post.return_value = self._mock_response({'response': 'Hello there!'})

@@ -690,3 +690,33 @@ body.advisor-active #advisor-actions-note {
   color: #4a3a3a;
   font-size: 0.7rem;
 }
+
+.llm-thinking {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 0.7rem;
+  color: #c9a84c;
+  font-style: italic;
+  letter-spacing: 0.05em;
+}
+
+.llm-spinner {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid rgba(201, 168, 76, 0.3);
+  border-top-color: #c9a84c;
+  border-radius: 50%;
+  animation: llm-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.llm-thinking-label {
+  opacity: 0.85;
+}
+
+@keyframes llm-spin {
+  to { transform: rotate(360deg); }
+}

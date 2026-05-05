@@ -87,11 +87,13 @@ def _serialise_advisor(data: dict) -> dict:
 
 
 class GameSession:
-    def __init__(self, num_players: int, human_name: str, session_id: str = '') -> None:
+    def __init__(self, num_players: int, human_name: str, session_id: str = '',
+                 llm_model: str | None = None) -> None:
         self._out: queue.Queue[dict] = queue.Queue()
         self._handler = WebInputHandler()
         self._num_players = num_players
         self._human_name = human_name
+        self._llm_model = llm_model
         self._session_id = session_id[:8] or 'unknown'
         self._log = get_logger(f'session.{self._session_id}')
         self._event_seq = 0
@@ -101,7 +103,7 @@ class GameSession:
     def _run(self) -> None:
         rng = random.Random()
         available = [n for n in Constants.PLAYER_NAMES if n != self._human_name]
-        cpu_names = rng.sample(available, self._num_players - 1)
+        opponent_names = rng.sample(available, self._num_players - 1)
 
         def on_event(event: dict) -> None:
             self._event_seq += 1
@@ -118,8 +120,13 @@ class GameSession:
 
         human = Player(self._human_name, player_type='HUMAN', input_handler=self._handler)
         game.add_player(human)
-        for name in cpu_names:
-            game.add_player(Player(name, player_type='CPU'))
+        # If an LLM model was selected, the first opponent slot becomes an LLM player.
+        llm_slot = 0 if self._llm_model else -1
+        for idx, name in enumerate(opponent_names):
+            if idx == llm_slot:
+                game.add_player(Player(name, player_type='LLM', llm_model=self._llm_model))
+            else:
+                game.add_player(Player(name, player_type='CPU'))
 
         with game:
             while game.game_status:

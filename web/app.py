@@ -67,6 +67,52 @@ async def llm_debug_page():
     return FileResponse(str(BASE / 'templates' / 'llm_debug.html'))
 
 
+@app.get('/llm/models')
+async def llm_models() -> dict:
+    """List locally installed Ollama models, or report unavailability."""
+    import requests
+    from ollama_lifecycle import ollama_base
+    try:
+        r = requests.get(ollama_base() + '/api/tags', timeout=2)
+        r.raise_for_status()
+        names = sorted({m.get('name', '') for m in r.json().get('models', []) if m.get('name')})
+        return {'available': True, 'models': names}
+    except Exception as exc:
+        _log.debug('LLM models lookup failed: %s', exc)
+        return {'available': False, 'models': []}
+
+
+_ollama_proc_lock = threading.Lock()
+_ollama_proc = None  # holds the Popen we spawned, if any
+
+
+@app.post('/llm/start')
+async def llm_start() -> dict:
+    """Spawn `ollama serve` if it isn't already reachable. Returns availability."""
+    from ollama_lifecycle import (
+        ollama_reachable, spawn_ollama_serve, wait_until_reachable,
+    )
+    global _ollama_proc
+    if ollama_reachable():
+        return {'available': True, 'started': False}
+
+    with _ollama_proc_lock:
+        if not ollama_reachable():
+            proc = spawn_ollama_serve()
+            if proc is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail='`ollama` binary not found on PATH; install Ollama first.',
+                )
+            _ollama_proc = proc
+
+    loop = asyncio.get_event_loop()
+    became_reachable = await loop.run_in_executor(None, wait_until_reachable, 30.0)
+    if not became_reachable:
+        raise HTTPException(status_code=504, detail='Ollama did not become reachable within 30s.')
+    return {'available': True, 'started': True}
+
+
 @app.websocket('/ws/llm-debug')
 async def llm_debug_ws(websocket: WebSocket):
     await llm_debug_broadcaster.attach(websocket)
@@ -99,11 +145,13 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
 
         human_name: str = join_raw['human_name']
         num_players: int = int(join_raw['num_players'])
+        llm_model_raw = join_raw.get('llm_model')
+        llm_model: str | None = llm_model_raw.strip() if isinstance(llm_model_raw, str) and llm_model_raw.strip() else None
         session = GameSession(num_players=num_players, human_name=human_name,
-                              session_id=session_id)
+                              session_id=session_id, llm_model=llm_model)
         _sessions[session_id] = session
-        _log.info('SESSION_CREATE session=%s player=%r num_players=%d',
-                  session_id[:8], human_name, num_players)
+        _log.info('SESSION_CREATE session=%s player=%r num_players=%d llm=%r',
+                  session_id[:8], human_name, num_players, llm_model)
 
         loop = asyncio.get_event_loop()
 

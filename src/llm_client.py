@@ -12,8 +12,35 @@ logger = logging.getLogger('liars_dice.llm_client')
 _DEFAULT_OLLAMA_URL = 'http://localhost:11434/api/generate'
 
 
+def _wsl_default_gateway() -> 'str | None':
+    """Return the WSL default-route gateway (Windows host IP) if running under WSL."""
+    try:
+        with open('/proc/version') as fh:
+            if 'microsoft' not in fh.read().lower():
+                return None
+    except OSError:
+        return None
+    try:
+        with open('/proc/net/route') as fh:
+            for line in fh.readlines()[1:]:
+                fields = line.split()
+                if len(fields) >= 3 and fields[1] == '00000000':
+                    gw_hex = fields[2]
+                    octets = [str(int(gw_hex[i:i + 2], 16)) for i in (6, 4, 2, 0)]
+                    return '.'.join(octets)
+    except OSError:
+        pass
+    return None
+
+
 def _ollama_url() -> str:
-    return os.environ.get('OLLAMA_URL', _DEFAULT_OLLAMA_URL)
+    env = os.environ.get('OLLAMA_URL')
+    if env:
+        return env
+    gw = _wsl_default_gateway()
+    if gw:
+        return f'http://{gw}:11434/api/generate'
+    return _DEFAULT_OLLAMA_URL
 
 
 # ─────────────────────────────────────────────────────────────────────────────
