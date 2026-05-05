@@ -49,7 +49,7 @@ def _ollama_url() -> str:
 # unaffected when no listener is registered.
 # ─────────────────────────────────────────────────────────────────────────────
 
-DebugEvent = tuple[str, dict]  # (kind, payload); kinds: prompt, token, done, error
+DebugEvent = tuple[str, dict]  # (kind, payload); kinds: prompt, token, thinking, done, error
 DebugListener = Callable[[str, dict], None]
 
 _debug_listener: DebugListener | None = None
@@ -70,25 +70,34 @@ def _emit_debug(kind: str, **payload) -> None:
         logger.warning('debug listener raised: %s', exc)
 
 
-def query_llm(model: str, prompt: str, timeout: float = 15, temperature: float = 0.7) -> str | None:
-    _emit_debug('prompt', model=model, prompt=prompt, temperature=temperature, streaming=False)
+def query_llm(
+    model: str,
+    prompt: str,
+    timeout: float = 15,
+    temperature: float = 0.7,
+    think: bool = False,
+) -> str | None:
+    _emit_debug('prompt', model=model, prompt=prompt, temperature=temperature, streaming=False, think=think)
+    payload: dict = {
+        'model': model,
+        'prompt': prompt,
+        'stream': False,
+        'options': {'temperature': temperature},
+    }
+    if think:
+        payload['think'] = True
     try:
-        response = requests.post(
-            _ollama_url(),
-            json={
-                'model': model,
-                'prompt': prompt,
-                'stream': False,
-                'options': {'temperature': temperature},
-            },
-            timeout=timeout,
-        )
+        response = requests.post(_ollama_url(), json=payload, timeout=timeout)
         response.raise_for_status()
-        text = response.json()['response']
+        body = response.json()
+        text = body['response']
+        thinking = body.get('thinking') or ''
     except Exception as exc:
         logger.warning('query_llm failed: %s', exc)
         _emit_debug('error', message=str(exc))
         return None
+    if thinking:
+        _emit_debug('thinking', text=thinking)
     _emit_debug('token', text=text)
     _emit_debug('done')
     return text
@@ -100,24 +109,24 @@ def query_llm_stream(
     timeout: float = 60,
     temperature: float = 0.7,
     on_token: Callable[[str], None] | None = None,
+    think: bool = False,
 ) -> str | None:
-    """Stream the response token-by-token. Returns the full accumulated text,
-    or None on failure. Each chunk is forwarded to `on_token` (if provided)
-    and to the debug listener as a 'token' event."""
-    _emit_debug('prompt', model=model, prompt=prompt, temperature=temperature, streaming=True)
+    """Stream the response token-by-token. Returns the full accumulated answer text
+    (the `response` field — not thinking), or None on failure. Each answer chunk is
+    forwarded to `on_token` (if provided) and to the debug listener as a 'token' event;
+    when `think=True`, thinking chunks are forwarded as 'thinking' events."""
+    _emit_debug('prompt', model=model, prompt=prompt, temperature=temperature, streaming=True, think=think)
+    payload: dict = {
+        'model': model,
+        'prompt': prompt,
+        'stream': True,
+        'options': {'temperature': temperature},
+    }
+    if think:
+        payload['think'] = True
     chunks: list[str] = []
     try:
-        with requests.post(
-            _ollama_url(),
-            json={
-                'model': model,
-                'prompt': prompt,
-                'stream': True,
-                'options': {'temperature': temperature},
-            },
-            timeout=timeout,
-            stream=True,
-        ) as response:
+        with requests.post(_ollama_url(), json=payload, timeout=timeout, stream=True) as response:
             response.raise_for_status()
             for line in response.iter_lines(decode_unicode=True):
                 if not line:
@@ -126,6 +135,9 @@ def query_llm_stream(
                     obj = json.loads(line)
                 except json.JSONDecodeError:
                     continue
+                think_chunk = obj.get('thinking', '')
+                if think_chunk:
+                    _emit_debug('thinking', text=think_chunk)
                 chunk = obj.get('response', '')
                 if chunk:
                     chunks.append(chunk)

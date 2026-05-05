@@ -119,6 +119,7 @@ MATCHUPS: dict[str, dict] = {
 class _PendingDecision:
     prompt: str = ""
     chunks: list[str] = field(default_factory=list)
+    thinking_chunks: list[str] = field(default_factory=list)
     started_at: float = 0.0
     error: str | None = None
 
@@ -129,6 +130,7 @@ class TraceRecord:
     seed: int
     prompt: str
     response: str
+    thinking: str
     parsed_action: str | None
     parsed_count: int | None
     parsed_face: int | None
@@ -166,6 +168,9 @@ class TraceCapture:
         elif kind == "token":
             if self._in_flight:
                 self._pending.chunks.append(payload.get("text", ""))
+        elif kind == "thinking":
+            if self._in_flight:
+                self._pending.thinking_chunks.append(payload.get("text", ""))
         elif kind == "error":
             if self._in_flight:
                 self._pending.error = payload.get("message", "unknown")
@@ -188,6 +193,7 @@ class TraceCapture:
             seed=self._seed,
             prompt=self._pending.prompt,
             response=response_text,
+            thinking="".join(self._pending.thinking_chunks),
             parsed_action=action,
             parsed_count=count,
             parsed_face=face,
@@ -803,6 +809,12 @@ def main() -> int:
     parser.add_argument("--temperature", type=float, default=LLM_TEMPERATURE)
     parser.add_argument("--timeout", type=float, default=LLM_TIMEOUT)
     parser.add_argument(
+        "--think",
+        action="store_true",
+        help="Request the model's reasoning trace (Ollama think=true). Captured into "
+        "traces.jsonl as the 'thinking' field. Only useful with reasoning-capable models.",
+    )
+    parser.add_argument(
         "--intervention",
         type=str,
         default="",
@@ -847,6 +859,7 @@ def main() -> int:
     def _patched_init(self, *a, **kw):
         kw.setdefault("temperature", args.temperature)
         kw.setdefault("timeout", args.timeout)
+        kw.setdefault("think", args.think)
         _orig_init(self, *a, **kw)
 
     LLMStrategy.__init__ = _patched_init  # type: ignore[assignment]
@@ -928,6 +941,7 @@ def main() -> int:
                 "ollama_url": os.environ.get("OLLAMA_URL", "<default>"),
                 "temperature": args.temperature,
                 "timeout_s": args.timeout,
+                "think": args.think,
                 "games_per_matchup": args.games_per_matchup,
                 "matchups": selected,
                 "total_games": overall_games,

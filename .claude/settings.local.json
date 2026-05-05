@@ -46,7 +46,14 @@
       "Bash(xargs -r kill -9)",
       "Bash(echo \"PID=$!\")",
       "Bash(.venv/bin/python /tmp/shot.py)",
-      "Bash(.venv/bin/python /tmp/shot6.py)"
+      "Bash(.venv/bin/python /tmp/shot6.py)",
+      "Bash(.venv/bin/python *)",
+      "Bash(OLLAMA_URL=http://172.19.176.1:11434/api/generate timeout 600 .venv/bin/python scripts/gemma_analysis.py --games-per-matchup 1 --matchups vs_salty --report /tmp/smoke_v2.md --traces /tmp/smoke_v2.jsonl --results-json /tmp/smoke_v2.json)",
+      "Bash(pkill -f \"uvicorn web.app\")",
+      "Bash(pkill -9 -f uvicorn)",
+      "Bash(OLLAMA_URL=http://172.19.176.1:11434/api/generate timeout 600 .venv/bin/python scripts/gemma_analysis.py --games-per-matchup 1 --matchups vs_salty --run-name smoke_layout_check --intervention \"verify new run-directory layout\")",
+      "Bash(OLLAMA_URL=http://172.19.176.1:11434/api/generate .venv/bin/python scripts/gemma_analysis.py --games-per-matchup 1 --matchups vs_salty --run-name smoke_layout_check)",
+      "Bash(rtk curl *)"
     ],
     "additionalDirectories": [
       "C:\\Users\\isaac\\.claude"

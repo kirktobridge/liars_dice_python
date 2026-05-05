@@ -468,11 +468,13 @@ class LLMStrategy:
         temperature: float = 0.3,
         timeout: float = 30.0,
         stream: bool = False,
+        think: bool = False,
     ) -> None:
         self._model = model
         self._temperature = temperature
         self._timeout = timeout
         self._stream = stream
+        self._think = think
         self._history: list[str] = []
         self._fallback = CPUStrategy(random.Random())
 
@@ -544,9 +546,15 @@ class LLMStrategy:
         self, prompt: str, player_name: str, last: TurnResult,
     ) -> 'tuple[TurnResult | None, str | None]':
         if self._stream:
-            raw = query_llm_stream(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+            raw = query_llm_stream(
+                self._model, prompt, timeout=self._timeout,
+                temperature=self._temperature, think=self._think,
+            )
         else:
-            raw = query_llm(self._model, prompt, timeout=self._timeout, temperature=self._temperature)
+            raw = query_llm(
+                self._model, prompt, timeout=self._timeout,
+                temperature=self._temperature, think=self._think,
+            )
         result = self._parse_response(raw, player_name)
         if result is None:
             return None, 'response was not valid JSON in the requested format'
@@ -604,6 +612,14 @@ class LLMStrategy:
         if self._history:
             recent = self._history[-_HISTORY_MAX:]
             history_section = "Recent history:\n" + "\n".join(f"  - {line}" for line in recent) + "\n"
+        # When the model is invoked with think=true, the reasoning goes into Ollama's
+        # separate `thinking` channel and the answer field must remain pure JSON. We don't
+        # want "no explanation" to suppress the thinking channel itself.
+        format_line = (
+            "The `response` field must contain only valid JSON, no markdown, no prose."
+            if self._think
+            else "Respond with only valid JSON, no markdown, no explanation."
+        )
         return (
             f"You are playing Liar's Dice.\n"
             f"{rules}\n"
@@ -614,7 +630,7 @@ class LLMStrategy:
             f"{history_section}"
             f"Previous action: {prev_desc}\n"
             f"{challenge_guidance}"
-            f"Respond with only valid JSON, no markdown, no explanation.\n"
+            f"{format_line}\n"
             f"Use this exact format:\n"
             f'  {{"action": "bid|raise|challenge|spot_on", "count": <int>, "face": <int>}}\n'
             f"count and face are only required when action is bid or raise."
