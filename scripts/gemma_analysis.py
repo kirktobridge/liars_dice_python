@@ -815,6 +815,16 @@ def main() -> int:
         "traces.jsonl as the 'thinking' field. Only useful with reasoning-capable models.",
     )
     parser.add_argument(
+        "--prompt-condition",
+        type=str,
+        default="anchors",
+        choices=("minimal", "profile", "standing-prob", "anchors"),
+        help="v3 ablation knob. minimal: rules+dice+history+legality only. "
+        "profile: +per-opponent aggression/challenge-rate. standing-prob: +truth "
+        "probability of the standing bid. anchors: full v2 sizing+plausibility cues. "
+        "Default 'anchors' preserves v2 behavior.",
+    )
+    parser.add_argument(
         "--intervention",
         type=str,
         default="",
@@ -860,6 +870,7 @@ def main() -> int:
         kw.setdefault("temperature", args.temperature)
         kw.setdefault("timeout", args.timeout)
         kw.setdefault("think", args.think)
+        kw.setdefault("prompt_variant", args.prompt_condition)
         _orig_init(self, *a, **kw)
 
     LLMStrategy.__init__ = _patched_init  # type: ignore[assignment]
@@ -942,6 +953,7 @@ def main() -> int:
                 "temperature": args.temperature,
                 "timeout_s": args.timeout,
                 "think": args.think,
+                "prompt_condition": args.prompt_condition,
                 "games_per_matchup": args.games_per_matchup,
                 "matchups": selected,
                 "total_games": overall_games,

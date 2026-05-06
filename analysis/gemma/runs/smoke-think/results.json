@@ -1,0 +1,62 @@
+{
+  "run_name": "smoke-think",
+  "model": "gemma4:e4b",
+  "games_per_matchup": 3,
+  "duration_min": 10.606981497349988,
+  "matchups": [
+    {
+      "key": "vs_reckless",
+      "label": "vs 4\u00d7 Reckless Buccaneer",
+      "n_games": 3,
+      "win_count": 3,
+      "win_rate": 1.0,
+      "win_ci_lo": 0.43849391955098227,
+      "win_ci_hi": 1.0,
+      "mean_finish": 5.0,
+      "mean_rounds": 23.0,
+      "fallback_rate": 0.0,
+      "n_decisions": 31,
+      "action_dist": {
+        "bid": 0.45161290322580644,
+        "raise": 0.25806451612903225,
+        "challenge": 0.25806451612903225,
+        "spot_on": 0.03225806451612903
+      },
+      "mean_aggression": null,
+      "challenges_called": 8,
+      "challenge_success_rate": 0.625,
+      "spot_on_called": 1,
+      "spot_on_success_rate": 1.0,
+      "times_caught_bluffing": 3,
+      "bids_against_gemma": 3,
+      "caught_rate": null,
+      "mean_latency_s": 20.526305420516316,
+      "sample_traces": [
+        {
+          "matchup": "vs_reckless",
+          "seed": 0,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [4, 4, 1, 3, 5, 4]\nTotal dice on the table: 30 (6 yours + 24 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 24 opponent dice, ~8 more of any non-1 face are expected. A safe opening bid is around 11 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nPrevious action: action=START\nThe `response` field must contain only valid JSON, no markdown, no prose.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 11, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 11,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 23.775,
+          "error": null
+        },
+        {
+          "matchup": "vs_reckless",
+          "seed": 1,
+          "prompt": "You are playing Liar's Dice.\nRules: A bid claims AT LEAST <count> dice across the whole table show <face>. Challenge accuses the previous bidder of lying. Spot-on claims the bid count is exactly correct. Ones (1s) are wild and count as any face.\nConstraints: count must be an integer >= 2. face must be an integer 1-6. On the opening turn (action=start) you MUST bid -- challenge and spot_on are illegal. A raise must strictly escalate the previous bid: either count goes up, or count stays the same and face goes up.\nYour dice: [6, 3, 4, 4, 1, 1]\nTotal dice on the table: 23 (6 yours + 17 opponents')\nSizing guide: you hold 4 dice toward face 4 (counting wilds). Across 17 opponent dice, ~5 more of any non-1 face are expected. A safe opening bid is around 8 4s -- bidding at the expected count is ~50% true, so leave a small safety margin. Adjust based on history.\nRecent history:\n  - Reckless Buccaneer 2 challenged\n  - Reckless Buccaneer 1 bid 10 fours\n  - Reckless Buccaneer 2 called spot on\n  - Reckless Buccaneer 2 bid 11 sixes\n  - Reckless Buccaneer 3 challenged\n  - Reckless Buccaneer 2 bid 9 fives\n  - Reckless Buccaneer 3 called spot on\n  - Reckless Buccaneer 3 bid 10 threes\n  - Reckless Buccaneer 4 challenged\n  - Reckless Buccaneer 4 bid 5 ones\nPrevious action: action=BID, bid=Bid(count=5, face=1)\nPlausibility cue: The previous bid claims 5/23 = 22% of dice show face 1. This is below the ~33% baseline and is very likely true; challenge is rarely correct here.\nThe `response` field must contain only valid JSON, no markdown, no prose.\nUse this exact format:\n  {\"action\": \"bid|raise|challenge|spot_on\", \"count\": <int>, \"face\": <int>}\ncount and face are only required when action is bid or raise.",
+          "response": "{\"action\": \"bid\", \"count\": 8, \"face\": 4}",
+          "parsed_action": "bid",
+          "parsed_count": 8,
+          "parsed_face": 4,
+          "fallback": false,
+          "latency_s": 38.951,
+          "error": null
+        }
+      ]
+    }
+  ]
+}

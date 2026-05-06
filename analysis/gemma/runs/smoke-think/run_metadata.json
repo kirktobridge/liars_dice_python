@@ -1,0 +1,21 @@
+{
+  "run_name": "smoke-think",
+  "intervention": "smoke test of think capture",
+  "date": "2026-05-05",
+  "model": "gemma4:e4b",
+  "ollama_url": "http://172.19.176.1:11434/api/generate",
+  "temperature": 1.0,
+  "timeout_s": 60.0,
+  "think": true,
+  "games_per_matchup": 3,
+  "matchups": [
+    "vs_reckless"
+  ],
+  "total_games": 3,
+  "total_wins": 3,
+  "total_decisions_logged": 31,
+  "duration_min": 10.606981497349988,
+  "code_sha_at_run_time": "553a2edf5b670d9d84c2ac02e38af7a486fe6836",
+  "strategy_module_sha256": "7a76bc3b28c3c2a2a264ab461ac14e58c29ab53823113af8cbc2a92636f0d6e1",
+  "command_line": "scripts/gemma_analysis.py --run-name smoke-think --games-per-matchup 3 --matchups vs_reckless --think --intervention smoke test of think capture"
+}

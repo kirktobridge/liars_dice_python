@@ -458,6 +458,28 @@ class CPUStrategy:
 _FACE_WORDS = {1: 'ones', 2: 'twos', 3: 'threes', 4: 'fours', 5: 'fives', 6: 'sixes'}
 _HISTORY_MAX = 10
 
+# Prompt-variant identifiers for v3 ablation runs.
+PROMPT_VARIANTS = ('minimal', 'profile', 'standing-prob', 'anchors')
+
+
+@dataclass
+class _LLMOpponentObs:
+    """Per-opponent rolling stats used by the 'profile' prompt variant.
+    Beta(2,2)-style smoothing matches OpponentProfile in CPUStrategy so the
+    numbers are interpretable on the same scale."""
+    bids: int = 0
+    aggression_sum: float = 0.0
+    challenges: int = 0
+    actions: int = 0  # any of bid/raise/challenge/spot_on
+
+    @property
+    def avg_aggression(self) -> float:
+        return (self.aggression_sum + 1.0) / (self.bids + 2)
+
+    @property
+    def challenge_rate(self) -> float:
+        return (self.challenges + 1) / (self.actions + 2)
+
 
 class LLMStrategy:
     player_type: str = 'LLM'
@@ -469,21 +491,37 @@ class LLMStrategy:
         timeout: float = 30.0,
         stream: bool = False,
         think: bool = False,
+        prompt_variant: str = 'anchors',
     ) -> None:
+        if prompt_variant not in PROMPT_VARIANTS:
+            raise ValueError(f"prompt_variant must be one of {PROMPT_VARIANTS}, got {prompt_variant!r}")
         self._model = model
         self._temperature = temperature
         self._timeout = timeout
         self._stream = stream
         self._think = think
+        self._prompt_variant = prompt_variant
         self._history: list[str] = []
         self._fallback = CPUStrategy(random.Random())
+        self._observations: dict[str, _LLMOpponentObs] = {}
 
     def reset(self) -> None:
         self._history = []
         self._fallback.reset()
+        self._observations = {}
 
     def observe_action(self, player_name: str, action: Action, bid: 'Bid | None', total_dice: int) -> None:
         self._fallback.observe_action(player_name, action, bid, total_dice)
+        obs = self._observations.setdefault(player_name, _LLMOpponentObs())
+        if action in (Action.BID, Action.RAISE) and bid is not None and total_dice > 0:
+            obs.bids += 1
+            obs.aggression_sum += bid.count / total_dice
+            obs.actions += 1
+        elif action == Action.CHALLENGE:
+            obs.challenges += 1
+            obs.actions += 1
+        elif action == Action.SPOT_ON:
+            obs.actions += 1
         if action == Action.BID and bid is not None:
             entry = f"{player_name} bid {bid.count} {_FACE_WORDS.get(bid.face, bid.face)}"
         elif action == Action.RAISE and bid is not None:
@@ -588,6 +626,10 @@ class LLMStrategy:
         return result, None
 
     def _build_prompt(self, dice: list[int], tot_other_dice: int, last: TurnResult) -> str:
+        """Variant-aware prompt builder. All variants share rules + dice + legality
+        + history; (b)–(d) progressively add opponent profile, standing-bid probability,
+        and the v2 sizing/plausibility anchors. Variant selected by `self._prompt_variant`."""
+        v = self._prompt_variant
         prev_desc = (
             f"action={last.action.value}, bid={last.bid}"
             if last.bid
@@ -606,14 +648,21 @@ class LLMStrategy:
             f"A raise must strictly escalate the previous bid: either count goes up, or count stays "
             f"the same and face goes up."
         )
-        sizing = self._sizing_hint(dice, tot_other_dice)
-        challenge_guidance = self._challenge_guidance(dice, last, total_dice)
         history_section = ""
         if self._history:
             recent = self._history[-_HISTORY_MAX:]
             history_section = "Recent history:\n" + "\n".join(f"  - {line}" for line in recent) + "\n"
+        profile_section = self._opponent_profile_section() if v in ('profile', 'standing-prob', 'anchors') else ""
+        standing_prob_section = (
+            self._standing_bid_probability(dice, last, tot_other_dice)
+            if v in ('standing-prob', 'anchors') else ""
+        )
+        sizing_section = self._sizing_hint(dice, tot_other_dice) if v == 'anchors' else ""
+        challenge_guidance = (
+            self._challenge_guidance(dice, last, total_dice) if v == 'anchors' else ""
+        )
         # When the model is invoked with think=true, the reasoning goes into Ollama's
-        # separate `thinking` channel and the answer field must remain pure JSON. We don't
+        # separate `thinking` channel; the answer field must stay pure JSON, but we don't
         # want "no explanation" to suppress the thinking channel itself.
         format_line = (
             "The `response` field must contain only valid JSON, no markdown, no prose."
@@ -626,7 +675,9 @@ class LLMStrategy:
             f"{legality}\n"
             f"Your dice: {dice}\n"
             f"Total dice on the table: {total_dice} ({len(dice)} yours + {tot_other_dice} opponents')\n"
-            f"{sizing}"
+            f"{sizing_section}"
+            f"{profile_section}"
+            f"{standing_prob_section}"
             f"{history_section}"
             f"Previous action: {prev_desc}\n"
             f"{challenge_guidance}"
@@ -634,6 +685,63 @@ class LLMStrategy:
             f"Use this exact format:\n"
             f'  {{"action": "bid|raise|challenge|spot_on", "count": <int>, "face": <int>}}\n'
             f"count and face are only required when action is bid or raise."
+        )
+
+    def _opponent_profile_section(self) -> str:
+        """One line per observed opponent: aggression label + observed challenge rate.
+        Empty until at least one opponent action has been observed."""
+        if not self._observations:
+            return ""
+        lines: list[str] = []
+        for name, obs in self._observations.items():
+            if obs.actions == 0:
+                continue
+            agg = obs.avg_aggression
+            if agg >= 0.40:
+                agg_label = "over-claims"
+            elif agg <= 0.25:
+                agg_label = "under-claims"
+            else:
+                agg_label = "near baseline"
+            lines.append(
+                f"  {name}: bids ~{agg:.2f} of total dice ({agg_label}), "
+                f"challenges {obs.challenge_rate:.0%}"
+            )
+        if not lines:
+            return ""
+        return "Opponent profiles (from observed actions):\n" + "\n".join(lines) + "\n"
+
+    @staticmethod
+    def _standing_bid_probability(dice: list[int], last: TurnResult, tot_other_dice: int) -> str:
+        """For the 'standing-prob' and 'anchors' variants. Computes P(bid is true) =
+        P(opponents collectively show at least the missing count of <face>) using the
+        same binomial(n, 1/3) Gemma's CPU peer uses (1s wild, so any face has p=1/3)."""
+        if last.action not in (Action.BID, Action.RAISE) or last.bid is None:
+            return ""
+        bid = last.bid
+        if bid.face == 1:
+            own_matches = dice.count(1)
+        else:
+            own_matches = dice.count(bid.face) + dice.count(1)
+        needed = bid.count - own_matches
+        if needed <= 0:
+            verdict = "guaranteed true (you already hold enough)"
+            prob = 1.0
+        elif needed > tot_other_dice:
+            verdict = "impossible (more than total opponent dice)"
+            prob = 0.0
+        else:
+            model = get_binom(tot_other_dice)
+            prob = float(model.sf(needed - 1))  # P(X >= needed)
+            if prob >= 0.70:
+                verdict = "likely true"
+            elif prob >= 0.40:
+                verdict = "near coinflip"
+            else:
+                verdict = "unlikely"
+        return (
+            f"Truth probability of previous bid ({bid.count} {bid.face}s): "
+            f"{prob:.2f} -- {verdict}.\n"
         )
 
     @staticmethod
