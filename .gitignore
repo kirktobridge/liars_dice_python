@@ -1,5 +1,7 @@
 # my additions
-.claude/
+# .claude is local-only except the shared skill suite
+.claude/*
+!.claude/skills/
 *LiarsDiceGame_Log.txt
 *.png
 logs/
