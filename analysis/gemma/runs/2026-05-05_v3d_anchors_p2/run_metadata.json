@@ -1,0 +1,27 @@
+{
+  "run_name": "2026-05-05_v3d_anchors_p2",
+  "intervention": "v3 ablation (d): full v2 sizing + plausibility anchors; think=true (part 2/4)",
+  "date": "2026-05-24",
+  "model": "gemma4:e4b",
+  "ollama_url": "http://172.19.176.1:11434/api/generate",
+  "temperature": 1.0,
+  "timeout_s": 60.0,
+  "think": true,
+  "prompt_condition": "anchors",
+  "games_per_matchup": 15,
+  "matchups": [
+    "vs_salty",
+    "vs_reckless",
+    "vs_crafty",
+    "vs_stoic",
+    "vs_wildcard",
+    "vs_mixed"
+  ],
+  "total_games": 90,
+  "total_wins": 23,
+  "total_decisions_logged": 1433,
+  "duration_min": 555.5749367347499,
+  "code_sha_at_run_time": "6dd685ca41a07acdda433b24d2fa8bb8878822e6",
+  "strategy_module_sha256": "533cdc645ed3daa61e90e256cf773fecbbf8920ea08b85d911723e768e539bb4",
+  "command_line": "scripts/gemma_analysis.py --run-name 2026-05-05_v3d_anchors_p2 --games-per-matchup 15 --think --prompt-condition anchors --intervention v3 ablation (d): full v2 sizing + plausibility anchors; think=true (part 2/4)"
+}

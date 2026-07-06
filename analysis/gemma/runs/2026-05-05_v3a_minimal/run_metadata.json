@@ -1,0 +1,27 @@
+{
+  "run_name": "2026-05-05_v3a_minimal",
+  "intervention": "v3 ablation (a): minimal prompt \u2014 rules+dice+legality+history only; think=true",
+  "date": "2026-05-05",
+  "model": "gemma4:e4b",
+  "ollama_url": "http://172.19.176.1:11434/api/generate",
+  "temperature": 1.0,
+  "timeout_s": 60.0,
+  "think": true,
+  "prompt_condition": "minimal",
+  "games_per_matchup": 60,
+  "matchups": [
+    "vs_salty",
+    "vs_reckless",
+    "vs_crafty",
+    "vs_stoic",
+    "vs_wildcard",
+    "vs_mixed"
+  ],
+  "total_games": 360,
+  "total_wins": 4,
+  "total_decisions_logged": 7160,
+  "duration_min": 2679.5664850716835,
+  "code_sha_at_run_time": "6dd685ca41a07acdda433b24d2fa8bb8878822e6",
+  "strategy_module_sha256": "533cdc645ed3daa61e90e256cf773fecbbf8920ea08b85d911723e768e539bb4",
+  "command_line": "scripts/gemma_analysis.py --run-name 2026-05-05_v3a_minimal --games-per-matchup 60 --think --prompt-condition minimal --intervention v3 ablation (a): minimal prompt \u2014 rules+dice+legality+history only; think=true"
+}
